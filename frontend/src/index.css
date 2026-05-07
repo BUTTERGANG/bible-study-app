@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply bg-gray-100 text-gray-900;
+  }
+
+  .bible-text {
+    font-family: 'Lora', Georgia, serif;
+    line-height: 1.9;
+    font-size: 1.05rem;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200;
+  }
+
+  .panel-header {
+    @apply px-4 py-3 border-b border-gray-200 font-semibold text-gray-800 text-sm flex items-center justify-between;
+  }
+
+  .verse-num {
+    @apply text-xs font-bold text-blue-500 mr-1 select-none align-super;
+  }
+
+  .verse-selected {
+    @apply bg-blue-50 rounded;
+  }
+
+  .menu-item {
+    @apply w-full text-left px-3 py-1.5 flex items-center gap-2 text-gray-700 hover:bg-gray-50 transition-colors;
+  }
+
+  .highlight-yellow { @apply bg-yellow-100; }
+  .highlight-blue   { @apply bg-blue-100; }
+  .highlight-green  { @apply bg-green-100; }
+  .highlight-pink   { @apply bg-pink-100; }
+  .highlight-orange { @apply bg-orange-100; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }

@@ -1,0 +1,19 @@
+run = "bash start.sh"
+language = "python3"
+
+[nix]
+channel = "stable-24_05"
+
+[unitTest]
+language = "python3"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+run = ["bash", "start.sh"]
+deploymentTarget = "cloudrun"
+
+# Set ANTHROPIC_API_KEY in Replit Secrets (Tools → Secrets), not here.
+# DATA_PATH is intentionally unset — defaults to ./data relative to this file.

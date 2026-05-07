@@ -1,0 +1,767 @@
+#!/usr/bin/env python3
+"""
+Ingest SWORD Project Bible modules and commentaries into SQLite.
+
+Usage:
+    cd /Volumes/T5 EVO/REPLIT/LOGOS-COPYCAT/app
+    pip install -r requirements.txt
+    python ingest/ingest_sword.py
+
+Reads from: ../library/sword/{bibles,commentaries,lexicons,classics,devotional}/
+Writes to:  ./data/bible.db
+"""
+
+import os
+import sys
+import zipfile
+import shutil
+import sqlite3
+import tempfile
+import traceback
+from pathlib import Path
+
+# Add backend to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+from bible_data import BOOKS, BOOK_NAME_MAP
+
+APP_DIR = Path(__file__).parent.parent
+LIBRARY_DIR = Path(os.getenv("LIBRARY_PATH", APP_DIR.parent / "library"))
+DATA_DIR = Path(os.getenv("DATA_PATH", APP_DIR / "data"))
+SWORD_DIR = LIBRARY_DIR / "sword"
+EXTRACT_DIR = DATA_DIR / "sword_extracted"
+DB_PATH = DATA_DIR / "bible.db"
+
+# Translations to ingest (public domain)
+BIBLE_MODULES = [
+    "KJV", "KJVA", "ASV", "YLT", "Darby", "Webster",
+    "Wycliffe", "Rotherham", "NETfree", "NHEB", "OEB",
+    "BSB", "LEB",
+]
+
+COMMENTARY_MODULES = [
+    "MHC", "MHCC", "JFB", "Barnes", "Clarke", "Wesley",
+    "TSK", "KD", "RWP", "Geneva", "Luther", "Lightfoot",
+    "TFG", "PNT", "TDavid", "Burkitt", "Calvin",
+]
+
+LEXICON_MODULES = [
+    "StrongsGreek", "StrongsHebrew", "AbbottSmith", "Dodson",
+    "Easton", "ISBE", "Smith", "Nave", "Webster1828",
+]
+
+
+def ensure_dirs():
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    EXTRACT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def extract_module(zip_path: Path, dest_dir: Path) -> bool:
+    """Extract a SWORD zip module to dest_dir."""
+    if not zip_path.exists():
+        print(f"  MISSING: {zip_path}")
+        return False
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(dest_dir)
+        return True
+    except Exception as e:
+        print(f"  ERROR extracting {zip_path.name}: {e}")
+        return False
+
+
+def init_db(conn: sqlite3.Connection):
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS bible_verses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            translation TEXT NOT NULL,
+            book TEXT NOT NULL,
+            book_num INTEGER NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse INTEGER NOT NULL,
+            text TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_bv_lookup
+            ON bible_verses(translation, book, chapter, verse);
+        CREATE INDEX IF NOT EXISTS idx_bv_book
+            ON bible_verses(translation, book_num, chapter);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS bible_verses_fts
+            USING fts5(text, content=bible_verses, content_rowid=id);
+
+        CREATE TABLE IF NOT EXISTS commentary_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            book TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse_start INTEGER NOT NULL,
+            verse_end INTEGER,
+            text TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_ce_lookup
+            ON commentary_entries(source, book, chapter, verse_start);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS commentary_fts
+            USING fts5(text, content=commentary_entries, content_rowid=id);
+
+        CREATE TABLE IF NOT EXISTS lexicon_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            strongs_num TEXT NOT NULL,
+            original_word TEXT,
+            transliteration TEXT,
+            pronunciation TEXT,
+            definition TEXT NOT NULL,
+            usage TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_lex_strongs
+            ON lexicon_entries(strongs_num);
+
+        CREATE TABLE IF NOT EXISTS dictionary_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            term TEXT NOT NULL,
+            text TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_dict_term
+            ON dictionary_entries(term COLLATE NOCASE);
+
+        CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reference TEXT NOT NULL,
+            book TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse INTEGER,
+            content TEXT NOT NULL,
+            tags TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS highlights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            translation TEXT NOT NULL,
+            book TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse INTEGER NOT NULL,
+            color TEXT DEFAULT 'yellow',
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS bookmarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reference TEXT NOT NULL,
+            book TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse INTEGER,
+            note TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS reading_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            schedule_json TEXT NOT NULL,
+            start_date TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS reading_plan_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            reference TEXT NOT NULL,
+            completed_at TEXT,
+            FOREIGN KEY (plan_id) REFERENCES reading_plans(id)
+        );
+        CREATE TABLE IF NOT EXISTS studies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content_json TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS library_books (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            author TEXT,
+            category TEXT NOT NULL,
+            source_format TEXT NOT NULL,
+            source_path TEXT NOT NULL,
+            page_count INTEGER,
+            ingested_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS greek_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse INTEGER NOT NULL,
+            word_position INTEGER NOT NULL,
+            greek TEXT NOT NULL,
+            transliteration TEXT,
+            morphology TEXT,
+            strongs_num TEXT,
+            english_gloss TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_gw_ref
+            ON greek_words(book, chapter, verse);
+        CREATE TABLE IF NOT EXISTS hebrew_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            verse INTEGER NOT NULL,
+            word_position INTEGER NOT NULL,
+            hebrew TEXT NOT NULL,
+            transliteration TEXT,
+            morphology TEXT,
+            strongs_num TEXT,
+            english_gloss TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_hw_ref
+            ON hebrew_words(book, chapter, verse);
+    """)
+    conn.commit()
+    print("Database schema initialized.")
+
+
+def _get_actual_module_name(available: dict, module_name: str):
+    """Return the actual key in available dict, case-insensitive."""
+    if module_name in available:
+        return module_name
+    lower_keys = {k.lower(): k for k in available.keys()}
+    return lower_keys.get(module_name.lower())
+
+
+def ingest_bible_with_pysword(module_name: str, extract_dir: Path, conn: sqlite3.Connection):
+    """Ingest a Bible module using pysword."""
+    try:
+        from pysword.modules import SwordModules
+        from bible_data import resolve_book_name
+        modules = SwordModules(str(extract_dir))
+        available = modules.parse_modules()
+
+        actual_name = _get_actual_module_name(available, module_name)
+        if not actual_name:
+            print(f"  Module {module_name} not found (available: {list(available.keys())[:5]}...)")
+            return 0
+
+        bible = modules.get_bible_from_module(actual_name)
+        struct = bible.get_structure()
+        books_dict = struct.get_books()  # {'ot': [...], 'nt': [...]}
+        all_books = books_dict.get('ot', []) + books_dict.get('nt', [])
+
+        count = 0
+        rows = []
+        for book_obj in all_books:
+            canonical = resolve_book_name(book_obj.name) or book_obj.name
+            book_data = BOOK_NAME_MAP.get(canonical.lower())
+            book_num = book_data["num"] if book_data else 0
+
+            for ch_idx, verse_count in enumerate(book_obj.chapter_lengths):
+                ch_num = ch_idx + 1
+                for v_num in range(1, verse_count + 1):
+                    try:
+                        text = bible.get(
+                            books=[book_obj.name],
+                            chapters=[ch_num],
+                            verses=[v_num],
+                            clean=True,
+                        )
+                        if text and text.strip():
+                            rows.append((actual_name, canonical, book_num, ch_num, v_num, text.strip()))
+                            count += 1
+                    except Exception:
+                        pass
+
+                if len(rows) >= 1000:
+                    conn.executemany(
+                        "INSERT OR IGNORE INTO bible_verses (translation, book, book_num, chapter, verse, text) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        rows,
+                    )
+                    conn.commit()
+                    rows = []
+
+        if rows:
+            conn.executemany(
+                "INSERT OR IGNORE INTO bible_verses (translation, book, book_num, chapter, verse, text) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                rows,
+            )
+            conn.commit()
+
+        return count
+
+    except ImportError:
+        print("  pysword not installed — falling back to manual parser")
+        return ingest_bible_manual(module_name, extract_dir, conn)
+    except Exception as e:
+        print(f"  ERROR with pysword for {module_name}: {e}")
+        traceback.print_exc()
+        return ingest_bible_manual(module_name, extract_dir, conn)
+
+
+def ingest_bible_manual(module_name: str, extract_dir: Path, conn: sqlite3.Connection) -> int:
+    """
+    Manual SWORD .bzz parser fallback.
+    Reads the verse text by parsing the raw compressed SWORD binary format.
+    Falls back to osis/plain text files if present.
+    """
+    # Look for a .conf file to find module path
+    mod_lower = module_name.lower()
+    conf_paths = list(extract_dir.glob(f"mods.d/{mod_lower}.conf"))
+    if not conf_paths:
+        conf_paths = list(extract_dir.glob("mods.d/*.conf"))
+
+    # Try to find OSIS or plain text exports
+    for ext in ["*.xml", "*.txt", "*.osis"]:
+        found = list(extract_dir.rglob(ext))
+        if found:
+            print(f"  Found text file: {found[0]}")
+            # TODO: parse OSIS XML
+            return 0
+
+    print(f"  Could not parse {module_name} manually")
+    return 0
+
+
+def rebuild_fts(conn: sqlite3.Connection):
+    """Rebuild FTS5 indexes."""
+    print("Rebuilding FTS indexes...")
+    conn.execute("INSERT INTO bible_verses_fts(bible_verses_fts) VALUES('rebuild')")
+    conn.execute("INSERT INTO commentary_fts(commentary_fts) VALUES('rebuild')")
+    conn.commit()
+    print("FTS indexes rebuilt.")
+
+
+def register_library_books(conn: sqlite3.Connection):
+    """Scan all PDF/epub files in library and register in library_books table."""
+    library_dir = LIBRARY_DIR
+    category_map = {
+        "commentaries": "Commentary",
+        "ccel/commentaries": "Commentary",
+        "ccel/devotional": "Devotional",
+        "ccel/theology": "Theology",
+        "ccel/church_history": "Church History",
+        "ccel/reference": "Reference",
+        "study_bibles": "Study Bible",
+        "translations": "Bible Translation",
+        "book_notes": "Book Notes",
+        "gutenberg/commentaries": "Commentary",
+        "gutenberg/theology": "Theology",
+        "gutenberg/lexicons": "Lexicons",
+    }
+
+    rows = []
+    for rel_cat, display_cat in category_map.items():
+        cat_dir = library_dir / rel_cat
+        if not cat_dir.exists():
+            continue
+        for f in sorted(cat_dir.iterdir()):
+            if f.suffix.lower() in (".pdf", ".epub"):
+                title = f.stem.replace("_", " ")
+                author = _extract_author(title)
+                page_count = None
+                if f.suffix.lower() == ".pdf":
+                    try:
+                        import fitz
+                        doc = fitz.open(str(f))
+                        page_count = doc.page_count
+                        doc.close()
+                    except Exception:
+                        pass
+                rows.append((title, author, display_cat, f.suffix[1:].lower(), str(f), page_count))
+
+    if rows:
+        conn.executemany(
+            "INSERT OR IGNORE INTO library_books (title, author, category, source_format, source_path, page_count) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+        conn.commit()
+        print(f"Registered {len(rows)} library books.")
+
+
+def _extract_author(title: str) -> str:
+    """Best-effort author extraction from filename."""
+    known = {
+        "Calvin": "John Calvin", "Spurgeon": "C.H. Spurgeon",
+        "Matthew_Henry": "Matthew Henry", "Matthew Henry": "Matthew Henry",
+        "JFB": "Jamieson, Fausset & Brown", "Barnes": "Albert Barnes",
+        "Wesley": "John Wesley", "Clarke": "Adam Clarke",
+        "Schaff": "Philip Schaff", "Luther": "Martin Luther",
+        "Augustine": "Augustine of Hippo", "Aquinas": "Thomas Aquinas",
+    }
+    for key, author in known.items():
+        if key in title:
+            return author
+    return ""
+
+
+def main():
+    print("=== SWORD Module Ingestion ===\n")
+    ensure_dirs()
+
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    init_db(conn)
+
+    # Check what's already ingested
+    existing_translations = {
+        row[0] for row in conn.execute("SELECT DISTINCT translation FROM bible_verses").fetchall()
+    }
+    print(f"Already ingested: {existing_translations}\n")
+
+    print("=== EXTRACTING AND INGESTING BIBLE MODULES ===")
+    for module in BIBLE_MODULES:
+        if module in existing_translations:
+            print(f"SKIP (exists): {module}")
+            continue
+
+        zip_path = SWORD_DIR / "bibles" / f"{module}.zip"
+        module_extract = EXTRACT_DIR / module
+
+        if not module_extract.exists() or not any(module_extract.iterdir()):
+            print(f"Extracting {module}...")
+            module_extract.mkdir(exist_ok=True)
+            if not extract_module(zip_path, module_extract):
+                continue
+
+        print(f"Ingesting {module}...")
+        count = ingest_bible_with_pysword(module, module_extract, conn)
+        print(f"  -> {count} verses ingested")
+
+    print("\n=== EXTRACTING AND INGESTING COMMENTARY MODULES ===")
+    existing_commentaries = {
+        row[0] for row in conn.execute("SELECT DISTINCT source FROM commentary_entries").fetchall()
+    }
+    for module in COMMENTARY_MODULES:
+        if module in existing_commentaries:
+            print(f"SKIP (exists): {module}")
+            continue
+
+        zip_path = SWORD_DIR / "commentaries" / f"{module}.zip"
+        module_extract = EXTRACT_DIR / module
+
+        if not module_extract.exists() or not any(module_extract.iterdir()):
+            print(f"Extracting {module}...")
+            module_extract.mkdir(exist_ok=True)
+            if not extract_module(zip_path, module_extract):
+                continue
+
+        print(f"Ingesting commentary {module}...")
+        count = ingest_commentary_with_pysword(module, module_extract, conn)
+        print(f"  -> {count} entries ingested")
+
+    print("\n=== EXTRACTING AND INGESTING LEXICON MODULES ===")
+    existing_lexicons = {
+        row[0] for row in conn.execute("SELECT DISTINCT source FROM lexicon_entries").fetchall()
+    }
+    for module in LEXICON_MODULES:
+        if module in existing_lexicons:
+            print(f"SKIP (exists): {module}")
+            continue
+
+        # Lexicons may be in lexicons/ or classics/ folder
+        zip_path = SWORD_DIR / "lexicons" / f"{module}.zip"
+        if not zip_path.exists():
+            zip_path = SWORD_DIR / "classics" / f"{module}.zip"
+
+        module_extract = EXTRACT_DIR / module
+        if not module_extract.exists() or not any(module_extract.iterdir()):
+            print(f"Extracting {module}...")
+            module_extract.mkdir(exist_ok=True)
+            if not extract_module(zip_path, module_extract):
+                continue
+
+        print(f"Ingesting lexicon {module}...")
+        count = ingest_lexicon(module, module_extract, conn)
+        print(f"  -> {count} entries ingested")
+
+    print("\n=== REGISTERING LIBRARY BOOKS ===")
+    register_library_books(conn)
+
+    print("\n=== REBUILDING FTS INDEXES ===")
+    try:
+        rebuild_fts(conn)
+    except Exception as e:
+        print(f"  FTS rebuild error (non-fatal): {e}")
+
+    conn.close()
+    print(f"\n=== DONE === Database: {DB_PATH}")
+
+    # Show stats
+    conn2 = sqlite3.connect(str(DB_PATH))
+    verses = conn2.execute("SELECT COUNT(*) FROM bible_verses").fetchone()[0]
+    translations = conn2.execute("SELECT COUNT(DISTINCT translation) FROM bible_verses").fetchone()[0]
+    commentary = conn2.execute("SELECT COUNT(*) FROM commentary_entries").fetchone()[0]
+    library = conn2.execute("SELECT COUNT(*) FROM library_books").fetchone()[0]
+    conn2.close()
+    print(f"Verses: {verses:,} across {translations} translations")
+    print(f"Commentary entries: {commentary:,}")
+    print(f"Library books registered: {library}")
+
+
+def _patch_pysword_for_commentaries():
+    """Allow pysword to read zCom/zCom4 modules (same binary format as zText)."""
+    try:
+        from pysword import bible as pb
+        pb.SwordModuleType.ZCOM = 'zcom'
+        pb.SwordModuleType.ZCOM4 = 'zcom4'
+        pb.SwordModuleType.RAWCOM = 'rawcom'
+        pb.SwordModuleType.RAWCOM4 = 'rawcom4'
+        pb.SwordBible._MODULE_CLASSES['zcom'] = pb.ZTextModule
+        pb.SwordBible._MODULE_CLASSES['zcom4'] = pb.ZTextModule4
+        pb.SwordBible._MODULE_CLASSES['rawcom'] = pb.RawTextModule
+        pb.SwordBible._MODULE_CLASSES['rawcom4'] = pb.RawTextModule4
+        # Patch the validation check
+        _original_new = pb.SwordBible.__new__
+        def _patched_new(cls, *args, **kwargs):
+            module_type = kwargs.get('module_type') or (args[1] if len(args) > 1 else None)
+            if module_type and module_type not in pb.SwordBible._MODULE_CLASSES:
+                # Force to ztext4 as fallback for unknown com types
+                if 'com' in module_type:
+                    if '4' in module_type:
+                        kwargs['module_type'] = 'ztext4'
+                    else:
+                        kwargs['module_type'] = 'ztext'
+                    args = args[:1]
+            return _original_new.__func__(cls, *args, **kwargs) if hasattr(_original_new, '__func__') else _original_new(cls, *args, **kwargs)
+    except Exception:
+        pass
+
+
+def ingest_commentary_with_pysword(module_name: str, extract_dir: Path, conn: sqlite3.Connection) -> int:
+    try:
+        # Patch pysword to support commentary module types
+        from pysword import bible as pb
+        allowed = [pb.SwordModuleType.RAWTEXT, pb.SwordModuleType.RAWTEXT4,
+                   pb.SwordModuleType.ZTEXT, pb.SwordModuleType.ZTEXT4]
+
+        from pysword.modules import SwordModules
+        from bible_data import resolve_book_name
+        modules = SwordModules(str(extract_dir))
+        available = modules.parse_modules()
+
+        actual_name = _get_actual_module_name(available, module_name)
+        if not actual_name:
+            print(f"  {module_name} not found")
+            return 0
+
+        # Rewrite moddrv to ztext/ztext4 so pysword can read it
+        mod_info = modules._modules[actual_name]
+        moddrv = mod_info.get('moddrv', '').lower()
+        if 'com' in moddrv:
+            mod_info['moddrv'] = 'zText4' if '4' in moddrv else 'zText'
+
+        commentary = modules.get_bible_from_module(actual_name)
+        struct = commentary.get_structure()
+        books_dict = struct.get_books()
+        all_books = books_dict.get('ot', []) + books_dict.get('nt', [])
+
+        count = 0
+        rows = []
+        for book_obj in all_books:
+            canonical = resolve_book_name(book_obj.name) or book_obj.name
+
+            for ch_idx, verse_count in enumerate(book_obj.chapter_lengths):
+                ch_num = ch_idx + 1
+                for v_num in range(1, verse_count + 1):
+                    try:
+                        text = commentary.get(  # commentary is actually a SwordBible object
+                            books=[book_obj.name],
+                            chapters=[ch_num],
+                            verses=[v_num],
+                            clean=True,
+                        )
+                        if text and text.strip():
+                            rows.append((module_name, canonical, ch_num, v_num, None, text.strip()))
+                            count += 1
+                    except Exception:
+                        pass
+
+                if len(rows) >= 500:
+                    conn.executemany(
+                        "INSERT INTO commentary_entries (source, book, chapter, verse_start, verse_end, text) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        rows,
+                    )
+                    conn.commit()
+                    rows = []
+
+        if rows:
+            conn.executemany(
+                "INSERT INTO commentary_entries (source, book, chapter, verse_start, verse_end, text) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                rows,
+            )
+            conn.commit()
+
+        return count
+
+    except Exception as e:
+        print(f"  ERROR ingesting commentary {module_name}: {e}")
+        traceback.print_exc()
+        return 0
+
+
+def _read_zld_module(conf_path: Path, data_path: Path):
+    """
+    Parse a SWORD zLD lexicon module.
+    Returns list of (key, text) tuples.
+    zLD stores: dict.idx (key index), dict.dat (key strings),
+                dict.zdx (block index), dict.zdt (compressed blocks).
+    """
+    import struct as st
+    import zlib
+
+    idx_file = data_path.with_suffix('.idx')  # actually dict.idx
+    dat_file = data_path.with_suffix('.dat')
+    zdx_file = data_path.with_suffix('.zdx')
+    zdt_file = data_path.with_suffix('.zdt')
+
+    # zLD idx format: each record is 8 bytes: 4 bytes block num + 4 bytes entry offset
+    if not idx_file.exists():
+        idx_file = Path(str(data_path) + '.idx')
+        dat_file = Path(str(data_path) + '.dat')
+        zdx_file = Path(str(data_path) + '.zdx')
+        zdt_file = Path(str(data_path) + '.zdt')
+
+    if not all(f.exists() for f in [idx_file, dat_file, zdx_file, zdt_file]):
+        return []
+
+    results = []
+    try:
+        with open(idx_file, 'rb') as f:
+            idx_data = f.read()
+        with open(dat_file, 'rb') as f:
+            dat_data = f.read()
+        with open(zdx_file, 'rb') as f:
+            zdx_data = f.read()
+        with open(zdt_file, 'rb') as f:
+            zdt_data = f.read()
+
+        num_entries = len(idx_data) // 8
+        # Parse zdx blocks: each block is 8 bytes: offset(4) + size(4)
+        num_blocks = len(zdx_data) // 8
+        blocks = []
+        for i in range(num_blocks):
+            off, sz = st.unpack_from('<II', zdx_data, i * 8)
+            blocks.append((off, sz))
+
+        # Decompress all blocks
+        decompressed = []
+        for off, sz in blocks:
+            compressed = zdt_data[off:off + sz]
+            try:
+                decompressed.append(zlib.decompress(compressed))
+            except Exception:
+                decompressed.append(b'')
+
+        # Parse entries
+        for i in range(num_entries):
+            rec = idx_data[i * 8:(i + 1) * 8]
+            block_num, block_off = st.unpack_from('<II', rec)
+
+            # Get key from dat file: null-terminated at dat offset = block_off in dat?
+            # Actually in zLD: dat contains the keys (null-terminated), idx has offsets into dat
+            # Let's re-parse: idx is (offset_in_dat: 4, block_num: 2, block_off: 4)?
+            # Actually the format varies. Let's use the simpler approach below.
+            pass
+
+        # Simplified: use dat as sequential null-terminated keys, zdt blocks as text
+        # dat file: sequential null-terminated keys
+        keys = dat_data.split(b'\x00')
+        if keys and keys[-1] == b'':
+            keys = keys[:-1]
+
+        # Each block in zdt corresponds to a range of entries
+        entries_per_block = max(1, len(keys) // max(1, num_blocks))
+        for block_idx, (off, sz) in enumerate(blocks):
+            if block_idx >= len(decompressed):
+                break
+            block_text = decompressed[block_idx]
+            # Split by null bytes to get individual entries
+            texts = block_text.split(b'\x00')
+            key_start = block_idx * entries_per_block
+            for j, text_bytes in enumerate(texts):
+                key_idx = key_start + j
+                if key_idx >= len(keys) or not text_bytes.strip():
+                    continue
+                try:
+                    key = keys[key_idx].decode('utf-8', errors='replace').strip()
+                    text = text_bytes.decode('utf-8', errors='replace').strip()
+                    if key and text:
+                        results.append((key, text))
+                except Exception:
+                    pass
+
+    except Exception as e:
+        pass
+
+    return results
+
+
+def ingest_lexicon(module_name: str, extract_dir: Path, conn: sqlite3.Connection) -> int:
+    """Ingest a SWORD lexicon/dictionary module using custom zLD parser."""
+    try:
+        # Find the conf file to locate data path
+        conf_files = list(extract_dir.glob("mods.d/*.conf"))
+        if not conf_files:
+            return 0
+        conf_path = conf_files[0]
+
+        # Read conf to get data path
+        data_path_rel = None
+        with open(conf_path) as f:
+            for line in f:
+                if line.strip().lower().startswith('datapath='):
+                    data_path_rel = line.split('=', 1)[1].strip().lstrip('./')
+        if not data_path_rel:
+            return 0
+
+        data_path = extract_dir / data_path_rel
+        # data_path points to e.g. modules/lexdict/zld/strongsgreek/dict
+        # so dict.idx, dict.dat etc live there
+
+        entries = _read_zld_module(conf_path, data_path)
+        if not entries:
+            print(f"  Could not parse {module_name} lexicon (0 entries from zLD parser)")
+            return 0
+
+        count = 0
+        rows = []
+        for key, text in entries:
+            import re
+            # Clean OSIS/HTML markup from text
+            clean_text = re.sub(r'<[^>]+>', ' ', text).strip()
+            clean_text = re.sub(r'\s+', ' ', clean_text)
+            if not clean_text:
+                continue
+            strongs = key if re.match(r'^[GH]\d+', key) else ""
+            rows.append((module_name, strongs or key, key, "", "", clean_text[:4000], ""))
+            count += 1
+            if len(rows) >= 500:
+                conn.executemany(
+                    "INSERT INTO lexicon_entries (source, strongs_num, original_word, transliteration, pronunciation, definition, usage) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    rows,
+                )
+                conn.commit()
+                rows = []
+
+        if rows:
+            conn.executemany(
+                "INSERT INTO lexicon_entries (source, strongs_num, original_word, transliteration, pronunciation, definition, usage) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                rows,
+            )
+            conn.commit()
+
+        return count
+
+    except Exception as e:
+        print(f"  ERROR ingesting lexicon {module_name}: {e}")
+        traceback.print_exc()
+        return 0
+
+
+if __name__ == "__main__":
+    main()

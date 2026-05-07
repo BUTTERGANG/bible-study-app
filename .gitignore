@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Environment — put ANTHROPIC_API_KEY in Replit Secrets
+.env
+
+# Node
+frontend/node_modules/
+
+# Database — transfer separately (too large for git)
+# Use git-lfs or upload via Replit shell after creating the Repl.
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/sword_extracted/
+
+# Keep the data directory itself
+!data/.gitkeep
