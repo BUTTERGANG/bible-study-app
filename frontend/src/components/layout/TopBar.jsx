@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Menu, Search, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useStudyStore } from '../../stores/studyStore'
+import { Menu, Search, BookOpen, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react'
+import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
 import { api } from '../../api/client'
 
@@ -11,6 +11,8 @@ export default function TopBar({ onSearch }) {
     book, chapter, translation,
     setTranslation, setReference,
     toggleSidebar,
+    darkMode, toggleDarkMode,
+    fontSizeIdx, setFontSizeIdx,
   } = useStudyStore()
 
   const { data: transData } = useQuery({
@@ -20,7 +22,15 @@ export default function TopBar({ onSearch }) {
   })
   const translations = transData?.translations?.filter((t) => t !== 'KJVA') ?? FALLBACK_TRANSLATIONS
 
-  const maxChapter = getChapterCount(book)
+  const { data: booksData } = useQuery({
+    queryKey: ['translation-books', translation],
+    queryFn: () => api.getTranslationBooks(translation),
+    staleTime: Infinity,
+  })
+
+  // Use live chapter count from DB; fall back to static data
+  const maxChapter = booksData?.books?.find((b) => b.name === book)?.chapters
+    ?? getChapterCount(book)
 
   function prevChapter() {
     if (chapter > 1) setReference(book, chapter - 1)
@@ -28,6 +38,22 @@ export default function TopBar({ onSearch }) {
 
   function nextChapter() {
     if (chapter < maxChapter) setReference(book, chapter + 1)
+  }
+
+  function handleTranslationChange(newTranslation) {
+    setTranslation(newTranslation)
+
+    // If we have live book data for the new translation, check coverage
+    // Use a one-off fetch since the new translation's data may not be cached yet
+    api.getTranslationBooks(newTranslation).then((data) => {
+      const availableNames = new Set(data.books.map((b) => b.name))
+      if (!availableNames.has(book)) {
+        // Navigate to Matthew as a safe NT default, or first available book
+        const matthew = data.books.find((b) => b.name === 'Matthew')
+        const fallback = matthew ?? data.books.find((b) => b.testament === 'NT') ?? data.books[0]
+        if (fallback) setReference(fallback.name, 1)
+      }
+    }).catch(() => {})
   }
 
   return (
@@ -76,15 +102,51 @@ export default function TopBar({ onSearch }) {
       {/* Translation selector */}
       <select
         value={translation}
-        onChange={(e) => setTranslation(e.target.value)}
+        onChange={(e) => handleTranslationChange(e.target.value)}
         className="bg-slate-700 text-white text-xs border border-slate-600 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
       >
         {translations.map((t) => (
-          <option key={t} value={t}>{t}</option>
+          <option key={t} value={t}>
+            {t === 'OEB' ? 'OEB (NT only)' : t}
+          </option>
         ))}
       </select>
 
       <div className="flex-1" />
+
+      {/* Font size controls */}
+      <div className="flex items-center border border-slate-600 rounded overflow-hidden" title="Font size">
+        <button
+          onClick={() => setFontSizeIdx(fontSizeIdx - 1)}
+          disabled={fontSizeIdx === 0}
+          className="px-2 py-1 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 font-serif leading-none transition-colors"
+          style={{ fontSize: '11px' }}
+          title="Decrease font size"
+        >
+          A
+        </button>
+        <div className="w-px h-4 bg-slate-600" />
+        <button
+          onClick={() => setFontSizeIdx(fontSizeIdx + 1)}
+          disabled={fontSizeIdx === FONT_SIZES.length - 1}
+          className="px-2 py-1 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 font-serif leading-none transition-colors"
+          style={{ fontSize: '15px' }}
+          title="Increase font size"
+        >
+          A
+        </button>
+      </div>
+
+      {/* Dark mode toggle */}
+      <button
+        onClick={toggleDarkMode}
+        className="text-slate-300 hover:text-white p-1.5 rounded transition-colors"
+        title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
+
+      <div className="w-px h-6 bg-slate-600" />
 
       {/* Search */}
       <button

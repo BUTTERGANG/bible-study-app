@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, StickyNote, Edit2, Check, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
-import clsx from 'clsx'
 
 export default function NotesPanel() {
   const { book, chapter, verse } = useStudyStore()
@@ -65,26 +64,26 @@ export default function NotesPanel() {
         </button>
       </div>
 
-      <div className="px-3 py-2 bg-gray-50 border-b border-gray-100">
-        <p className="text-xs text-gray-500">Notes for <strong>{reference}</strong></p>
+      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
+        <p className="text-xs text-gray-500 dark:text-gray-400">Notes for <strong>{reference}</strong></p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {/* New note form */}
         {showNew && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
             <textarea
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
               placeholder="Write your note…"
               rows={3}
-              className="w-full text-sm bg-transparent border-none focus:outline-none resize-none text-gray-700"
+              className="w-full text-sm bg-transparent border-none focus:outline-none resize-none text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
               autoFocus
             />
             <div className="flex justify-end gap-2 mt-2">
               <button
                 onClick={() => { setShowNew(false); setNewNote('') }}
-                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1"
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
               >
                 Cancel
               </button>
@@ -101,7 +100,7 @@ export default function NotesPanel() {
 
         {/* Existing notes */}
         {data?.notes?.length === 0 && !showNew && (
-          <p className="text-sm text-gray-400 text-center py-4">
+          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
             No notes for this passage yet.
           </p>
         )}
@@ -126,18 +125,18 @@ function NoteCard({ note, editing, onEdit, onDelete, onSave, onCancelEdit }) {
   const [content, setContent] = useState(note.content)
 
   return (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
       {editing ? (
         <>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={4}
-            className="w-full text-sm bg-transparent border-none focus:outline-none resize-none text-gray-700"
+            className="w-full text-sm bg-transparent border-none focus:outline-none resize-none text-gray-700 dark:text-gray-200"
             autoFocus
           />
           <div className="flex justify-end gap-2 mt-2">
-            <button onClick={onCancelEdit} className="p-1 text-gray-400 hover:text-gray-600">
+            <button onClick={onCancelEdit} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
               <X size={13} />
             </button>
             <button onClick={() => onSave(content)} className="p-1 text-green-600 hover:text-green-700">
@@ -147,11 +146,11 @@ function NoteCard({ note, editing, onEdit, onDelete, onSave, onCancelEdit }) {
         </>
       ) : (
         <>
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
             {note.content}
           </p>
           <div className="flex justify-between items-center mt-2">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-gray-500">
               {new Date(note.created_at).toLocaleDateString()}
             </span>
             <div className="flex gap-2">

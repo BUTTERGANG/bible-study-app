@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from pydantic import BaseModel
@@ -128,14 +128,20 @@ async def create_highlight(body: HighlightCreate, db: AsyncSession = Depends(get
 
 
 @highlights_router.get("/{book}/{chapter}")
-async def get_chapter_highlights(book: str, chapter: int, db: AsyncSession = Depends(get_db)):
+async def get_chapter_highlights(
+    book: str,
+    chapter: int,
+    translation: str = Query(default=""),
+    db: AsyncSession = Depends(get_db),
+):
     canonical = resolve_book_name(book)
-    result = await db.execute(
-        select(Highlight).where(
-            Highlight.book == canonical,
-            Highlight.chapter == chapter,
-        )
+    query = select(Highlight).where(
+        Highlight.book == canonical,
+        Highlight.chapter == chapter,
     )
+    if translation:
+        query = query.where(Highlight.translation == translation.upper())
+    result = await db.execute(query)
     highlights = result.scalars().all()
     return {
         "highlights": {

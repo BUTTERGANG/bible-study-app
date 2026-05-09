@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, X, BookOpen, MessageSquare } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
@@ -42,24 +42,24 @@ export default function SearchModal({ onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20 px-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden">
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <Search size={18} className="text-gray-400 flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search scriptures and commentaries…"
-            className="flex-1 text-base focus:outline-none"
+            className="flex-1 text-base focus:outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           />
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X size={18} />
           </button>
         </div>
 
         {/* Scope tabs */}
-        <div className="flex border-b border-gray-100 px-2">
+        <div className="flex border-b border-gray-100 dark:border-gray-700 px-2 bg-white dark:bg-gray-800">
           {['bible', 'commentary', 'all'].map((s) => (
             <button
               key={s}
@@ -68,7 +68,7 @@ export default function SearchModal({ onClose }) {
                 'px-3 py-2 text-xs font-medium capitalize transition-colors',
                 scope === s
                   ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               )}
             >
               {s}
@@ -92,10 +92,10 @@ export default function SearchModal({ onClose }) {
             <button
               key={i}
               onClick={() => navigate(result)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors"
+              className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-50 dark:border-gray-700 transition-colors"
             >
               <div className="flex items-center justify-between mb-0.5">
-                <span className="text-sm font-semibold text-blue-700">{result.reference}</span>
+                <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">{result.reference}</span>
                 {result.translation && (
                   <span className="text-xs text-gray-400">{result.translation}</span>
                 )}
@@ -103,7 +103,7 @@ export default function SearchModal({ onClose }) {
                   <span className="text-xs text-gray-400">{result.source}</span>
                 )}
               </div>
-              <p className="text-sm text-gray-600 line-clamp-2 leading-snug">
+              <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-snug">
                 {result.snippet || result.text}
               </p>
             </button>
@@ -111,7 +111,7 @@ export default function SearchModal({ onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex justify-between text-xs text-gray-400">
+        <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700 flex justify-between text-xs text-gray-400">
           <span>↑↓ to navigate · Enter to go · Esc to close</span>
           {results && <span>{results.count} results</span>}
         </div>

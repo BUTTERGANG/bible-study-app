@@ -7,8 +7,12 @@ import SearchModal from './components/Search/SearchModal'
 import TopBar from './components/layout/TopBar'
 
 export default function App() {
-  const { sidebarOpen } = useStudyStore()
+  const { sidebarOpen, darkMode } = useStudyStore()
   const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode)
+  }, [darkMode])
 
   useEffect(() => {
     function handleKey(e) {
@@ -22,13 +26,13 @@ export default function App() {
   }, [])
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
       <TopBar onSearch={() => setSearchOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — book/chapter navigation */}
         {sidebarOpen && (
-          <div className="w-56 flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
+          <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
             <Sidebar />
           </div>
         )}
@@ -39,7 +43,7 @@ export default function App() {
         </div>
 
         {/* Right panel — commentary / AI / notes */}
-        <div className="w-96 flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden flex flex-col">
+        <div className="w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
           <RightPanel />
         </div>
       </div>

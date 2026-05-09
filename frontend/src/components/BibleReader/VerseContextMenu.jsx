@@ -79,17 +79,14 @@ export default function VerseContextMenu({
     <div
       ref={ref}
       style={style}
-      className="w-52 bg-white rounded-lg shadow-xl border border-gray-200 py-1 text-sm"
+      className="w-52 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 py-1 text-sm"
     >
       {/* Reference header */}
-      <div className="px-3 py-1.5 text-xs text-gray-500 font-semibold border-b border-gray-100">
+      <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold border-b border-gray-100 dark:border-gray-700">
         {book} {chapter}:{verse}
       </div>
 
-      <button
-        onClick={copyVerse}
-        className="menu-item"
-      >
+      <button onClick={copyVerse} className="menu-item">
         <Copy size={13} />
         Copy verse
       </button>
@@ -115,8 +112,8 @@ export default function VerseContextMenu({
       </button>
 
       {/* Highlight colors */}
-      <div className="border-t border-gray-100 px-3 py-2">
-        <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+      <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
           <Highlighter size={11} />
           Highlight
         </p>

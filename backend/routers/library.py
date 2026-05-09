@@ -1,5 +1,10 @@
 import os
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+    _FITZ_OK = True
+except (ImportError, OSError):
+    fitz = None
+    _FITZ_OK = False
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -50,6 +55,8 @@ async def get_book_page(
         raise HTTPException(status_code=404, detail="Book not found")
 
     if book.source_format == "pdf":
+        if not _FITZ_OK:
+            raise HTTPException(status_code=503, detail="PDF reading not available in this environment")
         if not os.path.exists(book.source_path):
             raise HTTPException(
                 status_code=404,
@@ -86,6 +93,8 @@ async def get_table_of_contents(book_id: int, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Book not found")
 
     if book.source_format == "pdf":
+        if not _FITZ_OK:
+            return {"title": book.title, "toc": [], "unavailable": True}
         if not os.path.exists(book.source_path):
             return {"title": book.title, "toc": [], "unavailable": True}
         try:

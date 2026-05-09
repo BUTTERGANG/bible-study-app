@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export const FONT_SIZES = ['0.9rem', '1.05rem', '1.2rem', '1.4rem']
+
 export const useStudyStore = create(
   persist(
     (set, get) => ({
@@ -14,6 +16,8 @@ export const useStudyStore = create(
       rightPanel: 'commentary', // 'commentary' | 'ai' | 'notes' | 'word-study'
       sidebarOpen: true,
       interlinearMode: false,
+      darkMode: false,
+      fontSizeIdx: 1, // index into FONT_SIZES
 
       // Selected verse (for context menu)
       selectedVerse: null,
@@ -35,6 +39,10 @@ export const useStudyStore = create(
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
       toggleInterlinear: () => set((s) => ({ interlinearMode: !s.interlinearMode })),
+
+      toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
+
+      setFontSizeIdx: (idx) => set({ fontSizeIdx: Math.max(0, Math.min(FONT_SIZES.length - 1, idx)) }),
 
       navigate: (direction) => {
         // Will be wired up with book data from API
@@ -58,6 +66,8 @@ export const useStudyStore = create(
         rightPanel: s.rightPanel,
         sidebarOpen: s.sidebarOpen,
         interlinearMode: s.interlinearMode,
+        darkMode: s.darkMode,
+        fontSizeIdx: s.fontSizeIdx,
       }),
     }
   )

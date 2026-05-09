@@ -36,10 +36,11 @@ export const api = {
   // Bible
   getBooks: () => get('/bible/books'),
   getTranslations: () => get('/bible/translations'),
+  getTranslationBooks: (translation) => get(`/bible/${encodeURIComponent(translation)}/books`),
   getChapter: (translation, book, chapter) =>
-    get(`/bible/${translation}/${encodeURIComponent(book)}/${chapter}`),
+    get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}`),
   getVerse: (translation, book, chapter, verse) =>
-    get(`/bible/${translation}/${encodeURIComponent(book)}/${chapter}/${verse}`),
+    get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/${verse}`),
   compareTranslations: (book, chapter, verse, translations) =>
     get(`/bible/compare/${encodeURIComponent(book)}/${chapter}/${verse}?translations=${translations}`),
 
@@ -55,8 +56,8 @@ export const api = {
   deleteNote: (id) => del(`/notes/${id}`),
 
   // Highlights
-  getHighlights: (book, chapter) =>
-    get(`/highlights/${encodeURIComponent(book)}/${chapter}`),
+  getHighlights: (book, chapter, translation) =>
+    get(`/highlights/${encodeURIComponent(book)}/${chapter}?translation=${encodeURIComponent(translation)}`),
   createHighlight: (data) => post('/highlights', data),
   deleteHighlight: (id) => del(`/highlights/${id}`),
 
