@@ -49,6 +49,11 @@ LEXICON_MODULES = [
     "Easton", "ISBE", "Smith", "Nave", "Webster1828",
 ]
 
+# Strong's-keyed lexica go to lexicon_entries.
+# Term-keyed dictionaries / encyclopedias go to dictionary_entries.
+STRONGS_LEXICON_MODULES = {"StrongsGreek", "StrongsHebrew", "AbbottSmith", "Dodson"}
+DICTIONARY_MODULES = {"Easton", "ISBE", "Smith", "Nave", "Webster1828"}
+
 
 def ensure_dirs():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -604,20 +609,29 @@ def ingest_commentary_with_pysword(module_name: str, extract_dir: Path, conn: sq
 
 def _read_zld_module(conf_path: Path, data_path: Path):
     """
-    Parse a SWORD zLD lexicon module.
+    Parse a SWORD zLD lexicon/dictionary module.
     Returns list of (key, text) tuples.
-    zLD stores: dict.idx (key index), dict.dat (key strings),
-                dict.zdx (block index), dict.zdt (compressed blocks).
+
+    zLD file layout (per SWORD libsword docs):
+      .idx  array of 8-byte records: (uint32 offset_in_dat, uint32 length_in_dat)
+            each record points to one entry header in .dat
+      .dat  for each entry: "<KEY>\\n<block_num>:<entry_idx_in_block>\\n"
+            where block_num/entry_idx are zero-padded ASCII numbers separated
+            by a colon. This is what tells us which decompressed block + which
+            null-terminated chunk within it contains the entry text.
+      .zdx  array of 12-byte records:
+            (uint32 offset_in_zdt, uint32 compressed_size, uint32 uncompressed_size)
+      .zdt  zlib-compressed blocks; each decompressed block is a concatenation
+            of null-terminated entries.
     """
     import struct as st
     import zlib
 
-    idx_file = data_path.with_suffix('.idx')  # actually dict.idx
+    idx_file = data_path.with_suffix('.idx')
     dat_file = data_path.with_suffix('.dat')
     zdx_file = data_path.with_suffix('.zdx')
     zdt_file = data_path.with_suffix('.zdt')
 
-    # zLD idx format: each record is 8 bytes: 4 bytes block num + 4 bytes entry offset
     if not idx_file.exists():
         idx_file = Path(str(data_path) + '.idx')
         dat_file = Path(str(data_path) + '.dat')
@@ -638,69 +652,94 @@ def _read_zld_module(conf_path: Path, data_path: Path):
         with open(zdt_file, 'rb') as f:
             zdt_data = f.read()
 
-        num_entries = len(idx_data) // 8
-        # Parse zdx blocks: each block is 8 bytes: offset(4) + size(4)
-        num_blocks = len(zdx_data) // 8
-        blocks = []
+        # Parse zdx blocks: 12 bytes each (offset, comp_size, uncomp_size)
+        num_blocks = len(zdx_data) // 12
+        block_meta = []
         for i in range(num_blocks):
-            off, sz = st.unpack_from('<II', zdx_data, i * 8)
-            blocks.append((off, sz))
+            off, comp_sz, _uncomp_sz = st.unpack_from('<III', zdx_data, i * 12)
+            block_meta.append((off, comp_sz))
 
-        # Decompress all blocks
-        decompressed = []
-        for off, sz in blocks:
-            compressed = zdt_data[off:off + sz]
+        # Lazy-decompress each block on demand and cache it. Some modules have
+        # hundreds of MB of compressed text — decompressing everything up front
+        # blows memory.
+        block_cache: dict[int, bytes] = {}
+
+        def get_block(block_num: int) -> bytes:
+            if block_num in block_cache:
+                return block_cache[block_num]
+            if block_num >= len(block_meta):
+                return b''
+            off, comp_sz = block_meta[block_num]
             try:
-                decompressed.append(zlib.decompress(compressed))
+                out = zlib.decompress(zdt_data[off:off + comp_sz])
             except Exception:
-                decompressed.append(b'')
+                out = b''
+            block_cache[block_num] = out
+            return out
 
-        # Parse entries
+        # Iterate .idx → for each entry, read its header from .dat,
+        # extract (key, block_num, entry_idx_within_block), then pull the
+        # entry text from the decompressed block.
+        num_entries = len(idx_data) // 8
         for i in range(num_entries):
-            rec = idx_data[i * 8:(i + 1) * 8]
-            block_num, block_off = st.unpack_from('<II', rec)
+            dat_off, dat_len = st.unpack_from('<II', idx_data, i * 8)
+            header = dat_data[dat_off:dat_off + dat_len]
+            if not header:
+                continue
 
-            # Get key from dat file: null-terminated at dat offset = block_off in dat?
-            # Actually in zLD: dat contains the keys (null-terminated), idx has offsets into dat
-            # Let's re-parse: idx is (offset_in_dat: 4, block_num: 2, block_off: 4)?
-            # Actually the format varies. Let's use the simpler approach below.
-            pass
+            # Split off the key (first line) from the pointer line(s).
+            # SWORD zLD headers can be either:
+            #   "KEY\n<block>:<entry>:<len>\n"   (block_num : entry_idx : maybe length)
+            # or sometimes "KEY\n<block>\n<entry>\n" — handle both.
+            try:
+                text = header.decode('utf-8', errors='replace')
+            except Exception:
+                continue
+            lines = [ln for ln in text.split('\n') if ln.strip()]
+            if not lines:
+                continue
+            key = lines[0].strip()
+            if not key:
+                continue
 
-        # Simplified: use dat as sequential null-terminated keys, zdt blocks as text
-        # dat file: sequential null-terminated keys
-        keys = dat_data.split(b'\x00')
-        if keys and keys[-1] == b'':
-            keys = keys[:-1]
+            # Find the pointer line — first line that looks like digits[:digits[:digits]]
+            block_num = entry_idx = None
+            for ln in lines[1:]:
+                parts = ln.strip().split(':')
+                if len(parts) >= 2 and all(p.strip().isdigit() for p in parts[:2]):
+                    block_num = int(parts[0])
+                    entry_idx = int(parts[1])
+                    break
+            if block_num is None or entry_idx is None:
+                continue
 
-        # Each block in zdt corresponds to a range of entries
-        entries_per_block = max(1, len(keys) // max(1, num_blocks))
-        for block_idx, (off, sz) in enumerate(blocks):
-            if block_idx >= len(decompressed):
-                break
-            block_text = decompressed[block_idx]
-            # Split by null bytes to get individual entries
-            texts = block_text.split(b'\x00')
-            key_start = block_idx * entries_per_block
-            for j, text_bytes in enumerate(texts):
-                key_idx = key_start + j
-                if key_idx >= len(keys) or not text_bytes.strip():
-                    continue
-                try:
-                    key = keys[key_idx].decode('utf-8', errors='replace').strip()
-                    text = text_bytes.decode('utf-8', errors='replace').strip()
-                    if key and text:
-                        results.append((key, text))
-                except Exception:
-                    pass
+            block = get_block(block_num)
+            if not block:
+                continue
+            chunks = block.split(b'\x00')
+            if entry_idx >= len(chunks):
+                continue
+            try:
+                entry_text = chunks[entry_idx].decode('utf-8', errors='replace').strip()
+            except Exception:
+                continue
+            if entry_text:
+                results.append((key, entry_text))
 
     except Exception as e:
-        pass
+        print(f"  zLD parse error for {data_path}: {e}")
 
     return results
 
 
 def ingest_lexicon(module_name: str, extract_dir: Path, conn: sqlite3.Connection) -> int:
-    """Ingest a SWORD lexicon/dictionary module using custom zLD parser."""
+    """Ingest a SWORD lexicon/dictionary module using custom zLD parser.
+
+    Routes by module type:
+      - STRONGS_LEXICON_MODULES → lexicon_entries (keyed by Strong's number)
+      - DICTIONARY_MODULES      → dictionary_entries (keyed by term)
+    """
+    import re
     try:
         # Find the conf file to locate data path
         conf_files = list(extract_dir.glob("mods.d/*.conf"))
@@ -726,32 +765,68 @@ def ingest_lexicon(module_name: str, extract_dir: Path, conn: sqlite3.Connection
             print(f"  Could not parse {module_name} lexicon (0 entries from zLD parser)")
             return 0
 
+        is_strongs = module_name in STRONGS_LEXICON_MODULES
+        is_dictionary = module_name in DICTIONARY_MODULES
+        # Unknown module: classify by key shape. If most keys look like Strong's
+        # codes, treat as a Strong's lexicon; otherwise dictionary.
+        if not is_strongs and not is_dictionary:
+            sample = entries[:200]
+            strongs_like = sum(1 for k, _ in sample if re.match(r'^[GH]\d+', k))
+            is_strongs = strongs_like > len(sample) * 0.5
+            is_dictionary = not is_strongs
+
         count = 0
-        rows = []
+        lex_rows = []
+        dict_rows = []
         for key, text in entries:
-            import re
-            # Clean OSIS/HTML markup from text
             clean_text = re.sub(r'<[^>]+>', ' ', text).strip()
             clean_text = re.sub(r'\s+', ' ', clean_text)
-            if not clean_text:
+            if not clean_text or not key.strip():
                 continue
-            strongs = key if re.match(r'^[GH]\d+', key) else ""
-            rows.append((module_name, strongs or key, key, "", "", clean_text[:4000], ""))
+            # Drop entries whose key is a control character (artifact of older
+            # zLD parsing); the corrected parser keeps only real headwords.
+            if all(ord(c) < 32 for c in key.strip()):
+                continue
+
+            if is_strongs:
+                m = re.match(r'^([GH]\d+)', key)
+                strongs = m.group(1) if m else key
+                lex_rows.append(
+                    (module_name, strongs, key, "", "", clean_text[:4000], "")
+                )
+            else:
+                dict_rows.append((module_name, key[:200], clean_text[:8000]))
             count += 1
-            if len(rows) >= 500:
+
+            if len(lex_rows) >= 500:
                 conn.executemany(
-                    "INSERT INTO lexicon_entries (source, strongs_num, original_word, transliteration, pronunciation, definition, usage) "
+                    "INSERT INTO lexicon_entries (source, strongs_num, original_word, "
+                    "transliteration, pronunciation, definition, usage) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    rows,
+                    lex_rows,
                 )
                 conn.commit()
-                rows = []
+                lex_rows = []
+            if len(dict_rows) >= 500:
+                conn.executemany(
+                    "INSERT INTO dictionary_entries (source, term, text) VALUES (?, ?, ?)",
+                    dict_rows,
+                )
+                conn.commit()
+                dict_rows = []
 
-        if rows:
+        if lex_rows:
             conn.executemany(
-                "INSERT INTO lexicon_entries (source, strongs_num, original_word, transliteration, pronunciation, definition, usage) "
+                "INSERT INTO lexicon_entries (source, strongs_num, original_word, "
+                "transliteration, pronunciation, definition, usage) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                rows,
+                lex_rows,
+            )
+            conn.commit()
+        if dict_rows:
+            conn.executemany(
+                "INSERT INTO dictionary_entries (source, term, text) VALUES (?, ?, ?)",
+                dict_rows,
             )
             conn.commit()
 

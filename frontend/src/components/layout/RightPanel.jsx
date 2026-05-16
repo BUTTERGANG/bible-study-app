@@ -1,10 +1,14 @@
-import { MessageSquare, BookOpen, StickyNote, BookMarked, Layers } from 'lucide-react'
+import { Suspense, lazy } from 'react'
+import { BookOpen, Layers, MessageSquare, StickyNote } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
-import CommentaryPanel from '../CommentaryPanel/CommentaryPanel'
-import AIAssistant from '../AIAssistant/AIAssistant'
-import NotesPanel from '../Notes/NotesPanel'
-import WordStudyPanel from '../WordStudy/WordStudyPanel'
 import clsx from 'clsx'
+
+// Each panel is lazy-loaded so we don't pay for AI/word-study bundle weight on
+// users who only read scripture + commentary.
+const CommentaryPanel = lazy(() => import('../CommentaryPanel/CommentaryPanel'))
+const AIAssistant = lazy(() => import('../AIAssistant/AIAssistant'))
+const NotesPanel = lazy(() => import('../Notes/NotesPanel'))
+const WordStudyPanel = lazy(() => import('../WordStudy/WordStudyPanel'))
 
 const TABS = [
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
@@ -13,12 +17,17 @@ const TABS = [
   { id: 'word-study', label: 'Words', icon: Layers },
 ]
 
+function PanelSkeleton() {
+  return (
+    <div className="p-4 text-xs text-gray-400 dark:text-gray-500 text-center">Loading…</div>
+  )
+}
+
 export default function RightPanel() {
   const { rightPanel, setRightPanel } = useStudyStore()
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tab bar */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
@@ -37,12 +46,13 @@ export default function RightPanel() {
         ))}
       </div>
 
-      {/* Panel content */}
       <div className="flex-1 overflow-hidden">
-        {rightPanel === 'commentary' && <CommentaryPanel />}
-        {rightPanel === 'ai' && <AIAssistant />}
-        {rightPanel === 'notes' && <NotesPanel />}
-        {rightPanel === 'word-study' && <WordStudyPanel />}
+        <Suspense fallback={<PanelSkeleton />}>
+          {rightPanel === 'commentary' && <CommentaryPanel />}
+          {rightPanel === 'ai' && <AIAssistant />}
+          {rightPanel === 'notes' && <NotesPanel />}
+          {rightPanel === 'word-study' && <WordStudyPanel />}
+        </Suspense>
       </div>
     </div>
   )

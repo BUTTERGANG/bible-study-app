@@ -49,10 +49,10 @@ export default function CommentaryPanel() {
         )}
 
         {!isLoading && (!data?.entries || data.entries.length === 0) && (
-          <div className="p-4 text-sm text-gray-400 text-center">
-            No commentary available for this passage.
+          <div className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
+            No commentary available for this verse.
             <br />
-            <span className="text-xs">Run ingest_sword.py to load commentaries.</span>
+            <span className="text-xs">Try selecting a different verse or browse adjacent passages.</span>
           </div>
         )}
 

@@ -1,5 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
-import { Menu, Search, BookOpen, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  BookOpen, ChevronLeft, ChevronRight, Menu, Moon, PanelRightClose, PanelRightOpen,
+  Search, Sun,
+} from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
 import { api } from '../../api/client'
@@ -11,9 +14,11 @@ export default function TopBar({ onSearch }) {
     book, chapter, translation,
     setTranslation, setReference,
     toggleSidebar,
+    rightPanelOpen, toggleRightPanel,
     darkMode, toggleDarkMode,
     fontSizeIdx, setFontSizeIdx,
   } = useStudyStore()
+  const qc = useQueryClient()
 
   const { data: transData } = useQuery({
     queryKey: ['translations'],
@@ -28,9 +33,8 @@ export default function TopBar({ onSearch }) {
     staleTime: Infinity,
   })
 
-  // Use live chapter count from DB; fall back to static data
-  const maxChapter = booksData?.books?.find((b) => b.name === book)?.chapters
-    ?? getChapterCount(book)
+  const maxChapter =
+    booksData?.books?.find((b) => b.name === book)?.chapters ?? getChapterCount(book)
 
   function prevChapter() {
     if (chapter > 1) setReference(book, chapter - 1)
@@ -40,20 +44,24 @@ export default function TopBar({ onSearch }) {
     if (chapter < maxChapter) setReference(book, chapter + 1)
   }
 
-  function handleTranslationChange(newTranslation) {
+  // Share the same cache entry as the `useQuery` above so we don't double-fetch.
+  async function handleTranslationChange(newTranslation) {
     setTranslation(newTranslation)
-
-    // If we have live book data for the new translation, check coverage
-    // Use a one-off fetch since the new translation's data may not be cached yet
-    api.getTranslationBooks(newTranslation).then((data) => {
+    try {
+      const data = await qc.fetchQuery({
+        queryKey: ['translation-books', newTranslation],
+        queryFn: () => api.getTranslationBooks(newTranslation),
+        staleTime: Infinity,
+      })
       const availableNames = new Set(data.books.map((b) => b.name))
       if (!availableNames.has(book)) {
-        // Navigate to Matthew as a safe NT default, or first available book
         const matthew = data.books.find((b) => b.name === 'Matthew')
         const fallback = matthew ?? data.books.find((b) => b.testament === 'NT') ?? data.books[0]
         if (fallback) setReference(fallback.name, 1)
       }
-    }).catch(() => {})
+    } catch {
+      /* leave user on current book; reader will surface a friendly 404 */
+    }
   }
 
   return (
@@ -66,7 +74,6 @@ export default function TopBar({ onSearch }) {
         <Menu size={18} />
       </button>
 
-      {/* App name */}
       <div className="flex items-center gap-1.5 text-white font-semibold text-sm">
         <BookOpen size={16} className="text-blue-400" />
         <span className="hidden sm:block">Bible Study</span>
@@ -74,7 +81,6 @@ export default function TopBar({ onSearch }) {
 
       <div className="w-px h-6 bg-slate-600" />
 
-      {/* Navigation */}
       <div className="flex items-center gap-1">
         <button
           onClick={prevChapter}
@@ -99,7 +105,6 @@ export default function TopBar({ onSearch }) {
 
       <div className="w-px h-6 bg-slate-600" />
 
-      {/* Translation selector */}
       <select
         value={translation}
         onChange={(e) => handleTranslationChange(e.target.value)}
@@ -114,7 +119,6 @@ export default function TopBar({ onSearch }) {
 
       <div className="flex-1" />
 
-      {/* Font size controls */}
       <div className="flex items-center border border-slate-600 rounded overflow-hidden" title="Font size">
         <button
           onClick={() => setFontSizeIdx(fontSizeIdx - 1)}
@@ -137,7 +141,6 @@ export default function TopBar({ onSearch }) {
         </button>
       </div>
 
-      {/* Dark mode toggle */}
       <button
         onClick={toggleDarkMode}
         className="text-slate-300 hover:text-white p-1.5 rounded transition-colors"
@@ -146,9 +149,16 @@ export default function TopBar({ onSearch }) {
         {darkMode ? <Sun size={16} /> : <Moon size={16} />}
       </button>
 
+      <button
+        onClick={toggleRightPanel}
+        className="text-slate-300 hover:text-white p-1.5 rounded transition-colors"
+        title={rightPanelOpen ? 'Hide study panel' : 'Show study panel'}
+      >
+        {rightPanelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+      </button>
+
       <div className="w-px h-6 bg-slate-600" />
 
-      {/* Search */}
       <button
         onClick={onSearch}
         className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white px-3 py-1.5 rounded text-xs transition-colors"

@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import Optional
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from database import get_db
-from models import BibleVerse
-from bible_data import BOOKS, resolve_book_name
+
+from ..database import get_db
+from ..models import BibleVerse
+from ..bible_data import BOOKS, resolve_book_name
 
 router = APIRouter(prefix="/api/bible", tags=["bible"])
 
@@ -36,8 +34,9 @@ async def get_translations(db: AsyncSession = Depends(get_db)):
     return {"translations": translations}
 
 
-# Must be before /{translation}/... routes so FastAPI doesn't match "compare" as a translation
-@router.get("/compare/{book}/{chapter}/{verse}")
+# Translation comparison. Renamed from /compare/... to /compare-translations/...
+# so it can't be ambiguous with /{translation}/...
+@router.get("/compare-translations/{book}/{chapter}/{verse}")
 async def compare_translations(
     book: str,
     chapter: int,
@@ -50,10 +49,7 @@ async def compare_translations(
         raise HTTPException(status_code=404, detail=f"Book not found: {book}")
 
     trans_list = [t.strip() for t in translations.split(",")]
-    resolved = []
-    for t in trans_list:
-        canonical_t = await resolve_translation(t, db)
-        resolved.append(canonical_t)
+    resolved = [await resolve_translation(t, db) for t in trans_list]
 
     result = await db.execute(
         select(BibleVerse).where(
@@ -70,9 +66,9 @@ async def compare_translations(
     }
 
 
-# Returns available books + chapter counts for a given translation.
-# Must be before /{translation}/{book}/{chapter} to avoid ambiguity.
-@router.get("/{translation}/books")
+# Per-translation book list moved under /translations/{translation}/books so it
+# can't collide with /{translation}/{book}/{chapter}.
+@router.get("/translations/{translation}/books")
 async def get_translation_books(translation: str, db: AsyncSession = Depends(get_db)):
     canonical_t = await resolve_translation(translation, db)
     result = await db.execute(

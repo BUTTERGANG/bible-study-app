@@ -85,6 +85,7 @@ export default function BibleReader() {
               translation={data.translation}
               isActive={activeVerse === verse}
               highlightColor={highlights[String(verse)]?.color}
+              highlightId={highlights[String(verse)]?.id}
             />
           ))}
         </div>

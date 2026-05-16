@@ -1,63 +1,83 @@
+import { getAppPassword } from './auth'
+
 const BASE = '/api'
 
-async function get(path) {
-  const res = await fetch(`${BASE}${path}`)
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-  return res.json()
+function authHeaders() {
+  const pw = getAppPassword()
+  return pw ? { Authorization: `Bearer ${pw}` } : {}
 }
 
-async function post(path, body) {
+async function request(path, init = {}) {
   const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    ...init,
+    headers: {
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...authHeaders(),
+      ...(init.headers || {}),
+    },
   })
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const j = await res.json()
+      if (j?.detail) detail = j.detail
+    } catch {}
+    const err = new Error(detail)
+    err.status = res.status
+    throw err
+  }
+  if (res.status === 204) return null
   return res.json()
 }
 
-async function del(path) {
-  const res = await fetch(`${BASE}${path}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-  return res.json()
-}
-
-async function put(path, body) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-  return res.json()
-}
+const get = (path) => request(path)
+const del = (path) => request(path, { method: 'DELETE' })
+const post = (path, body) =>
+  request(path, { method: 'POST', body: JSON.stringify(body ?? {}) })
+const put = (path, body) =>
+  request(path, { method: 'PUT', body: JSON.stringify(body ?? {}) })
 
 export const api = {
+  // Health / auth
+  getHealth: () => get('/health'),
+  getAuthStatus: () => get('/auth/status'),
+
   // Bible
   getBooks: () => get('/bible/books'),
   getTranslations: () => get('/bible/translations'),
-  getTranslationBooks: (translation) => get(`/bible/${encodeURIComponent(translation)}/books`),
+  getTranslationBooks: (translation) =>
+    get(`/bible/translations/${encodeURIComponent(translation)}/books`),
   getChapter: (translation, book, chapter) =>
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}`),
   getVerse: (translation, book, chapter, verse) =>
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/${verse}`),
   compareTranslations: (book, chapter, verse, translations) =>
-    get(`/bible/compare/${encodeURIComponent(book)}/${chapter}/${verse}?translations=${translations}`),
+    get(
+      `/bible/compare-translations/${encodeURIComponent(book)}/${chapter}/${verse}` +
+        `?translations=${encodeURIComponent(translations)}`
+    ),
 
   // Commentary
   getCommentarySources: () => get('/commentary/sources'),
   getVerseCommentary: (book, chapter, verse) =>
     get(`/commentary/${encodeURIComponent(book)}/${chapter}/${verse}`),
 
-  // Notes
-  getNotes: (reference) => get(`/notes/${encodeURIComponent(reference)}`),
+  // Notes — verse is optional (chapter-level notes have no verse).
+  getNotes: (book, chapter, verse) => {
+    const params = new URLSearchParams({ book, chapter: String(chapter) })
+    if (verse != null) params.set('verse', String(verse))
+    return get(`/notes?${params}`)
+  },
   createNote: (data) => post('/notes', data),
   updateNote: (id, data) => put(`/notes/${id}`, data),
   deleteNote: (id) => del(`/notes/${id}`),
 
   // Highlights
   getHighlights: (book, chapter, translation) =>
-    get(`/highlights/${encodeURIComponent(book)}/${chapter}?translation=${encodeURIComponent(translation)}`),
+    get(
+      `/highlights/${encodeURIComponent(book)}/${chapter}` +
+        `?translation=${encodeURIComponent(translation)}`
+    ),
   createHighlight: (data) => post('/highlights', data),
   deleteHighlight: (id) => del(`/highlights/${id}`),
 
@@ -67,8 +87,10 @@ export const api = {
   deleteBookmark: (id) => del(`/bookmarks/${id}`),
 
   // Search
-  search: (q, scope = 'bible', translation = 'KJV') =>
-    get(`/search?q=${encodeURIComponent(q)}&scope=${scope}&translation=${translation}`),
+  search: (q, scope = 'bible', translation = 'KJV') => {
+    const params = new URLSearchParams({ q, scope, translation })
+    return get(`/search?${params}`)
+  },
 
   // Word study
   getVerseWords: (book, chapter, verse) =>
@@ -82,7 +104,7 @@ export const api = {
   startPlan: (data) => post('/reading-plans/start', data),
   getTodayReadings: () => get('/reading-plans/today'),
   completeReading: (planId, reference) =>
-    post(`/reading-plans/${planId}/complete?reference=${encodeURIComponent(reference)}`, {}),
+    post(`/reading-plans/${planId}/complete?reference=${encodeURIComponent(reference)}`),
 
   // Library
   getLibraryBooks: (category) =>
@@ -96,43 +118,4 @@ export const api = {
     get(`/dictionary/${source}/${encodeURIComponent(term)}`),
 }
 
-// Streaming AI calls
-export function streamAI(endpoint, body, onChunk, onDone) {
-  const controller = new AbortController()
-
-  fetch(`/api/ai/${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  }).then(async (res) => {
-    if (!res.ok) throw new Error(`${res.status}`)
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      const chunk = decoder.decode(value)
-      const lines = chunk.split('\n')
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') {
-            onDone?.()
-            return
-          }
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.text) onChunk(parsed.text)
-          } catch {}
-        }
-      }
-    }
-    onDone?.()
-  }).catch((err) => {
-    if (err.name !== 'AbortError') onDone?.(err)
-  })
-
-  return () => controller.abort()
-}
+export { authHeaders }

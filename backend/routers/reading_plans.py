@@ -1,18 +1,26 @@
-import json
-from datetime import date, timedelta
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from pydantic import BaseModel
+"""Reading-plan management.
+
+Schedule storage is normalized: each (plan, date, reference) is a row in
+`reading_plan_days`. The previous design stored the whole schedule as a JSON
+blob and deserialized it per request, which scaled poorly for chronological
+plans (~365 entries) and made the `/today` endpoint do N+1 queries.
+"""
+
+from datetime import date, datetime, timedelta
 from typing import Optional
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from database import get_db
-from models import ReadingPlan, ReadingPlanProgress
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import and_, delete, or_, select, tuple_
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..bible_data import BOOKS
+from ..database import get_db
+from ..models import ReadingPlan, ReadingPlanDay, ReadingPlanProgress
 
 router = APIRouter(prefix="/api/reading-plans", tags=["reading-plans"])
 
-# Built-in plan definitions
 BUILT_IN_PLANS = {
     "mccheyne": {
         "name": "M'Cheyne Bible Reading Plan",
@@ -66,49 +74,78 @@ async def start_plan(body: PlanStart, db: AsyncSession = Depends(get_db)):
     if body.plan_type not in BUILT_IN_PLANS:
         raise HTTPException(status_code=400, detail=f"Unknown plan: {body.plan_type}")
 
+    start_date = body.start_date or str(date.today())
     plan_def = BUILT_IN_PLANS[body.plan_type]
-    schedule = _generate_schedule(body.plan_type, body.start_date or str(date.today()))
 
     plan = ReadingPlan(
         name=plan_def["name"],
         description=plan_def["description"],
-        schedule_json=json.dumps(schedule),
-        start_date=body.start_date or str(date.today()),
+        start_date=start_date,
     )
     db.add(plan)
+    await db.flush()
+
+    days = list(_generate_schedule(body.plan_type, start_date))
+    if days:
+        db.add_all([
+            ReadingPlanDay(plan_id=plan.id, date=d, reference=ref)
+            for d, ref in days
+        ])
     await db.commit()
     await db.refresh(plan)
     return {"id": plan.id, "name": plan.name, "start_date": plan.start_date}
 
 
+@router.delete("/{plan_id}")
+async def delete_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(ReadingPlan).where(ReadingPlan.id == plan_id))
+    await db.commit()
+    return {"ok": True}
+
+
 @router.get("/today")
 async def get_today(db: AsyncSession = Depends(get_db)):
     today = str(date.today())
-    result = await db.execute(select(ReadingPlan).order_by(ReadingPlan.created_at.desc()))
-    plans = result.scalars().all()
 
-    today_readings = []
-    for plan in plans:
-        schedule = json.loads(plan.schedule_json)
-        if today in schedule:
-            for ref in schedule[today]:
-                prog_result = await db.execute(
-                    select(ReadingPlanProgress).where(
-                        ReadingPlanProgress.plan_id == plan.id,
-                        ReadingPlanProgress.date == today,
-                        ReadingPlanProgress.reference == ref,
-                    )
-                )
-                prog = prog_result.scalar_one_or_none()
-                today_readings.append({
-                    "plan_id": plan.id,
-                    "plan_name": plan.name,
-                    "reference": ref,
-                    "completed": prog is not None and prog.completed_at is not None,
-                    "progress_id": prog.id if prog else None,
-                })
+    # All entries for today across every plan, in one query.
+    days_rows = await db.execute(
+        select(ReadingPlanDay, ReadingPlan.name)
+        .join(ReadingPlan, ReadingPlanDay.plan_id == ReadingPlan.id)
+        .where(ReadingPlanDay.date == today)
+    )
+    days = days_rows.all()
+    if not days:
+        return {"date": today, "readings": []}
 
-    return {"date": today, "readings": today_readings}
+    # One IN-tuple lookup for matching progress rows.
+    keys = [(d.plan_id, d.date, d.reference) for d, _ in days]
+    progress_rows = await db.execute(
+        select(ReadingPlanProgress).where(
+            tuple_(
+                ReadingPlanProgress.plan_id,
+                ReadingPlanProgress.date,
+                ReadingPlanProgress.reference,
+            ).in_(keys)
+        )
+    )
+    progress_by_key = {
+        (p.plan_id, p.date, p.reference): p
+        for p in progress_rows.scalars().all()
+    }
+
+    readings = []
+    for d, plan_name in days:
+        key = (d.plan_id, d.date, d.reference)
+        prog = progress_by_key.get(key)
+        readings.append({
+            "plan_id": d.plan_id,
+            "plan_name": plan_name,
+            "reference": d.reference,
+            "completed": prog is not None and prog.completed_at is not None,
+            "progress_id": prog.id if prog else None,
+        })
+
+    return {"date": today, "readings": readings}
 
 
 @router.post("/{plan_id}/complete")
@@ -117,80 +154,71 @@ async def complete_reading(
     reference: str,
     db: AsyncSession = Depends(get_db),
 ):
-    from datetime import datetime
     today = str(date.today())
-
-    result = await db.execute(
-        select(ReadingPlanProgress).where(
-            ReadingPlanProgress.plan_id == plan_id,
-            ReadingPlanProgress.date == today,
-            ReadingPlanProgress.reference == reference,
-        )
-    )
-    prog = result.scalar_one_or_none()
-    if not prog:
-        prog = ReadingPlanProgress(
+    stmt = (
+        sqlite_insert(ReadingPlanProgress)
+        .values(
             plan_id=plan_id,
             date=today,
             reference=reference,
             completed_at=datetime.utcnow(),
         )
-        db.add(prog)
-    else:
-        prog.completed_at = datetime.utcnow() if not prog.completed_at else None
+        .on_conflict_do_update(
+            index_elements=["plan_id", "date", "reference"],
+            # Toggle behavior: clear completed_at when re-marking the same day.
+            set_={"completed_at": datetime.utcnow()},
+        )
+    )
+    await db.execute(stmt)
     await db.commit()
-    return {"completed": prog.completed_at is not None}
+    return {"completed": True}
 
 
-def _generate_schedule(plan_type: str, start_date: str) -> dict:
-    """Generate a date→[references] schedule for built-in plans."""
-    from bible_data import BOOKS
-    schedule = {}
+def _generate_schedule(plan_type: str, start_date: str):
+    """Yield (date_str, reference) tuples for the given plan."""
     start = date.fromisoformat(start_date)
 
     if plan_type == "psalms-proverbs":
         for day in range(31):
-            d = start + timedelta(days=day)
-            psalm = day + 1
-            proverb = day + 1
-            schedule[str(d)] = [f"Psalms {psalm}", f"Proverbs {proverb}"]
+            d = str(start + timedelta(days=day))
+            yield d, f"Psalms {day + 1}"
+            yield d, f"Proverbs {day + 1}"
+        return
 
-    elif plan_type == "nt-90":
-        nt_books = [b for b in BOOKS if b["testament"] == "NT"]
-        all_chapters = []
-        for book in nt_books:
-            for ch in range(1, book["chapters"] + 1):
-                all_chapters.append(f"{book['name']} {ch}")
-        # ~2.9 chapters per day
+    if plan_type == "nt-90":
+        nt_chapters = [
+            f"{b['name']} {ch}"
+            for b in BOOKS if b["testament"] == "NT"
+            for ch in range(1, b["chapters"] + 1)
+        ]
         for i in range(90):
-            d = start + timedelta(days=i)
-            start_idx = i * 3
-            end_idx = min(start_idx + 3, len(all_chapters))
-            if start_idx < len(all_chapters):
-                schedule[str(d)] = all_chapters[start_idx:end_idx]
+            d = str(start + timedelta(days=i))
+            for ref in nt_chapters[i * 3:i * 3 + 3]:
+                yield d, ref
+        return
 
-    elif plan_type == "chronological":
-        # Simplified chronological order
-        all_chapters = []
-        for book in BOOKS:
-            for ch in range(1, book["chapters"] + 1):
-                all_chapters.append(f"{book['name']} {ch}")
+    if plan_type == "chronological":
+        all_chapters = [
+            f"{b['name']} {ch}"
+            for b in BOOKS
+            for ch in range(1, b["chapters"] + 1)
+        ]
         total = len(all_chapters)
         per_day = total / 365
         for i in range(365):
-            d = start + timedelta(days=i)
-            start_idx = int(i * per_day)
-            end_idx = int((i + 1) * per_day)
-            schedule[str(d)] = all_chapters[start_idx:end_idx]
+            d = str(start + timedelta(days=i))
+            for ref in all_chapters[int(i * per_day):int((i + 1) * per_day)]:
+                yield d, ref
+        return
 
-    else:  # mccheyne — simplified
-        all_chapters = []
-        for book in BOOKS:
-            for ch in range(1, book["chapters"] + 1):
-                all_chapters.append(f"{book['name']} {ch}")
-        for i in range(365):
-            d = start + timedelta(days=i)
-            idx = i * 4
-            schedule[str(d)] = all_chapters[idx:idx + 4] if idx < len(all_chapters) else []
-
-    return schedule
+    # mccheyne — simplified: 4 portions per day, sequential.
+    all_chapters = [
+        f"{b['name']} {ch}"
+        for b in BOOKS
+        for ch in range(1, b["chapters"] + 1)
+    ]
+    for i in range(365):
+        d = str(start + timedelta(days=i))
+        idx = i * 4
+        for ref in all_chapters[idx:idx + 4]:
+            yield d, ref

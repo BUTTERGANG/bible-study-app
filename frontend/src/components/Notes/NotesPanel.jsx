@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, StickyNote, Edit2, Check, X } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Edit2, Plus, StickyNote, Trash2, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 
@@ -12,24 +12,24 @@ export default function NotesPanel() {
   const [showNew, setShowNew] = useState(false)
 
   const reference = verse ? `${book} ${chapter}:${verse}` : `${book} ${chapter}`
+  const notesKey = ['notes', book, chapter, verse ?? null]
 
   const { data } = useQuery({
-    queryKey: ['notes', reference],
-    queryFn: () => api.getNotes(reference),
+    queryKey: notesKey,
+    queryFn: () => api.getNotes(book, chapter, verse ?? undefined),
     enabled: !!book,
   })
 
   const createMutation = useMutation({
     mutationFn: () =>
       api.createNote({
-        reference,
         book,
         chapter,
-        verse: verse || null,
+        verse: verse ?? null,
         content: newNote,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notes', reference] })
+      qc.invalidateQueries({ queryKey: notesKey })
       setNewNote('')
       setShowNew(false)
     },
@@ -38,14 +38,14 @@ export default function NotesPanel() {
   const updateMutation = useMutation({
     mutationFn: ({ id, content }) => api.updateNote(id, { content }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notes', reference] })
+      qc.invalidateQueries({ queryKey: notesKey })
       setEditing(null)
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: api.deleteNote,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', reference] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notesKey }),
   })
 
   return (
@@ -69,7 +69,6 @@ export default function NotesPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* New note form */}
         {showNew && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
             <textarea
@@ -98,7 +97,6 @@ export default function NotesPanel() {
           </div>
         )}
 
-        {/* Existing notes */}
         {data?.notes?.length === 0 && !showNew && (
           <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
             No notes for this passage yet.

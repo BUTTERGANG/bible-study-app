@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Copy, Highlighter, StickyNote, MessageSquare, Layers, Bookmark } from 'lucide-react'
+import { Bookmark, Copy, Highlighter, Layers, MessageSquare, StickyNote, X } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -14,13 +14,13 @@ const COLORS = [
 ]
 
 export default function VerseContextMenu({
-  pos, verse, text, book, chapter, translation, onClose,
+  pos, verse, text, book, chapter, translation, highlightId, onClose,
 }) {
   const ref = useRef(null)
   const qc = useQueryClient()
-  const { setRightPanel } = useStudyStore()
+  const setRightPanel = useStudyStore((s) => s.setRightPanel)
+  const setRightPanelOpen = useStudyStore((s) => s.setRightPanelOpen)
 
-  // Close on outside click
   useEffect(() => {
     function handler(e) {
       if (ref.current && !ref.current.contains(e.target)) onClose()
@@ -33,18 +33,25 @@ export default function VerseContextMenu({
     mutationFn: (color) =>
       api.createHighlight({ translation, book, chapter, verse, color }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['highlights', book, chapter] })
+      qc.invalidateQueries({ queryKey: ['highlights', translation, book, chapter] })
+      onClose()
+    },
+  })
+
+  const removeHighlightMutation = useMutation({
+    mutationFn: () => api.deleteHighlight(highlightId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['highlights', translation, book, chapter] })
       onClose()
     },
   })
 
   const bookmarkMutation = useMutation({
-    mutationFn: () =>
-      api.createBookmark({
-        reference: `${book} ${chapter}:${verse}`,
-        book, chapter, verse,
-      }),
-    onSuccess: onClose,
+    mutationFn: () => api.createBookmark({ book, chapter, verse }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookmarks'] })
+      onClose()
+    },
   })
 
   function copyVerse() {
@@ -52,22 +59,12 @@ export default function VerseContextMenu({
     onClose()
   }
 
-  function openAI() {
-    setRightPanel('ai')
+  function openPanel(panel) {
+    setRightPanel(panel)
+    setRightPanelOpen(true)
     onClose()
   }
 
-  function openWordStudy() {
-    setRightPanel('word-study')
-    onClose()
-  }
-
-  function openNote() {
-    setRightPanel('notes')
-    onClose()
-  }
-
-  // Clamp menu to viewport
   const style = {
     position: 'fixed',
     left: Math.min(pos.x, window.innerWidth - 220),
@@ -81,7 +78,6 @@ export default function VerseContextMenu({
       style={style}
       className="w-52 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 py-1 text-sm"
     >
-      {/* Reference header */}
       <div className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold border-b border-gray-100 dark:border-gray-700">
         {book} {chapter}:{verse}
       </div>
@@ -91,7 +87,7 @@ export default function VerseContextMenu({
         Copy verse
       </button>
 
-      <button onClick={openNote} className="menu-item">
+      <button onClick={() => openPanel('notes')} className="menu-item">
         <StickyNote size={13} />
         Add note
       </button>
@@ -101,21 +97,31 @@ export default function VerseContextMenu({
         Bookmark
       </button>
 
-      <button onClick={openAI} className="menu-item">
+      <button onClick={() => openPanel('ai')} className="menu-item">
         <MessageSquare size={13} />
         Ask AI about verse
       </button>
 
-      <button onClick={openWordStudy} className="menu-item">
+      <button onClick={() => openPanel('word-study')} className="menu-item">
         <Layers size={13} />
         Word study
       </button>
 
-      {/* Highlight colors */}
       <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1">
-          <Highlighter size={11} />
-          Highlight
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5 flex items-center justify-between">
+          <span className="flex items-center gap-1">
+            <Highlighter size={11} />
+            Highlight
+          </span>
+          {highlightId && (
+            <button
+              onClick={() => removeHighlightMutation.mutate()}
+              title="Remove highlight"
+              className="text-gray-400 hover:text-red-500 flex items-center gap-0.5"
+            >
+              <X size={11} /> remove
+            </button>
+          )}
         </p>
         <div className="flex gap-1.5">
           {COLORS.map(({ id, label, cls }) => (

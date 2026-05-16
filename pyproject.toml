@@ -1,0 +1,18 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = [
+    "E501", # long lines — handled by formatter when applied
+    "B008", # FastAPI's Depends() idiom uses a callable in defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["UP006", "UP007"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["backend/tests"]
+addopts = "-q"

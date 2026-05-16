@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search as SearchIcon, X } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -10,6 +10,13 @@ export default function Sidebar() {
   const { book: activeBook, chapter: activeChapter, translation, setReference } = useStudyStore()
   const [expanded, setExpanded] = useState({ OT: true, NT: true, APO: false })
   const [selectedBook, setSelectedBook] = useState(activeBook)
+  const [filter, setFilter] = useState('')
+
+  // Keep the locally-expanded book in sync when activeBook changes from
+  // outside the sidebar (e.g. search-modal navigation).
+  useEffect(() => {
+    setSelectedBook(activeBook)
+  }, [activeBook])
 
   const { data: transData } = useQuery({
     queryKey: ['translation-books', translation],
@@ -117,7 +124,7 @@ function BookSection({
           </button>
 
           {selectedBook === book.name && (
-            <div className="grid grid-cols-6 gap-0.5 px-2 pb-2 bg-gray-50 dark:bg-gray-900">
+            <div className="grid grid-cols-6 gap-0.5 px-2 pb-2 bg-gray-50 dark:bg-gray-700/40">
               {Array.from({ length: book.chapters }, (_, i) => i + 1).map((ch) => (
                 <button
                   key={ch}

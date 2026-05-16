@@ -11,19 +11,22 @@ NIX_STDCXX=$(for f in /nix/store/*-gcc-*-lib/lib/libstdc++.so.6; do
 done)
 export LD_LIBRARY_PATH="${NIX_STDCXX}:${LD_LIBRARY_PATH:-}"
 
-# Install Python deps into project-local directory (Nix prevents system-wide installs)
-echo "Installing Python dependencies..."
-pip3 install -r requirements.txt \
-    --target "$VENV_SITE" \
-    --upgrade \
-    --quiet \
-    --break-system-packages 2>/dev/null || \
-  pip3 install -r requirements.txt \
-    --target "$VENV_SITE" \
-    --quiet \
-    --break-system-packages
-
+# Install Python deps into project-local directory (Nix prevents system-wide installs).
+# Skip install if every required package is importable — keeps cold-restart fast.
+echo "Checking Python dependencies..."
 export PYTHONPATH="$VENV_SITE:${PYTHONPATH:-}"
+if ! python3 -c "import fastapi, sqlalchemy, anthropic, aiosqlite, dotenv" 2>/dev/null; then
+  echo "Installing Python dependencies..."
+  pip3 install -r requirements.txt \
+      --target "$VENV_SITE" \
+      --upgrade \
+      --quiet \
+      --break-system-packages 2>/dev/null || \
+    pip3 install -r requirements.txt \
+      --target "$VENV_SITE" \
+      --quiet \
+      --break-system-packages
+fi
 
 # Build frontend (skip if dist already exists to speed up restarts)
 if [ ! -d "frontend/dist" ]; then
@@ -39,5 +42,5 @@ echo "Starting Bible Study backend..."
 TARGET_PORT="${PORT:-5000}"
 fuser -k "${TARGET_PORT}/tcp" 2>/dev/null || true
 
-cd backend
-exec python3 -m uvicorn main:app --host 0.0.0.0 --port "${TARGET_PORT}"
+# Launch the package — no `cd backend` hack required.
+exec python3 -m uvicorn backend.main:app --host 0.0.0.0 --port "${TARGET_PORT}"

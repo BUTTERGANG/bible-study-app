@@ -1,15 +1,49 @@
-import os
+"""Claude-backed study endpoints.
+
+All endpoints stream Server-Sent Events. We gate them behind a rate limiter
+(`ai_rate_limit`) and the optional shared-secret auth (`require_app_password`).
+We also use prompt caching on the system prompt and any large passage context
+so multi-turn conversations don't re-bill the same tokens.
+"""
+
 import json
-from fastapi import APIRouter, HTTPException
+import os
+from typing import List, Optional
+
+import anthropic
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List
-import anthropic
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+from ..auth import require_app_password
+from ..rate_limit import ai_rate_limit
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+router = APIRouter(
+    prefix="/api/ai",
+    tags=["ai"],
+    dependencies=[Depends(require_app_password), Depends(ai_rate_limit)],
+)
+
 MODEL = "claude-sonnet-4-6"
+_CACHE = {"type": "ephemeral"}
+
+_async_client: Optional[anthropic.AsyncAnthropic] = None
+
+
+def _client() -> anthropic.AsyncAnthropic:
+    """Return the async Anthropic client, raising 503 if no key is configured.
+    Lazy-initialized so a missing key only fails the AI endpoints, not startup."""
+    global _async_client
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY is not set. Add it in Replit Secrets to enable AI features.",
+        )
+    if _async_client is None:
+        _async_client = anthropic.AsyncAnthropic(api_key=api_key)
+    return _async_client
+
 
 SYSTEM_PROMPT = """You are a knowledgeable Bible study assistant with deep expertise in:
 - Biblical theology and exegesis
@@ -25,9 +59,7 @@ When answering questions:
 - Explain historical and cultural context
 - Note connections between Old and New Testaments
 - Be clear about where there is scholarly consensus vs. interpretive debate
-- Keep responses focused and practical for personal study
-
-The user is studying [REFERENCE] in [TRANSLATION]."""
+- Keep responses focused and practical for personal study"""
 
 
 class AskRequest(BaseModel):
@@ -35,6 +67,7 @@ class AskRequest(BaseModel):
     reference: Optional[str] = None
     translation: Optional[str] = "KJV"
     verse_text: Optional[str] = None
+    chapter_text: Optional[str] = None
     conversation_history: Optional[List[dict]] = None
 
 
@@ -57,40 +90,109 @@ class TopicStudyRequest(BaseModel):
     depth: str = "overview"
 
 
-@router.post("/ask")
-async def ask_question(body: AskRequest):
-    context_ref = body.reference or "the passage"
-    system = SYSTEM_PROMPT.replace("[REFERENCE]", context_ref).replace("[TRANSLATION]", body.translation or "KJV")
+class OutlineRequest(BaseModel):
+    reference: str
+    translation: str = "KJV"
 
-    messages = []
-    if body.conversation_history:
-        messages.extend(body.conversation_history)
 
-    user_content = body.question
-    if body.verse_text and body.reference:
-        user_content = f"**{body.reference} ({body.translation})**\n> {body.verse_text}\n\n{body.question}"
+class CrossRefRequest(BaseModel):
+    reference: str
+    verse_text: str
 
-    messages.append({"role": "user", "content": user_content})
+
+def _system_blocks(reference: Optional[str], translation: Optional[str]) -> list:
+    """Build a cacheable system prompt. The expertise block (large, stable) is
+    marked with ephemeral cache_control; the per-request line about the
+    current passage is appended uncached."""
+    blocks = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _CACHE}]
+    blocks.append({
+        "type": "text",
+        "text": f"\nThe user is currently studying {reference or 'the passage'} in {translation or 'KJV'}.",
+    })
+    return blocks
+
+
+def _user_message_with_context(
+    question: str,
+    reference: Optional[str],
+    translation: Optional[str],
+    verse_text: Optional[str],
+    chapter_text: Optional[str],
+) -> dict:
+    """User-turn message with optional passage context. The chapter_text — if
+    present and long — gets its own cache point so subsequent turns about the
+    same chapter reuse it."""
+    blocks: list = []
+    if verse_text and reference:
+        blocks.append({
+            "type": "text",
+            "text": f"**{reference} ({translation})**\n> {verse_text}",
+        })
+    if chapter_text:
+        chapter_block = {"type": "text", "text": f"Full chapter context:\n{chapter_text}"}
+        # Only worth caching when there's meaningful content.
+        if len(chapter_text) > 800:
+            chapter_block["cache_control"] = _CACHE
+        blocks.append(chapter_block)
+    blocks.append({"type": "text", "text": question})
+    return {"role": "user", "content": blocks}
+
+
+def _stream_response(coro_factory):
+    """Wrap an async-stream factory into an SSE StreamingResponse with a
+    consistent error envelope. Errors are sent as a single SSE event so the
+    frontend can render them inline instead of getting a half-baked bubble."""
 
     async def generate():
-        with client.messages.stream(
-            model=MODEL,
-            max_tokens=2048,
-            system=system,
-            messages=messages,
-        ) as stream:
-            for text in stream.text_stream:
+        try:
+            async for text in coro_factory():
                 yield f"data: {json.dumps({'text': text})}\n\n"
-        yield "data: [DONE]\n\n"
+            yield "data: [DONE]\n\n"
+        except HTTPException as e:
+            yield f"data: {json.dumps({'error': e.detail})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+async def _stream_text(*, system, messages: list, max_tokens: int):
+    client = _client()
+    kwargs = {
+        "model": MODEL,
+        "max_tokens": max_tokens,
+        "messages": messages,
+    }
+    if system is not None:
+        kwargs["system"] = system
+    async with client.messages.stream(**kwargs) as stream:
+        async for text in stream.text_stream:
+            yield text
+
+
+@router.post("/ask")
+async def ask_question(body: AskRequest):
+    messages = list(body.conversation_history or [])
+    messages.append(
+        _user_message_with_context(
+            body.question, body.reference, body.translation,
+            body.verse_text, body.chapter_text,
+        )
+    )
+    return _stream_response(
+        lambda: _stream_text(
+            system=_system_blocks(body.reference, body.translation),
+            messages=messages,
+            max_tokens=2048,
+        )
+    )
+
+
 @router.post("/explain")
 async def explain_passage(body: ExplainRequest):
-    verses_text = "\n".join(
-        f"{v['verse']}. {v['text']}" for v in body.verses
-    )
+    verses_text = "\n".join(f"{v['verse']}. {v['text']}" for v in body.verses)
     focus_note = f"\nFocus especially on: {body.focus}" if body.focus else ""
 
     prompt = f"""Please provide a thorough study commentary on {body.reference} ({body.translation}):
@@ -106,17 +208,13 @@ Include:
 5. **Cross-References**: 3-5 key parallel passages
 6. **Application**: How this applies to daily life and faith"""
 
-    async def generate():
-        with client.messages.stream(
-            model=MODEL,
-            max_tokens=3000,
+    return _stream_response(
+        lambda: _stream_text(
+            system=None,
             messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield f"data: {json.dumps({'text': text})}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+            max_tokens=3000,
+        )
+    )
 
 
 @router.post("/word-study")
@@ -134,17 +232,13 @@ Provide:
 5. **Translation History**: How major translations render this word
 6. **Practical Insight**: What this word study reveals for understanding the passage"""
 
-    async def generate():
-        with client.messages.stream(
-            model=MODEL,
-            max_tokens=2000,
+    return _stream_response(
+        lambda: _stream_text(
+            system=None,
             messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield f"data: {json.dumps({'text': text})}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+            max_tokens=2000,
+        )
+    )
 
 
 @router.post("/topic-study")
@@ -168,25 +262,18 @@ Structure:
 5. **Theological Summary**: Systematic summary of the biblical teaching
 6. **Practical Application**: How to apply this teaching today"""
 
-    async def generate():
-        with client.messages.stream(
-            model=MODEL,
-            max_tokens=3000,
+    return _stream_response(
+        lambda: _stream_text(
+            system=None,
             messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield f"data: {json.dumps({'text': text})}\n\n"
-        yield "data: [DONE]\n\n"
-
-    return StreamingResponse(generate(), media_type="text/event-stream")
+            max_tokens=3000,
+        )
+    )
 
 
 @router.post("/outline")
-async def generate_outline(
-    reference: str,
-    translation: str = "KJV",
-):
-    prompt = f"""Create a detailed study outline for {reference} ({translation}).
+async def generate_outline(body: OutlineRequest):
+    prompt = f"""Create a detailed study outline for {body.reference} ({body.translation}).
 
 Format as a structured outline with:
 - Main sections (Roman numerals)
@@ -196,17 +283,18 @@ Format as a structured outline with:
 
 Make it suitable for personal Bible study or small group teaching."""
 
-    response = client.messages.create(
+    client = _client()
+    response = await client.messages.create(
         model=MODEL,
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
-    return {"outline": response.content[0].text, "reference": reference}
+    return {"outline": response.content[0].text, "reference": body.reference}
 
 
 @router.post("/cross-references")
-async def find_cross_references(reference: str, verse_text: str):
-    prompt = f"""For this verse: **{reference}** — "{verse_text}"
+async def find_cross_references(body: CrossRefRequest):
+    prompt = f"""For this verse: **{body.reference}** — "{body.verse_text}"
 
 List 10 of the most theologically significant cross-references. For each:
 - Reference (Book Chapter:Verse)
@@ -215,9 +303,10 @@ List 10 of the most theologically significant cross-references. For each:
 
 Format as a clean list."""
 
-    response = client.messages.create(
+    client = _client()
+    response = await client.messages.create(
         model=MODEL,
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
-    return {"cross_references": response.content[0].text, "reference": reference}
+    return {"cross_references": response.content[0].text, "reference": body.reference}

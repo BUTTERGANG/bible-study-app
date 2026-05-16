@@ -10,12 +10,22 @@ venv/
 # Node
 frontend/node_modules/
 
+# Vite build output — rebuilt on deploy by start.sh
+frontend/dist/
+
 # Database — transfer separately (too large for git)
 # Use git-lfs or upload via Replit shell after creating the Repl.
 data/*.db
 data/*.db-shm
 data/*.db-wal
 data/sword_extracted/
+data/stepbible/
+
+# Stray DB files outside data/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+*.db-journal
 
 # Keep the data directory itself
 !data/.gitkeep
