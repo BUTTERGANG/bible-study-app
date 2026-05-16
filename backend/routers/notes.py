@@ -1,24 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from database import get_db
-from models import Note, Highlight, Bookmark
-from bible_data import resolve_book_name
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..bible_data import resolve_book_name
+from ..database import get_db
+from ..models import Note
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
-highlights_router = APIRouter(prefix="/api/highlights", tags=["highlights"])
-bookmarks_router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 
-
-# --- Notes ---
 
 class NoteCreate(BaseModel):
-    reference: str
     book: str
     chapter: int
     verse: Optional[int] = None
@@ -31,11 +26,29 @@ class NoteUpdate(BaseModel):
     tags: Optional[str] = None
 
 
+def _note_dict(n: Note) -> dict:
+    return {
+        "id": n.id,
+        "book": n.book,
+        "chapter": n.chapter,
+        "verse": n.verse,
+        "reference": (
+            f"{n.book} {n.chapter}:{n.verse}" if n.verse else f"{n.book} {n.chapter}"
+        ),
+        "content": n.content,
+        "tags": n.tags,
+        "created_at": n.created_at.isoformat() if n.created_at else None,
+        "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+    }
+
+
 @router.post("")
 async def create_note(body: NoteCreate, db: AsyncSession = Depends(get_db)):
+    canonical = resolve_book_name(body.book)
+    if not canonical:
+        raise HTTPException(status_code=400, detail=f"Unknown book: {body.book}")
     note = Note(
-        reference=body.reference,
-        book=body.book,
+        book=canonical,
         chapter=body.chapter,
         verse=body.verse,
         content=body.content,
@@ -47,11 +60,21 @@ async def create_note(body: NoteCreate, db: AsyncSession = Depends(get_db)):
     return _note_dict(note)
 
 
-@router.get("/{reference:path}")
-async def get_notes(reference: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Note).where(Note.reference == reference).order_by(Note.created_at)
-    )
+@router.get("")
+async def list_notes(
+    book: str,
+    chapter: int,
+    verse: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    canonical = resolve_book_name(book)
+    if not canonical:
+        raise HTTPException(status_code=400, detail=f"Unknown book: {book}")
+    query = select(Note).where(Note.book == canonical, Note.chapter == chapter)
+    if verse is not None:
+        query = query.where(Note.verse == verse)
+    query = query.order_by(Note.created_at)
+    result = await db.execute(query)
     return {"notes": [_note_dict(n) for n in result.scalars().all()]}
 
 
@@ -73,132 +96,5 @@ async def update_note(note_id: int, body: NoteUpdate, db: AsyncSession = Depends
 @router.delete("/{note_id}")
 async def delete_note(note_id: int, db: AsyncSession = Depends(get_db)):
     await db.execute(delete(Note).where(Note.id == note_id))
-    await db.commit()
-    return {"ok": True}
-
-
-def _note_dict(n: Note) -> dict:
-    return {
-        "id": n.id,
-        "reference": n.reference,
-        "book": n.book,
-        "chapter": n.chapter,
-        "verse": n.verse,
-        "content": n.content,
-        "tags": n.tags,
-        "created_at": n.created_at.isoformat() if n.created_at else None,
-        "updated_at": n.updated_at.isoformat() if n.updated_at else None,
-    }
-
-
-# --- Highlights ---
-
-class HighlightCreate(BaseModel):
-    translation: str
-    book: str
-    chapter: int
-    verse: int
-    color: str = "yellow"
-
-
-@highlights_router.post("")
-async def create_highlight(body: HighlightCreate, db: AsyncSession = Depends(get_db)):
-    existing = await db.execute(
-        select(Highlight).where(
-            Highlight.book == body.book,
-            Highlight.chapter == body.chapter,
-            Highlight.verse == body.verse,
-            Highlight.translation == body.translation,
-        )
-    )
-    hl = existing.scalar_one_or_none()
-    if hl:
-        hl.color = body.color
-    else:
-        hl = Highlight(
-            translation=body.translation,
-            book=body.book,
-            chapter=body.chapter,
-            verse=body.verse,
-            color=body.color,
-        )
-        db.add(hl)
-    await db.commit()
-    return {"id": hl.id, "color": hl.color}
-
-
-@highlights_router.get("/{book}/{chapter}")
-async def get_chapter_highlights(book: str, chapter: int, db: AsyncSession = Depends(get_db)):
-    canonical = resolve_book_name(book)
-    result = await db.execute(
-        select(Highlight).where(
-            Highlight.book == canonical,
-            Highlight.chapter == chapter,
-        )
-    )
-    highlights = result.scalars().all()
-    return {
-        "highlights": {
-            str(h.verse): {"color": h.color, "id": h.id}
-            for h in highlights
-        }
-    }
-
-
-@highlights_router.delete("/{highlight_id}")
-async def delete_highlight(highlight_id: int, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Highlight).where(Highlight.id == highlight_id))
-    await db.commit()
-    return {"ok": True}
-
-
-# --- Bookmarks ---
-
-class BookmarkCreate(BaseModel):
-    reference: str
-    book: str
-    chapter: int
-    verse: Optional[int] = None
-    note: Optional[str] = None
-
-
-@bookmarks_router.post("")
-async def create_bookmark(body: BookmarkCreate, db: AsyncSession = Depends(get_db)):
-    bm = Bookmark(
-        reference=body.reference,
-        book=body.book,
-        chapter=body.chapter,
-        verse=body.verse,
-        note=body.note,
-    )
-    db.add(bm)
-    await db.commit()
-    await db.refresh(bm)
-    return {"id": bm.id, "reference": bm.reference}
-
-
-@bookmarks_router.get("")
-async def get_bookmarks(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Bookmark).order_by(Bookmark.created_at.desc()))
-    bms = result.scalars().all()
-    return {
-        "bookmarks": [
-            {
-                "id": b.id,
-                "reference": b.reference,
-                "book": b.book,
-                "chapter": b.chapter,
-                "verse": b.verse,
-                "note": b.note,
-                "created_at": b.created_at.isoformat() if b.created_at else None,
-            }
-            for b in bms
-        ]
-    }
-
-
-@bookmarks_router.delete("/{bookmark_id}")
-async def delete_bookmark(bookmark_id: int, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
     await db.commit()
     return {"ok": True}

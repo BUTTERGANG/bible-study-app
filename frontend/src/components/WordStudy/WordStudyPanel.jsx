@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Layers, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
@@ -44,27 +44,27 @@ export default function WordStudyPanel() {
         </button>
       </div>
 
-      <div className="px-3 py-2 bg-gray-50 border-b border-gray-100">
-        <p className="text-xs text-gray-500">
+      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           {reference} · {data?.language ?? '—'}
         </p>
         {!verse && (
-          <p className="text-xs text-gray-400 mt-0.5">Click a verse to study its words</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Click a verse to study its words</p>
         )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {!verse && (
-          <div className="p-4 text-sm text-gray-400 text-center">
+          <div className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
             Click any verse in the Bible reader to see its original language words.
           </div>
         )}
 
         {isLoading && (
-          <div className="p-4 text-sm text-gray-400 text-center">Loading…</div>
+          <div className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">Loading…</div>
         )}
 
-        {data?.words && (
+        {data?.words && data.words.length > 0 && (
           <div className="p-3">
             {/* Word list */}
             <div className="space-y-1 mb-4">
@@ -78,22 +78,22 @@ export default function WordStudyPanel() {
                   className={clsx(
                     'w-full text-left px-3 py-2 rounded-lg border transition-colors',
                     selectedWord?.position === word.position
-                      ? 'bg-blue-50 border-blue-200'
-                      : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                      ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-700'
+                      : 'bg-gray-50 border-gray-200 hover:border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500'
                   )}
                 >
                   <div className="flex items-baseline justify-between">
-                    <span className="font-serif text-lg text-gray-800">{word.original}</span>
-                    <span className="text-xs text-gray-400">{word.strongs}</span>
+                    <span className="font-serif text-lg text-gray-800 dark:text-gray-100">{word.original}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{word.strongs}</span>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-blue-600">{word.transliteration}</span>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-blue-600 dark:text-blue-400">{word.transliteration}</span>
                     {word.morphology && (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-1 rounded">
+                      <span className="text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-1 rounded">
                         {word.morphology}
                       </span>
                     )}
-                    <span className="text-xs text-gray-600 italic">{word.gloss}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 italic">{word.gloss}</span>
                   </div>
                 </button>
               ))}
@@ -101,36 +101,31 @@ export default function WordStudyPanel() {
 
             {/* Strong's definition */}
             {selectedWord && strongsData && (
-              <div className="border-t border-gray-100 pt-3">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                   {selectedWord.strongs} — {selectedWord.original}
                 </h3>
                 {strongsData.entries?.map((entry) => (
                   <div key={entry.source} className="mb-3">
-                    <p className="text-xs font-medium text-gray-500 mb-1">{entry.source}</p>
-                    <p className="text-sm text-gray-700 leading-relaxed">{entry.definition}</p>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{entry.source}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">{entry.definition}</p>
                     {entry.usage && (
-                      <p className="text-xs text-gray-500 mt-1 italic">Usage: {entry.usage}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">Usage: {entry.usage}</p>
                     )}
                   </div>
                 ))}
-
-                <button
-                  onClick={() => {/* TODO: show all occurrences */}}
-                  className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-2"
-                >
-                  See all occurrences <ExternalLink size={11} />
-                </button>
               </div>
             )}
           </div>
         )}
 
-        {data?.words?.length === 0 && (
-          <div className="p-4 text-sm text-gray-400 text-center">
-            No original language data available.
-            <br />
-            <span className="text-xs">Run ingest_stepbible.py to load word data.</span>
+        {verse && data?.words?.length === 0 && (
+          <div className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
+            <p className="font-medium">Original language data unavailable</p>
+            <p className="text-xs mt-1">
+              Greek/Hebrew word data for this verse isn't loaded in this instance.
+              Try the AI Study tab for word study insights.
+            </p>
           </div>
         )}
       </div>

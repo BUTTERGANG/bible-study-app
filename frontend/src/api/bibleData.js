@@ -1,79 +1,44 @@
-export const BOOKS = [
-  // Old Testament
-  { name: "Genesis", abbrev: "Gen", num: 1, testament: "OT", chapters: 50 },
-  { name: "Exodus", abbrev: "Exod", num: 2, testament: "OT", chapters: 40 },
-  { name: "Leviticus", abbrev: "Lev", num: 3, testament: "OT", chapters: 27 },
-  { name: "Numbers", abbrev: "Num", num: 4, testament: "OT", chapters: 36 },
-  { name: "Deuteronomy", abbrev: "Deut", num: 5, testament: "OT", chapters: 34 },
-  { name: "Joshua", abbrev: "Josh", num: 6, testament: "OT", chapters: 24 },
-  { name: "Judges", abbrev: "Judg", num: 7, testament: "OT", chapters: 21 },
-  { name: "Ruth", abbrev: "Ruth", num: 8, testament: "OT", chapters: 4 },
-  { name: "1 Samuel", abbrev: "1Sam", num: 9, testament: "OT", chapters: 31 },
-  { name: "2 Samuel", abbrev: "2Sam", num: 10, testament: "OT", chapters: 24 },
-  { name: "1 Kings", abbrev: "1Kgs", num: 11, testament: "OT", chapters: 22 },
-  { name: "2 Kings", abbrev: "2Kgs", num: 12, testament: "OT", chapters: 25 },
-  { name: "1 Chronicles", abbrev: "1Chr", num: 13, testament: "OT", chapters: 29 },
-  { name: "2 Chronicles", abbrev: "2Chr", num: 14, testament: "OT", chapters: 36 },
-  { name: "Ezra", abbrev: "Ezra", num: 15, testament: "OT", chapters: 10 },
-  { name: "Nehemiah", abbrev: "Neh", num: 16, testament: "OT", chapters: 13 },
-  { name: "Esther", abbrev: "Esth", num: 17, testament: "OT", chapters: 10 },
-  { name: "Job", abbrev: "Job", num: 18, testament: "OT", chapters: 42 },
-  { name: "Psalms", abbrev: "Ps", num: 19, testament: "OT", chapters: 150 },
-  { name: "Proverbs", abbrev: "Prov", num: 20, testament: "OT", chapters: 31 },
-  { name: "Ecclesiastes", abbrev: "Eccl", num: 21, testament: "OT", chapters: 12 },
-  { name: "Song of Solomon", abbrev: "Song", num: 22, testament: "OT", chapters: 8 },
-  { name: "Isaiah", abbrev: "Isa", num: 23, testament: "OT", chapters: 66 },
-  { name: "Jeremiah", abbrev: "Jer", num: 24, testament: "OT", chapters: 52 },
-  { name: "Lamentations", abbrev: "Lam", num: 25, testament: "OT", chapters: 5 },
-  { name: "Ezekiel", abbrev: "Ezek", num: 26, testament: "OT", chapters: 48 },
-  { name: "Daniel", abbrev: "Dan", num: 27, testament: "OT", chapters: 12 },
-  { name: "Hosea", abbrev: "Hos", num: 28, testament: "OT", chapters: 14 },
-  { name: "Joel", abbrev: "Joel", num: 29, testament: "OT", chapters: 3 },
-  { name: "Amos", abbrev: "Amos", num: 30, testament: "OT", chapters: 9 },
-  { name: "Obadiah", abbrev: "Obad", num: 31, testament: "OT", chapters: 1 },
-  { name: "Jonah", abbrev: "Jonah", num: 32, testament: "OT", chapters: 4 },
-  { name: "Micah", abbrev: "Mic", num: 33, testament: "OT", chapters: 7 },
-  { name: "Nahum", abbrev: "Nah", num: 34, testament: "OT", chapters: 3 },
-  { name: "Habakkuk", abbrev: "Hab", num: 35, testament: "OT", chapters: 3 },
-  { name: "Zephaniah", abbrev: "Zeph", num: 36, testament: "OT", chapters: 3 },
-  { name: "Haggai", abbrev: "Hag", num: 37, testament: "OT", chapters: 2 },
-  { name: "Zechariah", abbrev: "Zech", num: 38, testament: "OT", chapters: 14 },
-  { name: "Malachi", abbrev: "Mal", num: 39, testament: "OT", chapters: 4 },
-  // New Testament
-  { name: "Matthew", abbrev: "Matt", num: 40, testament: "NT", chapters: 28 },
-  { name: "Mark", abbrev: "Mark", num: 41, testament: "NT", chapters: 16 },
-  { name: "Luke", abbrev: "Luke", num: 42, testament: "NT", chapters: 24 },
-  { name: "John", abbrev: "John", num: 43, testament: "NT", chapters: 21 },
-  { name: "Acts", abbrev: "Acts", num: 44, testament: "NT", chapters: 28 },
-  { name: "Romans", abbrev: "Rom", num: 45, testament: "NT", chapters: 16 },
-  { name: "1 Corinthians", abbrev: "1Cor", num: 46, testament: "NT", chapters: 16 },
-  { name: "2 Corinthians", abbrev: "2Cor", num: 47, testament: "NT", chapters: 13 },
-  { name: "Galatians", abbrev: "Gal", num: 48, testament: "NT", chapters: 6 },
-  { name: "Ephesians", abbrev: "Eph", num: 49, testament: "NT", chapters: 6 },
-  { name: "Philippians", abbrev: "Phil", num: 50, testament: "NT", chapters: 4 },
-  { name: "Colossians", abbrev: "Col", num: 51, testament: "NT", chapters: 4 },
-  { name: "1 Thessalonians", abbrev: "1Thess", num: 52, testament: "NT", chapters: 5 },
-  { name: "2 Thessalonians", abbrev: "2Thess", num: 53, testament: "NT", chapters: 3 },
-  { name: "1 Timothy", abbrev: "1Tim", num: 54, testament: "NT", chapters: 6 },
-  { name: "2 Timothy", abbrev: "2Tim", num: 55, testament: "NT", chapters: 4 },
-  { name: "Titus", abbrev: "Titus", num: 56, testament: "NT", chapters: 3 },
-  { name: "Philemon", abbrev: "Phlm", num: 57, testament: "NT", chapters: 1 },
-  { name: "Hebrews", abbrev: "Heb", num: 58, testament: "NT", chapters: 13 },
-  { name: "James", abbrev: "Jas", num: 59, testament: "NT", chapters: 5 },
-  { name: "1 Peter", abbrev: "1Pet", num: 60, testament: "NT", chapters: 5 },
-  { name: "2 Peter", abbrev: "2Pet", num: 61, testament: "NT", chapters: 3 },
-  { name: "1 John", abbrev: "1John", num: 62, testament: "NT", chapters: 5 },
-  { name: "2 John", abbrev: "2John", num: 63, testament: "NT", chapters: 1 },
-  { name: "3 John", abbrev: "3John", num: 64, testament: "NT", chapters: 1 },
-  { name: "Jude", abbrev: "Jude", num: 65, testament: "NT", chapters: 1 },
-  { name: "Revelation", abbrev: "Rev", num: 66, testament: "NT", chapters: 22 },
-]
+// Bootstrap fallback for the book list. The backend is the source of truth
+// (see /api/bible/books and /api/bible/translations/{t}/books) — this static
+// list exists only so the sidebar and chapter-navigation arrows have something
+// to render before the API call resolves, or if the DB is unavailable.
+//
+// If you change the canonical 66-book list, update backend/bible_data.py — the
+// API will then propagate to the UI naturally.
 
-export const OT_BOOKS = BOOKS.filter(b => b.testament === 'OT')
-export const NT_BOOKS = BOOKS.filter(b => b.testament === 'NT')
+const C = (n, t, chapters) => ({ name: n, num: 0, testament: t, chapters })
+
+export const BOOKS = [
+  C('Genesis', 'OT', 50), C('Exodus', 'OT', 40), C('Leviticus', 'OT', 27),
+  C('Numbers', 'OT', 36), C('Deuteronomy', 'OT', 34), C('Joshua', 'OT', 24),
+  C('Judges', 'OT', 21), C('Ruth', 'OT', 4), C('1 Samuel', 'OT', 31),
+  C('2 Samuel', 'OT', 24), C('1 Kings', 'OT', 22), C('2 Kings', 'OT', 25),
+  C('1 Chronicles', 'OT', 29), C('2 Chronicles', 'OT', 36), C('Ezra', 'OT', 10),
+  C('Nehemiah', 'OT', 13), C('Esther', 'OT', 10), C('Job', 'OT', 42),
+  C('Psalms', 'OT', 150), C('Proverbs', 'OT', 31), C('Ecclesiastes', 'OT', 12),
+  C('Song of Solomon', 'OT', 8), C('Isaiah', 'OT', 66), C('Jeremiah', 'OT', 52),
+  C('Lamentations', 'OT', 5), C('Ezekiel', 'OT', 48), C('Daniel', 'OT', 12),
+  C('Hosea', 'OT', 14), C('Joel', 'OT', 3), C('Amos', 'OT', 9),
+  C('Obadiah', 'OT', 1), C('Jonah', 'OT', 4), C('Micah', 'OT', 7),
+  C('Nahum', 'OT', 3), C('Habakkuk', 'OT', 3), C('Zephaniah', 'OT', 3),
+  C('Haggai', 'OT', 2), C('Zechariah', 'OT', 14), C('Malachi', 'OT', 4),
+  C('Matthew', 'NT', 28), C('Mark', 'NT', 16), C('Luke', 'NT', 24),
+  C('John', 'NT', 21), C('Acts', 'NT', 28), C('Romans', 'NT', 16),
+  C('1 Corinthians', 'NT', 16), C('2 Corinthians', 'NT', 13),
+  C('Galatians', 'NT', 6), C('Ephesians', 'NT', 6), C('Philippians', 'NT', 4),
+  C('Colossians', 'NT', 4), C('1 Thessalonians', 'NT', 5),
+  C('2 Thessalonians', 'NT', 3), C('1 Timothy', 'NT', 6),
+  C('2 Timothy', 'NT', 4), C('Titus', 'NT', 3), C('Philemon', 'NT', 1),
+  C('Hebrews', 'NT', 13), C('James', 'NT', 5), C('1 Peter', 'NT', 5),
+  C('2 Peter', 'NT', 3), C('1 John', 'NT', 5), C('2 John', 'NT', 1),
+  C('3 John', 'NT', 1), C('Jude', 'NT', 1), C('Revelation', 'NT', 22),
+].map((b, i) => ({ ...b, num: i + 1 }))
+
+export const OT_BOOKS = BOOKS.filter((b) => b.testament === 'OT')
+export const NT_BOOKS = BOOKS.filter((b) => b.testament === 'NT')
 
 export function getBook(name) {
-  return BOOKS.find(b => b.name.toLowerCase() === name.toLowerCase())
+  return BOOKS.find((b) => b.name.toLowerCase() === name.toLowerCase())
 }
 
 export function getChapterCount(bookName) {

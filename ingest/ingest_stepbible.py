@@ -58,20 +58,65 @@ STEPBIBLE_BOOK_MAP = {
 
 
 def parse_ref(ref_str: str):
-    """Parse STEPBible ref like 'Mat.1.1#01' → (book, chapter, verse, position)."""
-    # Format: Book.Chapter.Verse#WordNum
-    # or Book.Chapter.Verse (no word num)
+    """Parse STEPBible ref like 'Mat.1.1#01=NKO' → (book, chapter, verse, position).
+
+    Actual format: Book.Chapter.Verse#WordNum=Source
+    The =Source suffix (e.g. =NKO, =L) must be stripped before int() conversion.
+    """
     ref_str = ref_str.strip()
     parts = ref_str.split("#")
-    word_num = int(parts[1]) if len(parts) > 1 else 1
+    if len(parts) > 1:
+        word_part = parts[1].split("=")[0]  # strip =NKO / =L / etc.
+        try:
+            word_num = int(word_part)
+        except ValueError:
+            word_num = 1
+    else:
+        word_num = 1
     bcv = parts[0].split(".")
     if len(bcv) < 3:
         return None, None, None, None
     book_abbrev = bcv[0]
-    chapter = int(bcv[1])
-    verse = int(bcv[2])
+    try:
+        chapter = int(bcv[1])
+        verse = int(bcv[2])
+    except ValueError:
+        return None, None, None, None
     canonical = STEPBIBLE_BOOK_MAP.get(book_abbrev)
     return canonical, chapter, verse, word_num
+
+
+def parse_strongs_greek(raw: str) -> str | None:
+    """Extract primary Strong's number from a TAGNT Strong's field.
+
+    Examples: 'G0976=N-NSF' → 'G0976'
+              'G2424G=N-GSM-P' → 'G2424'  (trailing G is a variant marker)
+    """
+    if not raw:
+        return None
+    m = re.match(r'(G\d+)', raw.strip(), re.IGNORECASE)
+    if m:
+        return m.group(1)
+    return None
+
+
+def parse_strongs_hebrew(raw: str) -> str | None:
+    """Extract primary Strong's number from a TAHOT Strong's field.
+
+    Examples:
+      '{H1254A}'         → 'H1254'
+      'H9003/{H7225G}'   → 'H7225'   (last token = main lexeme, not prefix)
+      'H9009/{H8064}'    → 'H8064'
+      '{H0430G}'         → 'H0430'
+
+    Strategy: find the last H\\d+ sequence, strip trailing letter variant suffix.
+    """
+    if not raw:
+        return None
+    matches = re.findall(r'H(\d+)[A-Za-z]?', raw)
+    if not matches:
+        return None
+    return 'H' + matches[-1]
 
 
 def ingest_tagnt(conn: sqlite3.Connection):
@@ -108,29 +153,39 @@ def ingest_tagnt(conn: sqlite3.Connection):
             with open(tsv_file, "r", encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("Ref"):
+                    # Skip blank lines, comment/header lines, and the BOM title line
+                    if not line or line.startswith("#") or line.startswith("Ref") \
+                            or line.startswith("TAGNT") or line.startswith("="):
                         continue
 
                     cols = line.split("\t")
-                    if len(cols) < 4:
+                    if len(cols) < 3:
                         continue
 
-                    ref_col = cols[0]
-                    canonical, chapter, verse, word_pos = parse_ref(ref_col)
+                    canonical, chapter, verse, word_pos = parse_ref(cols[0])
                     if not canonical:
                         continue
 
-                    greek = cols[1] if len(cols) > 1 else ""
-                    translit = cols[2] if len(cols) > 2 else ""
-                    pronunciation = cols[3] if len(cols) > 3 else ""
-                    morphology = cols[4] if len(cols) > 4 else ""
-                    strongs = cols[5] if len(cols) > 5 else ""
-                    gloss = cols[6] if len(cols) > 6 else ""
+                    # Actual TAGNT columns:
+                    # 0: Ref (Mat.1.1#01=NKO)
+                    # 1: Greek word with transliteration in parens: Βίβλος (Biblos)
+                    # 2: English gloss: [The] book
+                    # 3: Strong's=Morphology: G0976=N-NSF
+                    # 4: Lemma=Meaning: βίβλος=book
+                    # 5+: edition sources, variants, etc.
+                    raw_greek = cols[1] if len(cols) > 1 else ""
+                    gloss     = cols[2].strip() if len(cols) > 2 else ""
+                    strongs_morph = cols[3] if len(cols) > 3 else ""
 
-                    # Clean up
-                    strongs = strongs.strip().upper() if strongs else None
-                    if strongs and not strongs.startswith("G"):
-                        strongs = "G" + strongs.lstrip("0")
+                    # Split Greek word from transliteration: "Βίβλος (Biblos)"
+                    greek_m = re.match(r'^([^\(]+?)(?:\s*\(([^)]+)\))?$', raw_greek.strip())
+                    greek    = greek_m.group(1).strip() if greek_m else raw_greek.strip()
+                    translit = greek_m.group(2).strip() if greek_m and greek_m.group(2) else ""
+
+                    # Strong's is before the '=' in col 3; morphology is after
+                    strongs  = parse_strongs_greek(strongs_morph)
+                    morph_m  = re.search(r'=([A-Z][-\w]+)', strongs_morph)
+                    morphology = morph_m.group(1) if morph_m else ""
 
                     rows.append((canonical, chapter, verse, word_pos, greek, translit, morphology, strongs, gloss))
                     total += 1
@@ -189,7 +244,8 @@ def ingest_tahot(conn: sqlite3.Connection):
             with open(tsv_file, "r", encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
-                    if not line or line.startswith("#") or line.startswith("Ref"):
+                    if not line or line.startswith("#") or line.startswith("Ref") \
+                            or line.startswith("TAHOT") or line.startswith("="):
                         continue
 
                     cols = line.split("\t")
@@ -200,15 +256,18 @@ def ingest_tahot(conn: sqlite3.Connection):
                     if not canonical:
                         continue
 
-                    hebrew = cols[1] if len(cols) > 1 else ""
-                    translit = cols[2] if len(cols) > 2 else ""
-                    morphology = cols[4] if len(cols) > 4 else ""
-                    strongs = cols[5] if len(cols) > 5 else ""
-                    gloss = cols[6] if len(cols) > 6 else ""
-
-                    strongs = strongs.strip().upper() if strongs else None
-                    if strongs and not strongs.startswith("H"):
-                        strongs = "H" + strongs.lstrip("0")
+                    # Actual TAHOT columns:
+                    # 0: Ref (Gen.1.1#01=L)
+                    # 1: Hebrew word (may include prefix with /): בְּ/רֵאשִׁ֖ית
+                    # 2: Transliteration: be./re.Shit
+                    # 3: Gloss: in/ beginning
+                    # 4: Strong's: H9003/{H7225G}
+                    # 5: Morphology: HR/Ncfsa
+                    hebrew   = cols[1].strip() if len(cols) > 1 else ""
+                    translit = cols[2].strip() if len(cols) > 2 else ""
+                    gloss    = cols[3].strip() if len(cols) > 3 else ""
+                    strongs  = parse_strongs_hebrew(cols[4]) if len(cols) > 4 else None
+                    morphology = cols[5].strip() if len(cols) > 5 else ""
 
                     rows.append((canonical, chapter, verse, word_pos, hebrew, translit, morphology, strongs, gloss))
                     total += 1

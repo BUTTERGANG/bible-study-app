@@ -1,7 +1,9 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Text, DateTime, Boolean, ForeignKey, Float
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from database import Base
+
+from .database import Base
 
 
 class BibleVerse(Base):
@@ -84,10 +86,9 @@ class Note(Base):
     __tablename__ = "notes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    reference: Mapped[str] = mapped_column(String(50), index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
-    verse: Mapped[int] = mapped_column(Integer, nullable=True)
+    verse: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
     content: Mapped[str] = mapped_column(Text)
     tags: Mapped[str] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -96,6 +97,9 @@ class Note(Base):
 
 class Highlight(Base):
     __tablename__ = "highlights"
+    __table_args__ = (
+        UniqueConstraint("translation", "book", "chapter", "verse", name="uq_highlight_verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     translation: Mapped[str] = mapped_column(String(10))
@@ -110,9 +114,8 @@ class Bookmark(Base):
     __tablename__ = "bookmarks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    reference: Mapped[str] = mapped_column(String(50), index=True)
-    book: Mapped[str] = mapped_column(String(50))
-    chapter: Mapped[int] = mapped_column(Integer)
+    book: Mapped[str] = mapped_column(String(50), index=True)
+    chapter: Mapped[int] = mapped_column(Integer, index=True)
     verse: Mapped[int] = mapped_column(Integer, nullable=True)
     note: Mapped[str] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -124,14 +127,35 @@ class ReadingPlan(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    schedule_json: Mapped[str] = mapped_column(Text)
     start_date: Mapped[str] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    progress: Mapped[list["ReadingPlanProgress"]] = relationship(back_populates="plan")
+    days: Mapped[list["ReadingPlanDay"]] = relationship(
+        back_populates="plan", cascade="all, delete-orphan"
+    )
+    progress: Mapped[list["ReadingPlanProgress"]] = relationship(
+        back_populates="plan", cascade="all, delete-orphan"
+    )
+
+
+class ReadingPlanDay(Base):
+    """One row per (plan, date, reference). Replaces the old schedule_json blob."""
+    __tablename__ = "reading_plan_days"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "date", "reference", name="uq_plan_day_ref"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id"), index=True)
+    date: Mapped[str] = mapped_column(String(10), index=True)
+    reference: Mapped[str] = mapped_column(String(100))
+    plan: Mapped["ReadingPlan"] = relationship(back_populates="days")
 
 
 class ReadingPlanProgress(Base):
     __tablename__ = "reading_plan_progress"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "date", "reference", name="uq_progress_entry"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id"), index=True)
@@ -139,16 +163,6 @@ class ReadingPlanProgress(Base):
     reference: Mapped[str] = mapped_column(String(100))
     completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     plan: Mapped["ReadingPlan"] = relationship(back_populates="progress")
-
-
-class Study(Base):
-    __tablename__ = "studies"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    title: Mapped[str] = mapped_column(String(200))
-    content_json: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class LibraryBook(Base):
@@ -162,3 +176,16 @@ class LibraryBook(Base):
     source_path: Mapped[str] = mapped_column(String(500))
     page_count: Mapped[int] = mapped_column(Integer, nullable=True)
     ingested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LibraryPage(Base):
+    """Pre-extracted PDF page text — removes runtime PyMuPDF dependency."""
+    __tablename__ = "library_pages"
+    __table_args__ = (
+        UniqueConstraint("book_id", "page_num", name="uq_library_page"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id"), index=True)
+    page_num: Mapped[int] = mapped_column(Integer, index=True)
+    text: Mapped[str] = mapped_column(Text)

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 import VerseContextMenu from './VerseContextMenu'
 import clsx from 'clsx'
@@ -13,15 +13,14 @@ const HIGHLIGHT_CLASSES = {
 
 export default function VerseText({
   verse, text, book, chapter, translation,
-  isActive, highlightColor,
+  isActive, highlightColor, highlightId,
 }) {
-  const { selectVerse, setRightPanel } = useStudyStore()
+  const selectVerse = useStudyStore((s) => s.selectVerse)
   const [menuPos, setMenuPos] = useState(null)
   const ref = useRef(null)
 
-  function handleClick(e) {
+  function handleClick() {
     selectVerse(verse, text)
-    // Close any open menu on single click
     setMenuPos(null)
   }
 
@@ -56,6 +55,7 @@ export default function VerseText({
           book={book}
           chapter={chapter}
           translation={translation}
+          highlightId={highlightId}
           onClose={() => setMenuPos(null)}
         />
       )}
