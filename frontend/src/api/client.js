@@ -129,6 +129,25 @@ export const api = {
   getChapterInterlinear: (translation, book, chapter) =>
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/interlinear`),
 
+  // Factbook
+  getFactbookEntry: (entityName, entityType, refresh = false) => {
+    const params = new URLSearchParams()
+    if (entityType) params.set('entity_type', entityType)
+    if (refresh) params.set('refresh', 'true')
+    const qs = params.toString()
+    return get(`/factbook/${encodeURIComponent(entityName)}${qs ? '?' + qs : ''}`)
+  },
+  listFactbookEntries: (entityType, search, limit = 50, offset = 0) => {
+    const params = new URLSearchParams()
+    if (entityType) params.set('entity_type', entityType)
+    if (search) params.set('search', search)
+    params.set('limit', String(limit))
+    params.set('offset', String(offset))
+    return get(`/factbook?${params}`)
+  },
+  generateFactbookEntry: (entityName, entityType = 'person') =>
+    post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
+
   // Dictionary
   searchDictionary: (q, source) => {
     const params = new URLSearchParams({ q })

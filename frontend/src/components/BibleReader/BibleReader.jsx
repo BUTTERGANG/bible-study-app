@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import VerseText from './VerseText'
 import CompareView from './CompareView'
 import InterlinearVerse from './InterlinearVerse'
+import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 
 export default function BibleReader() {
   const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode } = useStudyStore()
@@ -80,6 +81,9 @@ export default function BibleReader() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+      {/* Visual Filters toolbar — always visible when interlinear is on */}
+      <VisualFiltersPanel />
+
       <div className="max-w-2xl mx-auto px-6 py-8">
         {/* Chapter header */}
         <div className="text-center mb-8">
@@ -119,6 +123,7 @@ export default function BibleReader() {
                   highlightColor={highlights[String(verse)]?.color}
                   highlightId={highlights[String(verse)]?.id}
                   words={interlinearMap[verse] || []}
+                  language={interlinearData?.language || 'greek'}
                 />
               )
             }

@@ -1,7 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { FILTER_CATEGORIES } from '../utils/morphology'
 
 export const FONT_SIZES = ['0.9rem', '1.05rem', '1.2rem', '1.4rem']
+
+/** Build the default visual-filters map from FILTER_CATEGORIES. */
+function defaultFilterState() {
+  const map = {}
+  for (const [key, cfg] of Object.entries(FILTER_CATEGORIES)) {
+    map[key] = cfg.defaultOn
+  }
+  return map
+}
 
 // Convention: state lives as plain values, never as getter properties.
 // Zustand's `set()` does an Object.assign copy that evaluates getters at copy
@@ -29,6 +39,10 @@ export const useStudyStore = create(
       compareMode: false,
       compareTranslations: [],
 
+      // Visual filters state
+      visualFiltersEnabled: false,
+      visualFilters: defaultFilterState(),
+
       // Verse selection (transient — never persisted).
       selectedVerse: null,
       selectedVerseText: '',
@@ -50,6 +64,18 @@ export const useStudyStore = create(
         set({ fontSizeIdx: Math.max(0, Math.min(FONT_SIZES.length - 1, idx)) }),
       toggleCompareMode: () => set((s) => ({ compareMode: !s.compareMode })),
       setCompareTranslations: (translations) => set({ compareTranslations: translations }),
+
+      // Visual filters actions
+      toggleVisualFilters: () => set((s) => ({ visualFiltersEnabled: !s.visualFiltersEnabled })),
+      setVisualFiltersEnabled: (enabled) => set({ visualFiltersEnabled: enabled }),
+      toggleVisualFilter: (category) =>
+        set((s) => ({
+          visualFilters: { ...s.visualFilters, [category]: !s.visualFilters[category] },
+        })),
+      setVisualFilter: (category, enabled) =>
+        set((s) => ({
+          visualFilters: { ...s.visualFilters, [category]: enabled },
+        })),
     }),
     {
       name: 'bible-study-state',
@@ -62,6 +88,8 @@ export const useStudyStore = create(
         interlinearMode: s.interlinearMode,
         darkMode: s.darkMode,
         fontSizeIdx: s.fontSizeIdx,
+        visualFiltersEnabled: s.visualFiltersEnabled,
+        visualFilters: s.visualFilters,
       }),
     }
   )

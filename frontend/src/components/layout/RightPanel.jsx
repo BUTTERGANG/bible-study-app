@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, MessageSquare, StickyNote, Church } from 'lucide-react'
+import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, MessageSquare, StickyNote, Church, BookMarked } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -14,6 +14,7 @@ const ReadingPlansPanel = lazy(() => import('../ReadingPlans/ReadingPlansPanel')
 const DictionaryPanel = lazy(() => import('../Dictionary/DictionaryPanel'))
 const CrossReferencePanel = lazy(() => import('../CrossReference/CrossReferencePanel'))
 const SermonAssistant = lazy(() => import('../SermonAssistant/SermonAssistant'))
+const FactbookPanel = lazy(() => import('../Factbook/FactbookPanel'))
 const LibraryReader = lazy(() => import('../Library/LibraryReader'))
 
 const TABS = [
@@ -22,6 +23,7 @@ const TABS = [
   { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
   { id: 'ai', label: 'AI Study', icon: MessageSquare },
   { id: 'sermon', label: 'Sermon', icon: Church },
+  { id: 'factbook', label: 'Factbook', icon: BookMarked },
   { id: 'notes', label: 'Notes', icon: StickyNote },
   { id: 'word-study', label: 'Words', icon: Layers },
   { id: 'library', label: 'Library', icon: Library },
@@ -65,6 +67,7 @@ export default function RightPanel() {
           {rightPanel === 'dictionary' && <DictionaryPanel />}
           {rightPanel === 'ai' && <AIAssistant />}
           {rightPanel === 'sermon' && <SermonAssistant />}
+          {rightPanel === 'factbook' && <FactbookPanel />}
           {rightPanel === 'notes' && <NotesPanel />}
           {rightPanel === 'word-study' && <WordStudyPanel />}
           {rightPanel === 'library' && <LibraryReader />}

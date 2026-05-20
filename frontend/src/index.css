@@ -44,6 +44,12 @@
   .highlight-green  { @apply bg-green-100 dark:bg-green-800/40; }
   .highlight-pink   { @apply bg-pink-100 dark:bg-pink-800/40; }
   .highlight-orange { @apply bg-orange-100 dark:bg-orange-800/40; }
+
+  /* Visual filter word highlighting */
+  .vf-word-highlight {
+    @apply rounded-sm px-0.5;
+    transition: background-color 0.15s ease;
+  }
 }
 
 /* Scrollbar styling */

@@ -201,3 +201,20 @@ class LibraryPage(Base):
     book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id"), index=True)
     page_num: Mapped[int] = mapped_column(Integer, index=True)
     text: Mapped[str] = mapped_column(Text)
+
+
+class FactbookEntry(Base):
+    """AI-generated encyclopedia entries for biblical people, places, themes, and events."""
+    __tablename__ = "factbook_entries"
+    __table_args__ = (
+        UniqueConstraint("entity_name", "entity_type", name="uq_factbook_entity"),
+        Index("ix_factbook_name", "entity_name"),
+        Index("ix_factbook_type", "entity_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    entity_name: Mapped[str] = mapped_column(String(200), index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), index=True)  # person, place, theme, event
+    content: Mapped[str] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
