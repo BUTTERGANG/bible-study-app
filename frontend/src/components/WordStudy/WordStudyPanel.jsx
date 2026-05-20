@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Layers } from 'lucide-react'
+import { Layers, ExternalLink } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
 export default function WordStudyPanel() {
-  const { book, chapter, verse, interlinearMode, toggleInterlinear } = useStudyStore()
+  const { book, chapter, verse, interlinearMode, toggleInterlinear, setReference } = useStudyStore()
   const [selectedWord, setSelectedWord] = useState(null)
   const [expandedStrongs, setExpandedStrongs] = useState(null)
+  const [showOccurrences, setShowOccurrences] = useState(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['words', book, chapter, verse],
@@ -22,7 +23,18 @@ export default function WordStudyPanel() {
     enabled: !!expandedStrongs,
   })
 
+  const { data: occurrencesData } = useQuery({
+    queryKey: ['strongs-occurrences', showOccurrences],
+    queryFn: () => api.getStrongsOccurrences(showOccurrences),
+    enabled: !!showOccurrences,
+  })
+
   const reference = verse ? `${book} ${chapter}:${verse}` : `${book} ${chapter}`
+
+  function goToOccurrence(occ) {
+    setReference(occ.book, occ.chapter, occ.verse)
+    setShowOccurrences(null)
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -84,7 +96,19 @@ export default function WordStudyPanel() {
                 >
                   <div className="flex items-baseline justify-between">
                     <span className="font-serif text-lg text-gray-800 dark:text-gray-100">{word.original}</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{word.strongs}</span>
+                    {word.strongs && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowOccurrences(word.strongs)
+                        }}
+                        className="text-xs text-blue-500 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                        title={`See all occurrences of ${word.strongs}`}
+                      >
+                        {word.strongs}
+                        <ExternalLink size={9} />
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-xs text-blue-600 dark:text-blue-400">{word.transliteration}</span>
@@ -102,9 +126,20 @@ export default function WordStudyPanel() {
             {/* Strong's definition */}
             {selectedWord && strongsData && (
               <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                  {selectedWord.strongs} — {selectedWord.original}
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {selectedWord.strongs} — {selectedWord.original}
+                  </h3>
+                  {selectedWord.strongs && (
+                    <button
+                      onClick={() => setShowOccurrences(selectedWord.strongs)}
+                      className="text-xs text-blue-500 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                    >
+                      All occurrences
+                      <ExternalLink size={10} />
+                    </button>
+                  )}
+                </div>
                 {strongsData.entries?.map((entry) => (
                   <div key={entry.source} className="mb-3">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{entry.source}</p>
@@ -114,6 +149,41 @@ export default function WordStudyPanel() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Occurrences panel */}
+            {showOccurrences && (
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    Occurrences of {showOccurrences}
+                  </h3>
+                  <button
+                    onClick={() => setShowOccurrences(null)}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  >
+                    Close
+                  </button>
+                </div>
+                {!occurrencesData ? (
+                  <p className="text-xs text-gray-400">Loading…</p>
+                ) : occurrencesData.occurrences?.length === 0 ? (
+                  <p className="text-xs text-gray-400">No occurrences found.</p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-0.5">
+                    {occurrencesData.occurrences?.map((occ, i) => (
+                      <button
+                        key={i}
+                        onClick={() => goToOccurrence(occ)}
+                        className="w-full text-left text-xs px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                      >
+                        <ExternalLink size={9} />
+                        {occ.book} {occ.chapter}:{occ.verse}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -2,23 +2,37 @@ import { useQuery } from '@tanstack/react-query'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import VerseText from './VerseText'
+import CompareView from './CompareView'
+import InterlinearVerse from './InterlinearVerse'
 
 export default function BibleReader() {
-  const { book, chapter, translation, verse: activeVerse, fontSizeIdx } = useStudyStore()
+  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode } = useStudyStore()
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['chapter', translation, book, chapter],
     queryFn: () => api.getChapter(translation, book, chapter),
-    enabled: !!book && !!chapter,
+    enabled: !!book && !!chapter && !compareMode,
     retry: false,
   })
 
   const { data: highlightData } = useQuery({
     queryKey: ['highlights', translation, book, chapter],
     queryFn: () => api.getHighlights(book, chapter, translation),
+    enabled: !!book && !!chapter && !compareMode,
+  })
+
+  // Fetch interlinear data for the whole chapter when interlinear mode is on
+  const { data: interlinearData, isLoading: interlinearLoading } = useQuery({
+    queryKey: ['interlinear', translation, book, chapter],
+    queryFn: () => api.getChapterInterlinear(translation, book, chapter),
+    enabled: !!book && !!chapter && interlinearMode && !compareMode,
   })
 
   const highlights = highlightData?.highlights ?? {}
+
+  if (compareMode) {
+    return <CompareView />
+  }
 
   if (isLoading) {
     return (
@@ -56,6 +70,14 @@ export default function BibleReader() {
     )
   }
 
+  // Build interlinear map: verse -> words[]
+  const interlinearMap = {}
+  if (interlinearData?.verses) {
+    for (const v of interlinearData.verses) {
+      interlinearMap[v.verse] = v.words || []
+    }
+  }
+
   return (
     <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
       <div className="max-w-2xl mx-auto px-6 py-8">
@@ -66,6 +88,7 @@ export default function BibleReader() {
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Chapter {data.chapter} · {data.translation}
+            {interlinearMode && <span className="ml-2 text-blue-500">· Interlinear</span>}
           </p>
           <div className="w-16 h-px bg-gray-300 dark:bg-gray-600 mx-auto mt-3" />
         </div>
@@ -75,19 +98,44 @@ export default function BibleReader() {
           className="bible-text space-y-0.5 text-gray-900 dark:text-gray-100"
           style={{ fontSize: FONT_SIZES[fontSizeIdx] }}
         >
-          {data.verses.map(({ verse, text }) => (
-            <VerseText
-              key={verse}
-              verse={verse}
-              text={text}
-              book={data.book}
-              chapter={data.chapter}
-              translation={data.translation}
-              isActive={activeVerse === verse}
-              highlightColor={highlights[String(verse)]?.color}
-              highlightId={highlights[String(verse)]?.id}
-            />
-          ))}
+          {interlinearMode && interlinearLoading && (
+            <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-400 dark:text-gray-500">
+              <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+              Loading interlinear data…
+            </div>
+          )}
+
+          {data.verses.map(({ verse, text }) => {
+            if (interlinearMode) {
+              return (
+                <InterlinearVerse
+                  key={verse}
+                  verse={verse}
+                  text={text}
+                  book={data.book}
+                  chapter={data.chapter}
+                  translation={data.translation}
+                  isActive={activeVerse === verse}
+                  highlightColor={highlights[String(verse)]?.color}
+                  highlightId={highlights[String(verse)]?.id}
+                  words={interlinearMap[verse] || []}
+                />
+              )
+            }
+            return (
+              <VerseText
+                key={verse}
+                verse={verse}
+                text={text}
+                book={data.book}
+                chapter={data.chapter}
+                translation={data.translation}
+                isActive={activeVerse === verse}
+                highlightColor={highlights[String(verse)]?.color}
+                highlightId={highlights[String(verse)]?.id}
+              />
+            )
+          })}
         </div>
 
         <div className="mt-12 pb-8 text-center text-xs text-gray-400 dark:text-gray-600">

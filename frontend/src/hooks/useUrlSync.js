@@ -7,8 +7,6 @@ import { useStudyStore } from '../stores/studyStore'
 // browser-back all work. UI-only state (font size, dark mode, open panel)
 // stays in Zustand's persisted slice.
 
-const DEFAULT = { translation: 'KJV', book: 'John', chapter: '3' }
-
 function parsePath(pathname) {
   const parts = pathname.split('/').filter(Boolean)
   if (parts.length === 0) return null
@@ -56,13 +54,13 @@ export function useUrlSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
-  // Store → URL. Only push a new history entry when the user actually changed
-  // a reference (the URL → store effect mutates the store, and we don't want
-  // to loop). We compare against lastUrl rather than the previous render.
+  // Store → URL. Use replace to avoid polluting the browser history stack —
+  // every store change (including those triggered by the URL → store effect
+  // above) should replace the current entry, not push a new one.
   useEffect(() => {
     const next = buildPath({ translation, book, chapter, verse })
     if (next === lastUrl.current) return
     lastUrl.current = next
-    navigate(next, { replace: false })
+    navigate(next, { replace: true })
   }, [translation, book, chapter, verse, navigate])
 }

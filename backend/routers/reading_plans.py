@@ -155,23 +155,34 @@ async def complete_reading(
     db: AsyncSession = Depends(get_db),
 ):
     today = str(date.today())
-    stmt = (
-        sqlite_insert(ReadingPlanProgress)
-        .values(
-            plan_id=plan_id,
-            date=today,
-            reference=reference,
-            completed_at=datetime.utcnow(),
-        )
-        .on_conflict_do_update(
-            index_elements=["plan_id", "date", "reference"],
-            # Toggle behavior: clear completed_at when re-marking the same day.
-            set_={"completed_at": datetime.utcnow()},
+    # Toggle behavior: check current state first, then either set or clear.
+    existing = await db.execute(
+        select(ReadingPlanProgress).where(
+            ReadingPlanProgress.plan_id == plan_id,
+            ReadingPlanProgress.date == today,
+            ReadingPlanProgress.reference == reference,
         )
     )
-    await db.execute(stmt)
+    row = existing.scalar_one_or_none()
+
+    if row is None:
+        # Not yet recorded — mark complete.
+        db.add(ReadingPlanProgress(
+            plan_id=plan_id, date=today, reference=reference,
+            completed_at=datetime.utcnow(),
+        ))
+        completed = True
+    elif row.completed_at is not None:
+        # Already completed → toggle back to incomplete.
+        row.completed_at = None
+        completed = False
+    else:
+        # Recorded but not completed → mark complete.
+        row.completed_at = datetime.utcnow()
+        completed = True
+
     await db.commit()
-    return {"completed": True}
+    return {"completed": completed}
 
 
 def _generate_schedule(plan_type: str, start_date: str):

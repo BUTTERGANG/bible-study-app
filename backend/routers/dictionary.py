@@ -14,9 +14,11 @@ async def search_dictionary(
     source: str = Query(default=""),
     db: AsyncSession = Depends(get_db),
 ):
+    # Escape SQL LIKE wildcards in user input to prevent unintended matches
+    escaped = q.replace("%", "\\%").replace("_", "\\_")
     query = (
         select(DictionaryEntry)
-        .where(DictionaryEntry.term.ilike(f"%{q}%"))
+        .where(DictionaryEntry.term.ilike(f"%{escaped}%"))
         .order_by(DictionaryEntry.term)
         .limit(20)
     )

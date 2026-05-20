@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -8,6 +8,9 @@ from .database import Base
 
 class BibleVerse(Base):
     __tablename__ = "bible_verses"
+    __table_args__ = (
+        Index("ix_bible_verses_lookup", "translation", "book", "chapter", "verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     translation: Mapped[str] = mapped_column(String(10), index=True)
@@ -20,6 +23,9 @@ class BibleVerse(Base):
 
 class CommentaryEntry(Base):
     __tablename__ = "commentary_entries"
+    __table_args__ = (
+        Index("ix_commentary_lookup", "book", "chapter", "verse_start"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source: Mapped[str] = mapped_column(String(50), index=True)
@@ -45,6 +51,9 @@ class LexiconEntry(Base):
 
 class GreekWord(Base):
     __tablename__ = "greek_words"
+    __table_args__ = (
+        Index("ix_greek_words_lookup", "book", "chapter", "verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
@@ -60,6 +69,9 @@ class GreekWord(Base):
 
 class HebrewWord(Base):
     __tablename__ = "hebrew_words"
+    __table_args__ = (
+        Index("ix_hebrew_words_lookup", "book", "chapter", "verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)

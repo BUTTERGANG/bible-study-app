@@ -25,6 +25,10 @@ export const useStudyStore = create(
       darkMode: false,
       fontSizeIdx: 1,
 
+      // Compare mode state
+      compareMode: false,
+      compareTranslations: [],
+
       // Verse selection (transient — never persisted).
       selectedVerse: null,
       selectedVerseText: '',
@@ -34,7 +38,7 @@ export const useStudyStore = create(
       setTranslation: (translation) => set({ translation }),
       setVerse: (verse) => set({ verse }),
       selectVerse: (verse, text) =>
-        set({ selectedVerse: verse, selectedVerseText: text, verse }),
+        set({ selectedVerse: verse, selectedVerseText: text }),
 
       setRightPanel: (panel) => set({ rightPanel: panel }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -44,6 +48,8 @@ export const useStudyStore = create(
       toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
       setFontSizeIdx: (idx) =>
         set({ fontSizeIdx: Math.max(0, Math.min(FONT_SIZES.length - 1, idx)) }),
+      toggleCompareMode: () => set((s) => ({ compareMode: !s.compareMode })),
+      setCompareTranslations: (translations) => set({ compareTranslations: translations }),
     }),
     {
       name: 'bible-study-state',

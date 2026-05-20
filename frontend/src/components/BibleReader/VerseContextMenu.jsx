@@ -1,5 +1,8 @@
-import { useEffect, useRef } from 'react'
-import { Bookmark, Copy, Highlighter, Layers, MessageSquare, StickyNote, X } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import {
+  AlertCircle, Bookmark, Copy, Download, Highlighter, Layers, Link,
+  Loader2, MessageSquare, Share2, StickyNote, X,
+} from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -20,6 +23,9 @@ export default function VerseContextMenu({
   const qc = useQueryClient()
   const setRightPanel = useStudyStore((s) => s.setRightPanel)
   const setRightPanelOpen = useStudyStore((s) => s.setRightPanelOpen)
+  const [error, setError] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     function handler(e) {
@@ -34,28 +40,80 @@ export default function VerseContextMenu({
       api.createHighlight({ translation, book, chapter, verse, color }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['highlights', translation, book, chapter] })
+      setError(null)
       onClose()
     },
+    onError: (err) => setError(err.message || 'Failed to save highlight'),
   })
 
   const removeHighlightMutation = useMutation({
     mutationFn: () => api.deleteHighlight(highlightId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['highlights', translation, book, chapter] })
+      setError(null)
       onClose()
     },
+    onError: (err) => setError(err.message || 'Failed to remove highlight'),
   })
 
   const bookmarkMutation = useMutation({
     mutationFn: () => api.createBookmark({ book, chapter, verse }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bookmarks'] })
+      setError(null)
       onClose()
     },
+    onError: (err) => setError(err.message || 'Failed to save bookmark'),
   })
+
+  const isMutating = highlightMutation.isPending || removeHighlightMutation.isPending || bookmarkMutation.isPending
 
   function copyVerse() {
     navigator.clipboard.writeText(`${book} ${chapter}:${verse} — ${text}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  function copyLink() {
+    const url = `${window.location.origin}/${translation}/${book}/${chapter}/${verse}`
+    navigator.clipboard.writeText(url)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 1500)
+  }
+
+  function shareVerse() {
+    const shareData = {
+      title: `${book} ${chapter}:${verse}`,
+      text: `${book} ${chapter}:${verse} — ${text}\n\n${translation}`,
+      url: `${window.location.origin}/${translation}/${book}/${chapter}/${verse}`,
+    }
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => {})
+    } else {
+      copyLink()
+    }
+    onClose()
+  }
+
+  function exportPassage() {
+    const refText = `${book} ${chapter}:${verse}`
+    const content = [
+      `${refText} (${translation})`,
+      '',
+      text,
+      '',
+      `— Exported from LOGOS Bible Study`,
+      `— ${new Date().toLocaleDateString()}`,
+    ].join('\n')
+
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${book}-${chapter}-${verse}.txt`
+    a.click()
+    // Revoke after a tick so the download has time to start
+    setTimeout(() => URL.revokeObjectURL(url), 100)
     onClose()
   }
 
@@ -65,10 +123,13 @@ export default function VerseContextMenu({
     onClose()
   }
 
+  // Measure actual menu size for proper clamping
+  const menuWidth = 208 // w-52 = 13rem = 208px
+  const menuHeight = 380 // generous estimate including error banner
   const style = {
     position: 'fixed',
-    left: Math.min(pos.x, window.innerWidth - 220),
-    top: Math.min(pos.y, window.innerHeight - 280),
+    left: Math.min(pos.x, window.innerWidth - menuWidth - 8),
+    top: Math.min(pos.y, window.innerHeight - menuHeight - 8),
     zIndex: 1000,
   }
 
@@ -82,18 +143,50 @@ export default function VerseContextMenu({
         {book} {chapter}:{verse}
       </div>
 
+      {error && (
+        <div className="mx-2 mt-1.5 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded px-2 py-1.5">
+          <AlertCircle size={12} className="flex-shrink-0" />
+          {error}
+        </div>
+      )}
+
       <button onClick={copyVerse} className="menu-item">
         <Copy size={13} />
-        Copy verse
+        {copied ? 'Copied!' : 'Copy verse'}
       </button>
+
+      <button onClick={copyLink} className="menu-item">
+        <Link size={13} />
+        {linkCopied ? 'Link copied!' : 'Copy link'}
+      </button>
+
+      <button onClick={shareVerse} className="menu-item">
+        <Share2 size={13} />
+        Share verse
+      </button>
+
+      <button onClick={exportPassage} className="menu-item">
+        <Download size={13} />
+        Export passage
+      </button>
+
+      <div className="border-t border-gray-100 dark:border-gray-700" />
 
       <button onClick={() => openPanel('notes')} className="menu-item">
         <StickyNote size={13} />
         Add note
       </button>
 
-      <button onClick={bookmarkMutation.mutate} className="menu-item">
-        <Bookmark size={13} />
+      <button
+        onClick={() => !isMutating && bookmarkMutation.mutate()}
+        disabled={isMutating}
+        className="menu-item"
+      >
+        {isMutating && bookmarkMutation.isPending ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : (
+          <Bookmark size={13} />
+        )}
         Bookmark
       </button>
 
@@ -115,11 +208,17 @@ export default function VerseContextMenu({
           </span>
           {highlightId && (
             <button
-              onClick={() => removeHighlightMutation.mutate()}
+              onClick={() => !isMutating && removeHighlightMutation.mutate()}
+              disabled={isMutating}
               title="Remove highlight"
-              className="text-gray-400 hover:text-red-500 flex items-center gap-0.5"
+              className="text-gray-400 hover:text-red-500 flex items-center gap-0.5 disabled:opacity-40"
             >
-              <X size={11} /> remove
+              {isMutating && removeHighlightMutation.isPending ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : (
+                <X size={11} />
+              )}
+              remove
             </button>
           )}
         </p>
@@ -127,9 +226,14 @@ export default function VerseContextMenu({
           {COLORS.map(({ id, label, cls }) => (
             <button
               key={id}
-              onClick={() => highlightMutation.mutate(id)}
+              onClick={() => !isMutating && highlightMutation.mutate(id)}
+              disabled={isMutating}
               title={label}
-              className={clsx('w-5 h-5 rounded-full border border-white shadow-sm hover:scale-110 transition-transform', cls)}
+              className={clsx(
+                'w-5 h-5 rounded-full border border-white shadow-sm hover:scale-110 transition-transform',
+                cls,
+                isMutating && 'opacity-50 pointer-events-none'
+              )}
             />
           ))}
         </div>

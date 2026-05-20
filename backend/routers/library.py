@@ -21,27 +21,36 @@ router = APIRouter(prefix="/api/library", tags=["library"])
 async def list_books(
     category: str = Query(default=""),
     available_only: bool = Query(default=False),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
 ):
     query = select(LibraryBook).order_by(LibraryBook.category, LibraryBook.title)
     if category:
         query = query.where(LibraryBook.category == category)
+    query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     books = result.scalars().all()
 
+    # Batch check which books have pre-extracted pages (single query vs N)
+    book_ids = [b.id for b in books]
+    if book_ids:
+        page_check = await db.execute(
+            select(LibraryPage.book_id)
+            .where(LibraryPage.book_id.in_(book_ids))
+            .distinct()
+        )
+        has_pages = set(page_check.scalars().all())
+    else:
+        has_pages = set()
+
     items = []
     for b in books:
-        # A book is available if its pages have been pre-extracted to the
-        # library_pages table, or if PyMuPDF + the source file are both present.
-        has_pages = bool(b.page_count) and b.page_count > 0
-        on_disk = bool(b.source_path) and os.path.exists(b.source_path)
-        available = has_pages and (on_disk or b.source_format != "pdf" or False)
-        # Even without on-disk PDF, if pages are pre-extracted, we can serve.
-        pre_extracted = await db.execute(
-            select(LibraryPage.id).where(LibraryPage.book_id == b.id).limit(1)
-        )
-        if pre_extracted.scalar_one_or_none() is not None:
+        if b.id in has_pages:
             available = True
+        else:
+            on_disk = bool(b.source_path) and os.path.exists(b.source_path)
+            available = on_disk and (_FITZ_OK or b.source_format != "pdf")
         if available_only and not available:
             continue
         items.append({

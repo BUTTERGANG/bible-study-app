@@ -1,11 +1,13 @@
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronLeft, ChevronRight, Menu, Moon, PanelRightClose, PanelRightOpen,
-  Search, Sun,
+  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, Layers, Menu, Moon,
+  PanelRightClose, PanelRightOpen, Search, Sun, X,
 } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
 import { api } from '../../api/client'
+import clsx from 'clsx'
 
 const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 'BSB', 'LEB']
 
@@ -17,8 +19,13 @@ export default function TopBar({ onSearch }) {
     rightPanelOpen, toggleRightPanel,
     darkMode, toggleDarkMode,
     fontSizeIdx, setFontSizeIdx,
+    compareMode, toggleCompareMode,
+    compareTranslations, setCompareTranslations,
+    interlinearMode, toggleInterlinear,
   } = useStudyStore()
   const qc = useQueryClient()
+  const [comparePickerOpen, setComparePickerOpen] = useState(false)
+  const pickerRef = useRef(null)
 
   const { data: transData } = useQuery({
     queryKey: ['translations'],
@@ -44,7 +51,6 @@ export default function TopBar({ onSearch }) {
     if (chapter < maxChapter) setReference(book, chapter + 1)
   }
 
-  // Share the same cache entry as the `useQuery` above so we don't double-fetch.
   async function handleTranslationChange(newTranslation) {
     setTranslation(newTranslation)
     try {
@@ -63,6 +69,39 @@ export default function TopBar({ onSearch }) {
       /* leave user on current book; reader will surface a friendly 404 */
     }
   }
+
+  function handleToggleCompare() {
+    toggleCompareMode()
+    if (!compareMode && compareTranslations.length === 0) {
+      // Default: current translation + KJV if different
+      const defaults = [translation, translation !== 'KJV' ? 'KJV' : 'ASV']
+      setCompareTranslations(defaults)
+    }
+    setComparePickerOpen(false)
+  }
+
+  function toggleCompareTranslation(t) {
+    if (compareTranslations.includes(t)) {
+      if (compareTranslations.length > 1) {
+        setCompareTranslations(compareTranslations.filter((tr) => tr !== t))
+      }
+    } else {
+      setCompareTranslations([...compareTranslations, t])
+    }
+  }
+
+  // Close picker on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setComparePickerOpen(false)
+      }
+    }
+    if (comparePickerOpen) {
+      document.addEventListener('mousedown', handler)
+      return () => document.removeEventListener('mousedown', handler)
+    }
+  }, [comparePickerOpen])
 
   return (
     <div className="h-12 bg-slate-800 flex items-center px-3 gap-3 flex-shrink-0 shadow-md">
@@ -105,17 +144,125 @@ export default function TopBar({ onSearch }) {
 
       <div className="w-px h-6 bg-slate-600" />
 
-      <select
-        value={translation}
-        onChange={(e) => handleTranslationChange(e.target.value)}
-        className="bg-slate-700 text-white text-xs border border-slate-600 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+      {!compareMode && (
+        <select
+          value={translation}
+          onChange={(e) => handleTranslationChange(e.target.value)}
+          className="bg-slate-700 text-white text-xs border border-slate-600 rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+        >
+          {translations.map((t) => (
+            <option key={t} value={t}>
+              {t === 'OEB' ? 'OEB (NT only)' : t}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {/* Interlinear toggle */}
+      <button
+        onClick={toggleInterlinear}
+        className={clsx(
+          'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
+          interlinearMode
+            ? 'bg-green-600 text-white border-green-500 hover:bg-green-700'
+            : 'text-slate-300 border-slate-600 hover:text-white hover:border-slate-500'
+        )}
+        title={interlinearMode ? 'Exit interlinear mode' : 'Show interlinear text'}
       >
-        {translations.map((t) => (
-          <option key={t} value={t}>
-            {t === 'OEB' ? 'OEB (NT only)' : t}
-          </option>
-        ))}
-      </select>
+        <Layers size={14} />
+        <span className="hidden sm:block">Interlinear</span>
+      </button>
+
+      {/* Compare button */}
+      <div className="relative" ref={pickerRef}>
+        <button
+          onClick={handleToggleCompare}
+          className={clsx(
+            'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
+            compareMode
+              ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-700'
+              : 'text-slate-300 border-slate-600 hover:text-white hover:border-slate-500'
+          )}
+          title={compareMode ? 'Exit compare mode' : 'Compare translations'}
+        >
+          <Columns2 size={14} />
+          <span className="hidden sm:block">{compareMode ? 'Comparing' : 'Compare'}</span>
+          {compareMode && (
+            <span className="bg-blue-500 text-white text-[10px] rounded-full px-1.5 py-0.5 ml-0.5">
+              {compareTranslations.length}
+            </span>
+          )}
+        </button>
+
+        {/* Compare picker dropdown */}
+        {comparePickerOpen && !compareMode && (
+          <div className="absolute top-full left-0 mt-1 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 py-2">
+            <div className="px-3 py-1.5 text-xs text-slate-400 font-semibold border-b border-slate-700 flex items-center justify-between">
+              <span>Select translations to compare</span>
+              <button onClick={() => setComparePickerOpen(false)} className="text-slate-500 hover:text-white">
+                <X size={12} />
+              </button>
+            </div>
+            <div className="max-h-60 overflow-y-auto py-1">
+              {translations.map((t) => {
+                const isSelected = compareTranslations.includes(t)
+                return (
+                  <button
+                    key={t}
+                    onClick={() => toggleCompareTranslation(t)}
+                    className={clsx(
+                      'w-full text-left px-3 py-1.5 text-xs flex items-center justify-between hover:bg-slate-700 transition-colors',
+                      isSelected ? 'text-blue-400' : 'text-slate-300'
+                    )}
+                  >
+                    <span>{t === 'OEB' ? 'OEB (NT only)' : t}</span>
+                    {isSelected && <span className="text-blue-400 text-[10px]">✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="px-3 pt-2 border-t border-slate-700">
+              <button
+                onClick={handleToggleCompare}
+                disabled={compareTranslations.length < 2}
+                className="w-full text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:hover:bg-blue-600 text-white rounded py-1.5 transition-colors"
+              >
+                Compare {compareTranslations.length} translation{compareTranslations.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active compare translation toggles */}
+        {compareMode && (
+          <div className="absolute top-full left-0 mt-1 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 py-2">
+            <div className="px-3 py-1.5 text-xs text-slate-400 font-semibold border-b border-slate-700 flex items-center justify-between">
+              <span>Comparing {compareTranslations.length} translations</span>
+              <button onClick={toggleCompareMode} className="text-slate-500 hover:text-red-400" title="Exit compare mode">
+                <X size={12} />
+              </button>
+            </div>
+            <div className="max-h-60 overflow-y-auto py-1">
+              {translations.map((t) => {
+                const isSelected = compareTranslations.includes(t)
+                return (
+                  <button
+                    key={t}
+                    onClick={() => toggleCompareTranslation(t)}
+                    className={clsx(
+                      'w-full text-left px-3 py-1.5 text-xs flex items-center justify-between hover:bg-slate-700 transition-colors',
+                      isSelected ? 'text-blue-400' : 'text-slate-500'
+                    )}
+                  >
+                    <span>{t === 'OEB' ? 'OEB (NT only)' : t}</span>
+                    {isSelected && <span className="text-blue-400 text-[10px]">✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="flex-1" />
 
