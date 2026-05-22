@@ -19,34 +19,38 @@ export function useStreamingAI(endpoint, bodyFor) {
       if (!text.trim() || streaming) return
       const userMsg = { role: 'user', content: text }
       const aiMsg = { role: 'assistant', content: '', error: null }
-      setMessages((prev) => [...prev, userMsg, aiMsg])
-      setStreaming(true)
+      setMessages((prev) => {
+        // Build history from the previous state (always fresh) before appending
+        const history = prev
+          .filter((m) => !m.error)
+          .map((m) => ({ role: m.role, content: m.content }))
 
-      const history = messages
-        .filter((m) => !m.error)
-        .map((m) => ({ role: m.role, content: m.content }))
-
-      stopRef.current = streamAI(
-        endpoint,
-        bodyFor(text, history),
-        (chunk) => {
-          setMessages((prev) => {
-            const last = prev[prev.length - 1]
-            return [...prev.slice(0, -1), { ...last, content: last.content + chunk }]
-          })
-        },
-        (err) => {
-          if (err) {
-            setMessages((prev) => {
-              const last = prev[prev.length - 1]
-              return [...prev.slice(0, -1), { ...last, error: err.message || String(err) }]
+        // Kick off the stream with the correct history
+        stopRef.current = streamAI(
+          endpoint,
+          bodyFor(text, history),
+          (chunk) => {
+            setMessages((p) => {
+              const last = p[p.length - 1]
+              return [...p.slice(0, -1), { ...last, content: last.content + chunk }]
             })
+          },
+          (err) => {
+            if (err) {
+              setMessages((p) => {
+                const last = p[p.length - 1]
+                return [...p.slice(0, -1), { ...last, error: err.message || String(err) }]
+              })
+            }
+            setStreaming(false)
           }
-          setStreaming(false)
-        }
-      )
+        )
+
+        return [...prev, userMsg, aiMsg]
+      })
+      setStreaming(true)
     },
-    [endpoint, bodyFor, messages, streaming]
+    [endpoint, bodyFor, streaming]
   )
 
   const stop = useCallback(() => {

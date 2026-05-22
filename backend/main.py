@@ -34,6 +34,7 @@ from .routers import (
     bookmarks,
     commentary,
     dictionary,
+    factbook,
     health,
     highlights,
     lexicon,
@@ -106,6 +107,9 @@ app.include_router(reading_plans.router, dependencies=_protected)
 
 # AI router carries its own dependencies (auth + rate limit) at the router level.
 app.include_router(ai.router)
+
+# Factbook router carries its own dependencies (auth + rate limit).
+app.include_router(factbook.router)
 
 
 # SPA static files. Only mounted when the frontend has been built — keeps

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from ..database import get_db
-from ..models import BibleVerse
+from ..models import BibleVerse, GreekWord, HebrewWord
 from ..bible_data import BOOKS, resolve_book_name
 
 router = APIRouter(prefix="/api/bible", tags=["bible"])
@@ -133,6 +133,82 @@ async def get_chapter(
         "book": canonical,
         "chapter": chapter,
         "verses": [{"verse": v.verse, "text": v.text} for v in verses],
+    }
+
+
+@router.get("/{translation}/{book}/{chapter}/interlinear")
+async def get_chapter_interlinear(
+    translation: str,
+    book: str,
+    chapter: int,
+    db: AsyncSession = Depends(get_db),
+):
+    canonical = resolve_book_name(book)
+    if not canonical:
+        raise HTTPException(status_code=404, detail=f"Book not found: {book}")
+
+    canonical_t = await resolve_translation(translation, db)
+
+    # Determine testament from book number to pick the right word table
+    book_num = None
+    for i, (bn, bname) in enumerate(BOOKS):
+        if bname == canonical:
+            book_num = i
+            break
+
+    is_nt = book_num is not None and book_num >= 39
+
+    # Single query: fetch words with verse number, grouped in Python
+    if is_nt:
+        result = await db.execute(
+            select(GreekWord)
+            .where(
+                GreekWord.book == canonical,
+                GreekWord.chapter == chapter,
+            )
+            .order_by(GreekWord.verse, GreekWord.word_position)
+        )
+        words = result.scalars().all()
+        verses_map = {}
+        for w in words:
+            verses_map.setdefault(w.verse, []).append({
+                "position": w.word_position,
+                "original": w.greek,
+                "transliteration": w.transliteration or "",
+                "morphology": w.morphology or "",
+                "strongs": w.strongs_num or "",
+                "gloss": w.english_gloss or "",
+            })
+    else:
+        result = await db.execute(
+            select(HebrewWord)
+            .where(
+                HebrewWord.book == canonical,
+                HebrewWord.chapter == chapter,
+            )
+            .order_by(HebrewWord.verse, HebrewWord.word_position)
+        )
+        words = result.scalars().all()
+        verses_map = {}
+        for w in words:
+            verses_map.setdefault(w.verse, []).append({
+                "position": w.word_position,
+                "original": w.hebrew,
+                "transliteration": w.transliteration or "",
+                "morphology": w.morphology or "",
+                "strongs": w.strongs_num or "",
+                "gloss": w.english_gloss or "",
+            })
+
+    return {
+        "translation": canonical_t,
+        "book": canonical,
+        "chapter": chapter,
+        "language": "greek" if is_nt else "hebrew",
+        "verses": [
+            {"verse": v, "words": ws}
+            for v, ws in sorted(verses_map.items())
+        ],
     }
 
 

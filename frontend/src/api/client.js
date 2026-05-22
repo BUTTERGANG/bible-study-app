@@ -12,8 +12,8 @@ async function request(path, init = {}) {
     ...init,
     headers: {
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...authHeaders(),
       ...(init.headers || {}),
+      ...authHeaders(),
     },
   })
   if (!res.ok) {
@@ -59,13 +59,26 @@ export const api = {
 
   // Commentary
   getCommentarySources: () => get('/commentary/sources'),
-  getVerseCommentary: (book, chapter, verse) =>
-    get(`/commentary/${encodeURIComponent(book)}/${chapter}/${verse}`),
+  getVerseCommentary: (book, chapter, verse, sources) => {
+    const params = new URLSearchParams()
+    if (sources) params.set('sources', sources)
+    const qs = params.toString()
+    return get(`/commentary/${encodeURIComponent(book)}/${chapter}/${verse}${qs ? '?' + qs : ''}`)
+  },
 
   // Notes — verse is optional (chapter-level notes have no verse).
-  getNotes: (book, chapter, verse) => {
-    const params = new URLSearchParams({ book, chapter: String(chapter) })
+  // Omit book/chapter to get all notes. Pass tag to filter by tag.
+  getNotes: (book, chapter, verse, tag) => {
+    const params = new URLSearchParams()
+    if (book != null) params.set('book', book)
+    if (chapter != null) params.set('chapter', String(chapter))
     if (verse != null) params.set('verse', String(verse))
+    if (tag != null) params.set('tag', tag)
+    return get(`/notes?${params}`)
+  },
+  getAllNotes: (tag) => {
+    const params = new URLSearchParams()
+    if (tag != null) params.set('tag', tag)
     return get(`/notes?${params}`)
   },
   createNote: (data) => post('/notes', data),
@@ -112,8 +125,35 @@ export const api = {
   getBookPage: (id, page) => get(`/library/books/${id}/page/${page}`),
   getBookToc: (id) => get(`/library/books/${id}/toc`),
 
+  // Interlinear
+  getChapterInterlinear: (translation, book, chapter) =>
+    get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/interlinear`),
+
+  // Factbook
+  getFactbookEntry: (entityName, entityType, refresh = false) => {
+    const params = new URLSearchParams()
+    if (entityType) params.set('entity_type', entityType)
+    if (refresh) params.set('refresh', 'true')
+    const qs = params.toString()
+    return get(`/factbook/${encodeURIComponent(entityName)}${qs ? '?' + qs : ''}`)
+  },
+  listFactbookEntries: (entityType, search, limit = 50, offset = 0) => {
+    const params = new URLSearchParams()
+    if (entityType) params.set('entity_type', entityType)
+    if (search) params.set('search', search)
+    params.set('limit', String(limit))
+    params.set('offset', String(offset))
+    return get(`/factbook?${params}`)
+  },
+  generateFactbookEntry: (entityName, entityType = 'person') =>
+    post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
+
   // Dictionary
-  searchDictionary: (q) => get(`/dictionary/search?q=${encodeURIComponent(q)}`),
+  searchDictionary: (q, source) => {
+    const params = new URLSearchParams({ q })
+    if (source) params.set('source', source)
+    return get(`/dictionary/search?${params}`)
+  },
   getDictionaryEntry: (source, term) =>
     get(`/dictionary/${source}/${encodeURIComponent(term)}`),
 }

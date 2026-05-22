@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -8,6 +8,9 @@ from .database import Base
 
 class BibleVerse(Base):
     __tablename__ = "bible_verses"
+    __table_args__ = (
+        Index("ix_bible_verses_lookup", "translation", "book", "chapter", "verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     translation: Mapped[str] = mapped_column(String(10), index=True)
@@ -20,6 +23,9 @@ class BibleVerse(Base):
 
 class CommentaryEntry(Base):
     __tablename__ = "commentary_entries"
+    __table_args__ = (
+        Index("ix_commentary_lookup", "book", "chapter", "verse_start"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source: Mapped[str] = mapped_column(String(50), index=True)
@@ -45,6 +51,9 @@ class LexiconEntry(Base):
 
 class GreekWord(Base):
     __tablename__ = "greek_words"
+    __table_args__ = (
+        Index("ix_greek_words_lookup", "book", "chapter", "verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
@@ -60,6 +69,9 @@ class GreekWord(Base):
 
 class HebrewWord(Base):
     __tablename__ = "hebrew_words"
+    __table_args__ = (
+        Index("ix_hebrew_words_lookup", "book", "chapter", "verse"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
@@ -189,3 +201,20 @@ class LibraryPage(Base):
     book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id"), index=True)
     page_num: Mapped[int] = mapped_column(Integer, index=True)
     text: Mapped[str] = mapped_column(Text)
+
+
+class FactbookEntry(Base):
+    """AI-generated encyclopedia entries for biblical people, places, themes, and events."""
+    __tablename__ = "factbook_entries"
+    __table_args__ = (
+        UniqueConstraint("entity_name", "entity_type", name="uq_factbook_entity"),
+        Index("ix_factbook_name", "entity_name"),
+        Index("ix_factbook_type", "entity_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    entity_name: Mapped[str] = mapped_column(String(200), index=True)
+    entity_type: Mapped[str] = mapped_column(String(20), index=True)  # person, place, theme, event
+    content: Mapped[str] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

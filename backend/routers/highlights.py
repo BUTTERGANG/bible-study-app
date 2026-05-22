@@ -84,6 +84,8 @@ async def get_chapter_highlights(
 
 @router.delete("/{highlight_id}")
 async def delete_highlight(highlight_id: int, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Highlight).where(Highlight.id == highlight_id))
+    result = await db.execute(delete(Highlight).where(Highlight.id == highlight_id))
     await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Highlight not found")
     return {"ok": True}

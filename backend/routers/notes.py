@@ -62,20 +62,29 @@ async def create_note(body: NoteCreate, db: AsyncSession = Depends(get_db)):
 
 @router.get("")
 async def list_notes(
-    book: str,
-    chapter: int,
+    book: Optional[str] = None,
+    chapter: Optional[int] = None,
     verse: Optional[int] = None,
+    tag: Optional[str] = None,
+    offset: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_db),
 ):
-    canonical = resolve_book_name(book)
-    if not canonical:
-        raise HTTPException(status_code=400, detail=f"Unknown book: {book}")
-    query = select(Note).where(Note.book == canonical, Note.chapter == chapter)
+    query = select(Note)
+    if book is not None:
+        canonical = resolve_book_name(book)
+        if not canonical:
+            raise HTTPException(status_code=400, detail=f"Unknown book: {book}")
+        query = query.where(Note.book == canonical)
+    if chapter is not None:
+        query = query.where(Note.chapter == chapter)
     if verse is not None:
         query = query.where(Note.verse == verse)
-    query = query.order_by(Note.created_at)
+    if tag is not None:
+        query = query.where(Note.tags.ilike(f"%{tag}%"))
+    query = query.order_by(Note.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
-    return {"notes": [_note_dict(n) for n in result.scalars().all()]}
+    return {"notes": [_note_dict(n) for n in result.scalars().all()], "offset": offset, "limit": limit}
 
 
 @router.put("/{note_id}")
@@ -95,6 +104,8 @@ async def update_note(note_id: int, body: NoteUpdate, db: AsyncSession = Depends
 
 @router.delete("/{note_id}")
 async def delete_note(note_id: int, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Note).where(Note.id == note_id))
+    result = await db.execute(delete(Note).where(Note.id == note_id))
     await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Note not found")
     return {"ok": True}

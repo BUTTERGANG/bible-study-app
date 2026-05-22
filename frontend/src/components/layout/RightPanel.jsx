@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Layers, MessageSquare, StickyNote } from 'lucide-react'
+import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, MessageSquare, StickyNote, Church, BookMarked } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -9,12 +9,26 @@ const CommentaryPanel = lazy(() => import('../CommentaryPanel/CommentaryPanel'))
 const AIAssistant = lazy(() => import('../AIAssistant/AIAssistant'))
 const NotesPanel = lazy(() => import('../Notes/NotesPanel'))
 const WordStudyPanel = lazy(() => import('../WordStudy/WordStudyPanel'))
+const BookmarksPanel = lazy(() => import('../Bookmarks/BookmarksPanel'))
+const ReadingPlansPanel = lazy(() => import('../ReadingPlans/ReadingPlansPanel'))
+const DictionaryPanel = lazy(() => import('../Dictionary/DictionaryPanel'))
+const CrossReferencePanel = lazy(() => import('../CrossReference/CrossReferencePanel'))
+const SermonAssistant = lazy(() => import('../SermonAssistant/SermonAssistant'))
+const FactbookPanel = lazy(() => import('../Factbook/FactbookPanel'))
+const LibraryReader = lazy(() => import('../Library/LibraryReader'))
 
 const TABS = [
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
+  { id: 'cross-ref', label: 'Cross-Ref', icon: Cross },
+  { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
   { id: 'ai', label: 'AI Study', icon: MessageSquare },
+  { id: 'sermon', label: 'Sermon', icon: Church },
+  { id: 'factbook', label: 'Factbook', icon: BookMarked },
   { id: 'notes', label: 'Notes', icon: StickyNote },
   { id: 'word-study', label: 'Words', icon: Layers },
+  { id: 'library', label: 'Library', icon: Library },
+  { id: 'bookmarks', label: 'Saved', icon: Bookmark },
+  { id: 'reading', label: 'Plans', icon: Calendar },
 ]
 
 function PanelSkeleton() {
@@ -49,9 +63,16 @@ export default function RightPanel() {
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<PanelSkeleton />}>
           {rightPanel === 'commentary' && <CommentaryPanel />}
+          {rightPanel === 'cross-ref' && <CrossReferencePanel />}
+          {rightPanel === 'dictionary' && <DictionaryPanel />}
           {rightPanel === 'ai' && <AIAssistant />}
+          {rightPanel === 'sermon' && <SermonAssistant />}
+          {rightPanel === 'factbook' && <FactbookPanel />}
           {rightPanel === 'notes' && <NotesPanel />}
           {rightPanel === 'word-study' && <WordStudyPanel />}
+          {rightPanel === 'library' && <LibraryReader />}
+          {rightPanel === 'bookmarks' && <BookmarksPanel />}
+          {rightPanel === 'reading' && <ReadingPlansPanel />}
         </Suspense>
       </div>
     </div>

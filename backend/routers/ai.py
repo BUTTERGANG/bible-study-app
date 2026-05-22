@@ -100,6 +100,15 @@ class CrossRefRequest(BaseModel):
     verse_text: str
 
 
+class SermonRequest(BaseModel):
+    passage: str
+    audience: Optional[str] = "general"
+    key_themes: Optional[List[str]] = None
+    translation: Optional[str] = "KJV"
+    verse_text: Optional[str] = None
+    chapter_text: Optional[str] = None
+
+
 def _system_blocks(reference: Optional[str], translation: Optional[str]) -> list:
     """Build a cacheable system prompt. The expertise block (large, stable) is
     marked with ephemeral cache_control; the per-request line about the
@@ -310,3 +319,96 @@ Format as a clean list."""
         messages=[{"role": "user", "content": prompt}],
     )
     return {"cross_references": response.content[0].text, "reference": body.reference}
+
+
+SERMON_AUDIENCE_GUIDE = {
+    "general": "a general congregation of mixed ages and backgrounds",
+    "youth": "teenagers and young adults (ages 13-22)",
+    "men": "a men's group or men's Bible study",
+    "women": "a women's group or women's Bible study",
+    "seniors": "an older, mature congregation",
+    "seekers": "people exploring Christianity for the first time",
+}
+
+
+@router.post("/sermon")
+async def generate_sermon(body: SermonRequest):
+    audience_desc = SERMON_AUDIENCE_GUIDE.get(body.audience, SERMON_AUDIENCE_GUIDE["general"])
+    themes_line = ""
+    if body.key_themes:
+        themes_line = f"\nKey themes to emphasize: {', '.join(body.key_themes)}"
+
+    context_blocks = []
+    if body.verse_text:
+        context_blocks.append(f"**{body.passage} ({body.translation})**\n> {body.verse_text}")
+    if body.chapter_text:
+        context_blocks.append(f"Full chapter context:\n{body.chapter_text}")
+
+    context_section = ""
+    if context_blocks:
+        context_section = "\n\n---\nSCRIPTURE CONTEXT:\n" + "\n\n".join(context_blocks) + "\n---"
+
+    prompt = f"""You are an experienced pastor and sermon preparation assistant. Create a complete, ready-to-deliver sermon on **{body.passage}** for {audience_desc}.{themes_line}{context_section}
+
+Structure the sermon as follows (use markdown formatting):
+
+## Sermon Title
+A compelling, memorable title for this sermon.
+
+## Introduction
+- A hook or opening illustration that grabs attention
+- Bridge from the hook to the text
+- Thesis statement: the main point of the sermon
+
+## Main Points
+
+### Point 1: [Title]
+- **Key Verse(s):** [supporting references]
+- **Explanation:** Clear explanation of the biblical teaching
+- **Illustration:** A story, analogy, or real-life example
+- **Application:** How this applies to daily life
+
+### Point 2: [Title]
+- **Key Verse(s):** [supporting references]
+- **Explanation:** Clear explanation of the biblical teaching
+- **Illustration:** A story, analogy, or real-life example
+- **Application:** How this applies to daily life
+
+### Point 3: [Title]
+- **Key Verse(s):** [supporting references]
+- **Explanation:** Clear explanation of the biblical teaching
+- **Illustration:** A story, analogy, or real-life example
+- **Application:** How this applies to daily life
+
+(Add Point 4 and Point 5 if the passage warrants it)
+
+## Discussion Questions
+Provide 4-6 thought-provoking questions for small group discussion or personal reflection:
+1. ...
+2. ...
+3. ...
+
+## Conclusion
+- Summary of the main message
+- A call to action or response
+- A closing illustration or story
+- A prayer or benediction
+
+## Additional Illustrations
+2-3 extra illustrations or stories that could be swapped in or used for a different audience.
+
+Make the sermon practical, biblically faithful, and engaging. Write as if the pastor will read or preach this directly. Use warm, pastoral language."""
+
+    system_blocks = _system_blocks(body.passage, body.translation)
+    system_blocks.append({
+        "type": "text",
+        "text": f"\nThe user is requesting a sermon for {audience_desc} on {body.passage}.",
+    })
+
+    return _stream_response(
+        lambda: _stream_text(
+            system=system_blocks,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4000,
+        )
+    )

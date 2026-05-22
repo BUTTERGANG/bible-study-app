@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { MessageSquare, Send, Square } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 import { useStudyStore } from '../../stores/studyStore'
 import { useStreamingAI } from '../../hooks/useStreamingAI'
 import clsx from 'clsx'
@@ -55,7 +56,7 @@ export default function AIAssistant() {
       const chapterCache = qc.getQueryData(['chapter', translation, book, chapter])
       const chapterText = chapterCache?.verses
         ?.map((v) => `${v.verse}. ${v.text}`)
-        .join('\n')
+        .join('\n') || ''
       return {
         question: prompt,
         reference,
@@ -154,7 +155,7 @@ export default function AIAssistant() {
           >
             {msg.role === 'assistant' && !msg.error ? (
               <>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={MARKDOWN_COMPONENTS}>
                   {msg.content}
                 </ReactMarkdown>
                 {streaming && i === messages.length - 1 && (

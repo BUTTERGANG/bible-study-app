@@ -51,13 +51,21 @@ async def create_bookmark(body: BookmarkCreate, db: AsyncSession = Depends(get_d
 
 
 @router.get("")
-async def list_bookmarks(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Bookmark).order_by(Bookmark.created_at.desc()))
-    return {"bookmarks": [_bookmark_dict(b) for b in result.scalars().all()]}
+async def list_bookmarks(
+    offset: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Bookmark).order_by(Bookmark.created_at.desc()).offset(offset).limit(limit)
+    )
+    return {"bookmarks": [_bookmark_dict(b) for b in result.scalars().all()], "offset": offset, "limit": limit}
 
 
 @router.delete("/{bookmark_id}")
 async def delete_bookmark(bookmark_id: int, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
+    result = await db.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
     await db.commit()
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
     return {"ok": True}
