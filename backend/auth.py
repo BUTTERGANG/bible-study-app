@@ -1,19 +1,85 @@
-"""Optional shared-secret authentication.
+"""JWT + legacy APP_PASSWORD authentication.
 
-If `APP_PASSWORD` is unset, the dependency is a no-op (dev mode). When set,
-requests to protected endpoints must include
-`Authorization: Bearer <APP_PASSWORD>` or the equivalent `X-App-Password`
-header. The frontend stores the secret in localStorage after the user enters
-it once.
-
-This is intentionally simple — single-user / family-share use case. Replace
-with proper user auth if multi-tenancy becomes a requirement.
+Priority order in get_current_user:
+  1. Bearer token == APP_PASSWORD → legacy mode (user_id=0)
+  2. Bearer token is a valid JWT → real user account
+  3. No APP_PASSWORD set → open mode (user_id=0)
+  4. Auth required but no valid creds → HTTP 401
 """
 
 import os
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .database import get_db
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-change-this-in-production-please")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+@dataclass
+class CurrentUser:
+    id: int              # 0 = legacy/open mode sentinel
+    email: Optional[str]
+    is_legacy: bool
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def create_access_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode(
+        {"sub": str(user_id), "type": "access", "exp": expire},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+
+def create_refresh_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    return jwt.encode(
+        {"sub": str(user_id), "type": "refresh", "exp": expire},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+
+def decode_token(token: str, expected_type: str) -> int:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    if payload.get("type") != expected_type:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Wrong token type",
+        )
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    return int(sub)
 
 
 def _expected_secret() -> Optional[str]:
@@ -21,25 +87,55 @@ def _expected_secret() -> Optional[str]:
     return secret or None
 
 
-async def require_app_password(
-    authorization: Optional[str] = Header(default=None),
-    x_app_password: Optional[str] = Header(default=None),
-) -> None:
-    expected = _expected_secret()
-    if not expected:
-        return  # auth disabled — open dev mode
-
-    provided = x_app_password
-    if authorization and authorization.lower().startswith("bearer "):
-        provided = authorization.split(" ", 1)[1].strip()
-
-    if not provided or provided != expected:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid app password",
-            headers={"WWW-Authenticate": 'Bearer realm="bible-study"'},
-        )
-
-
 def auth_is_enabled() -> bool:
     return _expected_secret() is not None
+
+
+async def get_current_user(
+    authorization: Optional[str] = Header(default=None),
+    x_app_password: Optional[str] = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUser:
+    from sqlalchemy import select
+    from .models import User
+
+    token: Optional[str] = x_app_password
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+
+    app_password = _expected_secret()
+
+    # 1. Exact match with APP_PASSWORD → legacy mode
+    if token and app_password and token == app_password:
+        return CurrentUser(id=0, email=None, is_legacy=True)
+
+    # 2. Try JWT decode (only if token doesn't look like the app password)
+    if token:
+        try:
+            user_id = decode_token(token, "access")
+            result = await db.execute(
+                select(User).where(User.id == user_id, User.is_active == True)
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                return CurrentUser(id=user.id, email=user.email, is_legacy=False)
+        except HTTPException:
+            pass
+
+    # 3. No auth enforced → open mode
+    if not app_password:
+        return CurrentUser(id=0, email=None, is_legacy=True)
+
+    # 4. Auth required, no valid creds → 401
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": 'Bearer realm="bible-study"'},
+    )
+
+
+async def require_app_password(
+    user: "CurrentUser" = Depends(get_current_user),
+) -> None:
+    """Backward-compatibility shim. Auth enforcement is in get_current_user."""
+    pass

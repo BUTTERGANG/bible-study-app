@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth import CurrentUser, get_current_user
 from ..bible_data import resolve_book_name
 from ..database import get_db
 from ..models import Bookmark
@@ -34,11 +35,16 @@ def _bookmark_dict(b: Bookmark) -> dict:
 
 
 @router.post("")
-async def create_bookmark(body: BookmarkCreate, db: AsyncSession = Depends(get_db)):
+async def create_bookmark(
+    body: BookmarkCreate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
     canonical = resolve_book_name(body.book)
     if not canonical:
         raise HTTPException(status_code=400, detail=f"Unknown book: {body.book}")
     bm = Bookmark(
+        user_id=user.id,
         book=canonical,
         chapter=body.chapter,
         verse=body.verse,
@@ -55,16 +61,27 @@ async def list_bookmarks(
     offset: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Bookmark).order_by(Bookmark.created_at.desc()).offset(offset).limit(limit)
+        select(Bookmark)
+        .where(Bookmark.user_id == user.id)
+        .order_by(Bookmark.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     return {"bookmarks": [_bookmark_dict(b) for b in result.scalars().all()], "offset": offset, "limit": limit}
 
 
 @router.delete("/{bookmark_id}")
-async def delete_bookmark(bookmark_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(delete(Bookmark).where(Bookmark.id == bookmark_id))
+async def delete_bookmark(
+    bookmark_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    result = await db.execute(
+        delete(Bookmark).where(Bookmark.id == bookmark_id, Bookmark.user_id == user.id)
+    )
     await db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Bookmark not found")

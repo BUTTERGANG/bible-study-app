@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, MessageSquare, StickyNote, Church, BookMarked } from 'lucide-react'
+import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -16,10 +16,14 @@ const CrossReferencePanel = lazy(() => import('../CrossReference/CrossReferenceP
 const SermonAssistant = lazy(() => import('../SermonAssistant/SermonAssistant'))
 const FactbookPanel = lazy(() => import('../Factbook/FactbookPanel'))
 const LibraryReader = lazy(() => import('../Library/LibraryReader'))
+const NtOtPanel = lazy(() => import('../NtOt/NtOtPanel'))
+const TimelinePanel = lazy(() => import('../Timeline/TimelinePanel'))
+const MapPanel = lazy(() => import('../Maps/MapPanel'))
 
 const TABS = [
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
   { id: 'cross-ref', label: 'Cross-Ref', icon: Cross },
+  { id: 'nt-ot', label: 'NT-OT', icon: Link2 },
   { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
   { id: 'ai', label: 'AI Study', icon: MessageSquare },
   { id: 'sermon', label: 'Sermon', icon: Church },
@@ -29,6 +33,8 @@ const TABS = [
   { id: 'library', label: 'Library', icon: Library },
   { id: 'bookmarks', label: 'Saved', icon: Bookmark },
   { id: 'reading', label: 'Plans', icon: Calendar },
+  { id: 'timeline', label: 'Timeline', icon: Clock },
+  { id: 'maps', label: 'Maps', icon: Map },
 ]
 
 function PanelSkeleton() {
@@ -64,6 +70,7 @@ export default function RightPanel() {
         <Suspense fallback={<PanelSkeleton />}>
           {rightPanel === 'commentary' && <CommentaryPanel />}
           {rightPanel === 'cross-ref' && <CrossReferencePanel />}
+          {rightPanel === 'nt-ot' && <NtOtPanel />}
           {rightPanel === 'dictionary' && <DictionaryPanel />}
           {rightPanel === 'ai' && <AIAssistant />}
           {rightPanel === 'sermon' && <SermonAssistant />}
@@ -73,6 +80,8 @@ export default function RightPanel() {
           {rightPanel === 'library' && <LibraryReader />}
           {rightPanel === 'bookmarks' && <BookmarksPanel />}
           {rightPanel === 'reading' && <ReadingPlansPanel />}
+          {rightPanel === 'timeline' && <TimelinePanel />}
+          {rightPanel === 'maps' && <MapPanel />}
         </Suspense>
       </div>
     </div>

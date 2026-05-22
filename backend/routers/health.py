@@ -6,6 +6,7 @@ from ..database import db_status
 router = APIRouter(tags=["health"])
 
 
+
 @router.get("/api/health")
 async def health():
     status = await db_status()
@@ -19,5 +20,10 @@ async def health():
 
 @router.get("/api/auth/status")
 async def auth_status():
-    """Lets the frontend know whether to prompt for a password on first load."""
-    return {"required": auth_is_enabled()}
+    """Lets the frontend know which auth mode is active."""
+    legacy = auth_is_enabled()
+    return {
+        "required": legacy,
+        "user_accounts_enabled": True,
+        "legacy_auth": legacy,
+    }

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth import CurrentUser, get_current_user
 from ..bible_data import resolve_book_name
 from ..database import get_db
 from ..models import Note
@@ -43,11 +44,16 @@ def _note_dict(n: Note) -> dict:
 
 
 @router.post("")
-async def create_note(body: NoteCreate, db: AsyncSession = Depends(get_db)):
+async def create_note(
+    body: NoteCreate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
     canonical = resolve_book_name(body.book)
     if not canonical:
         raise HTTPException(status_code=400, detail=f"Unknown book: {body.book}")
     note = Note(
+        user_id=user.id,
         book=canonical,
         chapter=body.chapter,
         verse=body.verse,
@@ -69,8 +75,9 @@ async def list_notes(
     offset: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
 ):
-    query = select(Note)
+    query = select(Note).where(Note.user_id == user.id)
     if book is not None:
         canonical = resolve_book_name(book)
         if not canonical:
@@ -88,8 +95,13 @@ async def list_notes(
 
 
 @router.put("/{note_id}")
-async def update_note(note_id: int, body: NoteUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Note).where(Note.id == note_id))
+async def update_note(
+    note_id: int,
+    body: NoteUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    result = await db.execute(select(Note).where(Note.id == note_id, Note.user_id == user.id))
     note = result.scalar_one_or_none()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -103,8 +115,12 @@ async def update_note(note_id: int, body: NoteUpdate, db: AsyncSession = Depends
 
 
 @router.delete("/{note_id}")
-async def delete_note(note_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(delete(Note).where(Note.id == note_id))
+async def delete_note(
+    note_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    result = await db.execute(delete(Note).where(Note.id == note_id, Note.user_id == user.id))
     await db.commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Note not found")

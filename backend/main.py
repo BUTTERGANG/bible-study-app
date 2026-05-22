@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from .auth import auth_is_enabled, require_app_password
+from .auth import auth_is_enabled, get_current_user, require_app_password
 from .database import db_status, init_db
 from .routers import (
     ai,
@@ -40,8 +40,11 @@ from .routers import (
     lexicon,
     library,
     notes,
+    nt_ot,
     reading_plans,
     search,
+    timeline_maps,
+    users,
     word_study,
 )
 
@@ -65,6 +68,18 @@ async def lifespan(app: FastAPI):
         bible=bool(status.get("fts_bible")),
         commentary=bool(status.get("fts_commentary")),
     )
+
+    from .database import SessionLocal
+    async with SessionLocal() as _db:
+        seeded = await nt_ot.seed_nt_ot_connections(_db)
+        if seeded:
+            logger.info("NT-OT: inserted %d seed connections", seeded)
+
+    async with SessionLocal() as _db:
+        tl_seeded = await timeline_maps.seed_timeline_data(_db)
+        if tl_seeded:
+            logger.info("Timeline/Maps: inserted %d events + places + routes", tl_seeded)
+
     if auth_is_enabled():
         logger.info("App-level password authentication is enabled")
     yield
@@ -97,19 +112,28 @@ app.include_router(lexicon.router)
 app.include_router(library.router)
 app.include_router(dictionary.router)
 
-# User-mutable routers — gated by APP_PASSWORD if it's set.
+# User-mutable routers — gated by get_current_user (raises 401 if auth fails).
 from fastapi import Depends  # noqa: E402  (kept here so the dep list is visible)
-_protected = [Depends(require_app_password)]
+_protected = [Depends(get_current_user)]
 app.include_router(notes.router, dependencies=_protected)
 app.include_router(highlights.router, dependencies=_protected)
 app.include_router(bookmarks.router, dependencies=_protected)
 app.include_router(reading_plans.router, dependencies=_protected)
+
+# User account routes — always open (register/login need no auth).
+app.include_router(users.router)
 
 # AI router carries its own dependencies (auth + rate limit) at the router level.
 app.include_router(ai.router)
 
 # Factbook router carries its own dependencies (auth + rate limit).
 app.include_router(factbook.router)
+
+# NT Use of OT — read-only, no auth required.
+app.include_router(nt_ot.router)
+
+# Timeline & Maps — read-only, no auth required.
+app.include_router(timeline_maps.router)
 
 
 # SPA static files. Only mounted when the frontend has been built — keeps

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, Layers, Menu, Moon,
-  PanelRightClose, PanelRightOpen, Search, Sun, X,
+  PanelRightClose, PanelRightOpen, Search, Sun, X, Filter,
 } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
@@ -11,7 +11,7 @@ import clsx from 'clsx'
 
 const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 'BSB', 'LEB']
 
-export default function TopBar({ onSearch }) {
+export default function TopBar({ onSearch, onMorphSearch }) {
   const {
     book, chapter, translation,
     setTranslation, setReference,
@@ -305,6 +305,15 @@ export default function TopBar({ onSearch }) {
       </button>
 
       <div className="w-px h-6 bg-slate-600" />
+
+      <button
+        onClick={onMorphSearch}
+        className="flex items-center gap-2 bg-slate-700 hover:bg-purple-600 text-slate-300 hover:text-white px-3 py-1.5 rounded text-xs transition-colors"
+        title="Morphological search"
+      >
+        <Filter size={13} />
+        <span className="hidden sm:block">Morph</span>
+      </button>
 
       <button
         onClick={onSearch}
