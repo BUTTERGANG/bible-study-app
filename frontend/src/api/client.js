@@ -1,8 +1,11 @@
-import { getAppPassword } from './auth'
+import { getAccessToken, getAppPassword } from './auth'
 
 const BASE = '/api'
 
 function authHeaders() {
+  // Prefer JWT access token; fall back to legacy APP_PASSWORD.
+  const jwt = getAccessToken()
+  if (jwt) return { Authorization: `Bearer ${jwt}` }
   const pw = getAppPassword()
   return pw ? { Authorization: `Bearer ${pw}` } : {}
 }
@@ -41,6 +44,12 @@ export const api = {
   // Health / auth
   getHealth: () => get('/health'),
   getAuthStatus: () => get('/auth/status'),
+
+  // User accounts
+  register: (email, password) => post('/users/register', { email, password }),
+  login: (email, password) => post('/users/login', { email, password }),
+  refreshToken: (refresh_token) => post('/users/refresh', { refresh_token }),
+  getMe: () => get('/users/me'),
 
   // Bible
   getBooks: () => get('/bible/books'),
@@ -105,6 +114,9 @@ export const api = {
     return get(`/search?${params}`)
   },
 
+  // Morphological search
+  morphSearch: (params) => post('/search/morph', params),
+
   // Word study
   getVerseWords: (book, chapter, verse) =>
     get(`/word-study/${encodeURIComponent(book)}/${chapter}/${verse}`),
@@ -147,6 +159,22 @@ export const api = {
   },
   generateFactbookEntry: (entityName, entityType = 'person') =>
     post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
+
+  // NT Use of OT
+  getNtOtConnections: (params = {}) => {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) {
+      if (v != null) qs.set(k, String(v))
+    }
+    return get(`/nt-ot?${qs}`)
+  },
+  getNtOtStats: () => get('/nt-ot/stats'),
+
+  // Semantic search
+  semanticSearch: (q, translation = 'KJV', limit = 25) => {
+    const params = new URLSearchParams({ q, translation, limit: String(limit) })
+    return get(`/search/semantic?${params}`)
+  },
 
   // Dictionary
   searchDictionary: (q, source) => {

@@ -1,9 +1,19 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class BibleVerse(Base):
@@ -98,6 +108,7 @@ class Note(Base):
     __tablename__ = "notes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
     verse: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
@@ -110,10 +121,11 @@ class Note(Base):
 class Highlight(Base):
     __tablename__ = "highlights"
     __table_args__ = (
-        UniqueConstraint("translation", "book", "chapter", "verse", name="uq_highlight_verse"),
+        UniqueConstraint("user_id", "translation", "book", "chapter", "verse", name="uq_highlight_verse"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
     translation: Mapped[str] = mapped_column(String(10))
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
@@ -126,6 +138,7 @@ class Bookmark(Base):
     __tablename__ = "bookmarks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
     verse: Mapped[int] = mapped_column(Integer, nullable=True)
@@ -137,6 +150,7 @@ class ReadingPlan(Base):
     __tablename__ = "reading_plans"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(Text, nullable=True)
     start_date: Mapped[str] = mapped_column(String(10), nullable=True)
@@ -218,3 +232,79 @@ class FactbookEntry(Base):
     content: Mapped[str] = mapped_column(Text)
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TimelineEvent(Base):
+    """A major biblical event with approximate date and verse references."""
+    __tablename__ = "timeline_events"
+    __table_args__ = (
+        Index("ix_timeline_events_category", "category"),
+        Index("ix_timeline_events_date_sort", "date_sort"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    event_name: Mapped[str] = mapped_column(String(200), index=True)
+    date_approx: Mapped[str] = mapped_column(String(50))   # e.g. "~1446 BC"
+    date_sort: Mapped[int] = mapped_column(Integer, index=True)  # negative = BC
+    description: Mapped[str] = mapped_column(Text)
+    verse_refs: Mapped[str] = mapped_column(String(500), nullable=True)  # comma-separated
+    category: Mapped[str] = mapped_column(String(50), index=True)
+    # creation, patriarchs, exodus, conquest, judges, monarchy, exile, restoration,
+    # intertestamental, gospels, acts, epistles, revelation
+
+
+class BiblicalPlace(Base):
+    """A geographical location mentioned in the Bible."""
+    __tablename__ = "biblical_places"
+    __table_args__ = (
+        Index("ix_biblical_places_name", "place_name"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    place_name: Mapped[str] = mapped_column(String(200), index=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    verse_refs: Mapped[str] = mapped_column(String(500), nullable=True)
+    place_type: Mapped[str] = mapped_column(String(50), nullable=True)
+    # city, region, mountain, river, sea, wilderness, country
+
+
+class JourneyRoute(Base):
+    """A named journey or travel route from the Bible."""
+    __tablename__ = "journey_routes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    route_name: Mapped[str] = mapped_column(String(200), index=True)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    coordinates: Mapped[str] = mapped_column(Text)  # JSON array of [lat, lng] pairs
+    verse_refs: Mapped[str] = mapped_column(String(500), nullable=True)
+    color: Mapped[str] = mapped_column(String(20), default="#3b82f6")  # tailwind blue-500
+
+
+class NtOtConnection(Base):
+    """Curated OT-NT connections: quotations, allusions, verbal parallels, thematic echoes."""
+    __tablename__ = "nt_ot_connections"
+    __table_args__ = (
+        Index("ix_nt_ot_nt_ref", "nt_book", "nt_chapter", "nt_verse"),
+        Index("ix_nt_ot_ot_ref", "ot_book", "ot_chapter", "ot_verse"),
+        Index("ix_nt_ot_type", "connection_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # NT side
+    nt_book: Mapped[str] = mapped_column(String(50), index=True)
+    nt_chapter: Mapped[int] = mapped_column(Integer)
+    nt_verse: Mapped[int] = mapped_column(Integer)
+    # OT side
+    ot_book: Mapped[str] = mapped_column(String(50), index=True)
+    ot_chapter: Mapped[int] = mapped_column(Integer)
+    ot_verse: Mapped[int] = mapped_column(Integer)
+    # Connection metadata
+    connection_type: Mapped[str] = mapped_column(String(30), index=True)
+    # direct_quotation, allusion, verbal_parallel, thematic_echo, midrash, typology
+    confidence: Mapped[str] = mapped_column(String(10), default="curated")
+    # curated, high, medium, low (curated = from known datasets; rest = AI-generated)
+    notes: Mapped[str] = mapped_column(Text, nullable=True)
+    ot_context: Mapped[str] = mapped_column(Text, nullable=True)  # surrounding OT verses
+    nt_context: Mapped[str] = mapped_column(Text, nullable=True)  # surrounding NT verses

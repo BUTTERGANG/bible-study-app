@@ -9,10 +9,12 @@ import ErrorBoundary from './components/common/ErrorBoundary'
 import AuthGate from './components/common/AuthGate'
 
 const SearchModal = lazy(() => import('./components/Search/SearchModal'))
+const MorphSearchModal = lazy(() => import('./components/Search/MorphSearchModal'))
 
 export default function App() {
   const { sidebarOpen, rightPanelOpen, darkMode } = useStudyStore()
   const [searchOpen, setSearchOpen] = useState(false)
+  const [morphSearchOpen, setMorphSearchOpen] = useState(false)
   useUrlSync()
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function App() {
   return (
     <AuthGate>
       <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
-        <TopBar onSearch={() => setSearchOpen(true)} />
+        <TopBar onSearch={() => setSearchOpen(true)} onMorphSearch={() => setMorphSearchOpen(true)} />
 
         <div className="flex flex-1 overflow-hidden">
           {sidebarOpen && (
@@ -62,6 +64,12 @@ export default function App() {
         {searchOpen && (
           <Suspense fallback={null}>
             <SearchModal onClose={() => setSearchOpen(false)} />
+          </Suspense>
+        )}
+
+        {morphSearchOpen && (
+          <Suspense fallback={null}>
+            <MorphSearchModal onClose={() => setMorphSearchOpen(false)} />
           </Suspense>
         )}
       </div>

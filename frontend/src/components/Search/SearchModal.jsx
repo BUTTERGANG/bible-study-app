@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, Sparkles, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
@@ -7,6 +7,7 @@ import clsx from 'clsx'
 export default function SearchModal({ onClose }) {
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState('bible')
+  const [semantic, setSemantic] = useState(false)
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
@@ -23,7 +24,9 @@ export default function SearchModal({ onClose }) {
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const data = await api.search(query, scope, translation)
+        const data = semantic
+          ? await api.semanticSearch(query, translation)
+          : await api.search(query, scope, translation)
         setResults(data)
         setActiveIdx(-1)
       } finally {
@@ -31,7 +34,7 @@ export default function SearchModal({ onClose }) {
       }
     }, 300)
     return () => clearTimeout(timer)
-  }, [query, scope, translation])
+  }, [query, scope, semantic, translation])
 
   const resultList = results?.results ?? []
 
@@ -106,9 +109,9 @@ export default function SearchModal({ onClose }) {
           </button>
         </div>
 
-        {/* Scope tabs */}
-        <div className="flex border-b border-gray-100 dark:border-gray-700 px-2 bg-white dark:bg-gray-800">
-          {['bible', 'commentary', 'all'].map((s) => (
+        {/* Scope tabs + Semantic toggle */}
+        <div className="flex items-center border-b border-gray-100 dark:border-gray-700 px-2 bg-white dark:bg-gray-800">
+          {!semantic && ['bible', 'commentary', 'all'].map((s) => (
             <button
               key={s}
               onClick={() => setScope(s)}
@@ -122,7 +125,36 @@ export default function SearchModal({ onClose }) {
               {s}
             </button>
           ))}
+          {semantic && (
+            <span className="px-3 py-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
+              Searching by theme…
+            </span>
+          )}
+          <div className="ml-auto">
+            <button
+              onClick={() => setSemantic((v) => !v)}
+              title={semantic ? 'Switch to keyword search' : 'Switch to semantic/theme search'}
+              className={clsx(
+                'flex items-center gap-1 px-2 py-1 my-1 rounded text-xs font-medium transition-colors',
+                semantic
+                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              )}
+            >
+              <Sparkles size={11} />
+              Semantic
+            </button>
+          </div>
         </div>
+
+        {/* Semantic theme match banner */}
+        {semantic && results?.matched_themes?.length > 0 && (
+          <div className="px-4 py-1.5 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-100 dark:border-purple-900/50">
+            <p className="text-[10px] text-purple-600 dark:text-purple-400">
+              Themes matched: {results.matched_themes.join(', ')}
+            </p>
+          </div>
+        )}
 
         {/* Results */}
         <div className="max-h-80 overflow-y-auto" ref={listRef}>

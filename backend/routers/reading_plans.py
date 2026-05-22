@@ -15,6 +15,7 @@ from sqlalchemy import and_, delete, or_, select, tuple_
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth import CurrentUser, get_current_user
 from ..bible_data import BOOKS
 from ..database import get_db
 from ..models import ReadingPlan, ReadingPlanDay, ReadingPlanProgress
@@ -47,8 +48,15 @@ async def list_built_in_plans():
 
 
 @router.get("")
-async def list_plans(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ReadingPlan).order_by(ReadingPlan.created_at.desc()))
+async def list_plans(
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(ReadingPlan)
+        .where(ReadingPlan.user_id == user.id)
+        .order_by(ReadingPlan.created_at.desc())
+    )
     plans = result.scalars().all()
     return {
         "plans": [
@@ -70,7 +78,11 @@ class PlanStart(BaseModel):
 
 
 @router.post("/start")
-async def start_plan(body: PlanStart, db: AsyncSession = Depends(get_db)):
+async def start_plan(
+    body: PlanStart,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
     if body.plan_type not in BUILT_IN_PLANS:
         raise HTTPException(status_code=400, detail=f"Unknown plan: {body.plan_type}")
 
@@ -78,6 +90,7 @@ async def start_plan(body: PlanStart, db: AsyncSession = Depends(get_db)):
     plan_def = BUILT_IN_PLANS[body.plan_type]
 
     plan = ReadingPlan(
+        user_id=user.id,
         name=plan_def["name"],
         description=plan_def["description"],
         start_date=start_date,
@@ -97,21 +110,30 @@ async def start_plan(body: PlanStart, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/{plan_id}")
-async def delete_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
-    await db.execute(delete(ReadingPlan).where(ReadingPlan.id == plan_id))
+async def delete_plan(
+    plan_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    await db.execute(
+        delete(ReadingPlan).where(ReadingPlan.id == plan_id, ReadingPlan.user_id == user.id)
+    )
     await db.commit()
     return {"ok": True}
 
 
 @router.get("/today")
-async def get_today(db: AsyncSession = Depends(get_db)):
+async def get_today(
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
     today = str(date.today())
 
-    # All entries for today across every plan, in one query.
+    # All entries for today across every plan belonging to this user, in one query.
     days_rows = await db.execute(
         select(ReadingPlanDay, ReadingPlan.name)
         .join(ReadingPlan, ReadingPlanDay.plan_id == ReadingPlan.id)
-        .where(ReadingPlanDay.date == today)
+        .where(ReadingPlanDay.date == today, ReadingPlan.user_id == user.id)
     )
     days = days_rows.all()
     if not days:
