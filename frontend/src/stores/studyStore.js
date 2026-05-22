@@ -39,6 +39,17 @@ export const useStudyStore = create(
       compareMode: false,
       compareTranslations: [],
 
+      // AI Conversation history
+      aiHistory: {},
+      setAiHistory: (key, messages) => set((s) => ({
+        aiHistory: { ...s.aiHistory, [key]: messages }
+      })),
+      clearAiHistory: (key) => set((s) => {
+        const newHistory = { ...s.aiHistory }
+        delete newHistory[key]
+        return { aiHistory: newHistory }
+      }),
+
       // Visual filters state
       visualFiltersEnabled: false,
       visualFilters: defaultFilterState(),
@@ -90,6 +101,7 @@ export const useStudyStore = create(
         fontSizeIdx: s.fontSizeIdx,
         compareMode: s.compareMode,
         compareTranslations: s.compareTranslations,
+        aiHistory: s.aiHistory,
         visualFiltersEnabled: s.visualFiltersEnabled,
         visualFilters: s.visualFilters,
       }),

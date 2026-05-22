@@ -282,6 +282,32 @@ class JourneyRoute(Base):
     color: Mapped[str] = mapped_column(String(20), default="#3b82f6")  # tailwind blue-500
 
 
+class AiConversation(Base):
+    """Persisted AI conversation history keyed by reference (book/chapter).
+    Each message is stored as a JSON blob so we preserve the full message
+    structure (role, content, metadata like verse selections) without schema
+    churn for every new AI feature."""
+
+    __tablename__ = "ai_conversations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "reference", name="uq_ai_conv_ref"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    reference: Mapped[str] = mapped_column(String(100), index=True)
+    # e.g. "KJV/John/3" — matches the aiHistory key in the frontend store
+    translation: Mapped[str] = mapped_column(String(10), default="KJV")
+    book: Mapped[str] = mapped_column(String(50))
+    chapter: Mapped[int] = mapped_column(Integer)
+    messages: Mapped[str] = mapped_column(Text)  # JSON array of {role, content}
+    message_count: Mapped[int] = mapped_column(Integer, default=0)
+    title: Mapped[str] = mapped_column(String(200), nullable=True)
+    # Auto-generated title like "Main theme of John 3" or first prompt
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class NtOtConnection(Base):
     """Curated OT-NT connections: quotations, allusions, verbal parallels, thematic echoes."""
     __tablename__ = "nt_ot_connections"

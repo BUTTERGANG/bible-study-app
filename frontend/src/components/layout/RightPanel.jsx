@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass } from 'lucide-react'
+import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -21,6 +21,7 @@ const NtOtPanel = lazy(() => import('../NtOt/NtOtPanel'))
 const TimelinePanel = lazy(() => import('../Timeline/TimelinePanel'))
 const MapPanel = lazy(() => import('../Maps/MapPanel'))
 const ComparePanel = lazy(() => import('../Compare/ComparePanel'))
+const TopicalSearchPanel = lazy(() => import('../TopicalSearchPanel/TopicalSearchPanel'))
 
 const TABS = [
   { id: 'guide', label: 'Guide', icon: Compass },
@@ -39,6 +40,7 @@ const TABS = [
   { id: 'reading', label: 'Plans', icon: Calendar },
   { id: 'timeline', label: 'Timeline', icon: Clock },
   { id: 'maps', label: 'Maps', icon: Map },
+  { id: 'topical', label: 'Topical', icon: TrendingUp },
 ]
 
 function PanelSkeleton() {

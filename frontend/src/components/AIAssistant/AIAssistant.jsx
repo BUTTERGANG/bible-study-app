@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import { useStudyStore } from '../../stores/studyStore'
 import { useStreamingAI } from '../../hooks/useStreamingAI'
+import { api } from '../../api/client'
 import clsx from 'clsx'
 
 const SUGGESTED_PROMPTS = [
@@ -40,17 +41,71 @@ const MARKDOWN_COMPONENTS = {
   a: (p) => <a className="text-blue-600 dark:text-blue-400 underline" {...p} />,
 }
 
+/** Serialize messages to what the API stores (strip transient state like error flags). */
+function serializeMessages(msgs) {
+  return msgs.map((m) => ({ role: m.role, content: m.content }))
+}
+
 export default function AIAssistant() {
-  const { book, chapter, verse, selectedVerseText, translation } = useStudyStore()
+  const { book, chapter, verse, selectedVerseText, translation, aiHistory, setAiHistory, clearAiHistory } = useStudyStore()
   const qc = useQueryClient()
   const [input, setInput] = useState('')
   const bottomRef = useRef(null)
+  const saveTimer = useRef(null)
+  const restoringRef = useRef(null)
 
   const reference = verse ? `${book} ${chapter}:${verse}` : `${book} ${chapter}`
+  const chapterKey = useMemo(() => `${translation}/${book}/${chapter}`, [translation, book, chapter])
+
+  const messages = aiHistory[chapterKey] || []
+  const setMessages = useCallback((updater) => {
+    setAiHistory(chapterKey, typeof updater === 'function' ? updater(aiHistory[chapterKey] || []) : updater)
+  }, [chapterKey, aiHistory, setAiHistory])
+
+  // Restore conversation from backend on chapter change
+  useEffect(() => {
+    let cancelled = false
+    restoringRef.current = true
+
+    api.getConversation(chapterKey)
+      .then((conv) => {
+        if (cancelled) return
+        if (conv?.messages?.length > 0) {
+          setAiHistory(chapterKey, conv.messages)
+        }
+      })
+      .catch(() => {
+        // 404 = no conversation saved yet — that's fine
+      })
+      .finally(() => {
+        if (!cancelled) restoringRef.current = false
+      })
+
+    return () => { cancelled = true }
+  }, [chapterKey, setAiHistory])
+
+  // Debounced auto-save to backend whenever messages change
+  useEffect(() => {
+    if (restoringRef.current) return
+    if (messages.length === 0) return
+
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      api.saveConversation(chapterKey, {
+        translation,
+        book,
+        chapter,
+        messages: serializeMessages(messages),
+        title: messages[0]?.role === 'user' ? messages[0].content.slice(0, 100) : undefined,
+      }).catch(() => {}) // silent fail — localStorage fallback covers it
+    }, 2000)
+
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
+  }, [messages, chapterKey, translation, book, chapter])
 
   // Build a single context-aware payload factory for the streaming hook.
-  // Includes the full chapter text from React Query's cache (free roadmap §3.1),
-  // so the AI can reason about surrounding verses without a separate fetch.
   const bodyFor = useCallback(
     (prompt, history) => {
       const chapterCache = qc.getQueryData(['chapter', translation, book, chapter])
@@ -69,22 +124,17 @@ export default function AIAssistant() {
     [qc, translation, book, chapter, reference, selectedVerseText]
   )
 
-  const { messages, streaming, send, stop, clear } = useStreamingAI('ask', bodyFor)
+  const { streaming, send, stop, clear } = useStreamingAI('ask', bodyFor, messages, setMessages)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Reset chat when the user moves to a different chapter so the cached
-  // chapter_text in the cache_control block always matches.
-  const chapterKey = useMemo(() => `${translation}/${book}/${chapter}`, [translation, book, chapter])
-  const lastChapter = useRef(chapterKey)
-  useEffect(() => {
-    if (lastChapter.current !== chapterKey) {
-      clear()
-      lastChapter.current = chapterKey
-    }
-  }, [chapterKey, clear])
+  function handleClear() {
+    clear()
+    clearAiHistory(chapterKey)
+    api.deleteConversation(chapterKey).catch(() => {})
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -102,7 +152,7 @@ export default function AIAssistant() {
         </span>
         {messages.length > 0 && (
           <button
-            onClick={clear}
+            onClick={handleClear}
             className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
           >
             Clear
@@ -116,7 +166,7 @@ export default function AIAssistant() {
         </p>
         {selectedVerseText && (
           <p className="text-xs text-blue-600 dark:text-blue-300/80 mt-0.5 italic line-clamp-2">
-            “{selectedVerseText}”
+            &ldquo;{selectedVerseText}&rdquo;
           </p>
         )}
       </div>
@@ -159,7 +209,7 @@ export default function AIAssistant() {
                   {msg.content}
                 </ReactMarkdown>
                 {streaming && i === messages.length - 1 && (
-                  <span className="animate-pulse">▌</span>
+                  <span className="animate-pulse">&boxv;</span>
                 )}
               </>
             ) : msg.error ? (

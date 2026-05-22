@@ -1,17 +1,26 @@
 import { useState, useEffect, useCallback, memo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Search as SearchIcon, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search as SearchIcon, X, MessageSquare, Trash2 } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
+function useConversations() {
+  return useQuery({
+    queryKey: ['ai-conversations'],
+    queryFn: () => api.listConversations(50, 0),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export default function Sidebar() {
-  const { book: activeBook, chapter: activeChapter, translation, setReference } = useStudyStore()
-  const [expanded, setExpanded] = useState({ OT: true, NT: true, APO: false })
+  const { book: activeBook, chapter: activeChapter, translation, setReference, setRightPanel } = useStudyStore()
+  const [expanded, setExpanded] = useState({ OT: true, NT: true, APO: false, conversations: false })
   const [selectedBook, setSelectedBook] = useState(activeBook)
-  // Keep the locally-expanded book in sync when activeBook changes from
-  // outside the sidebar (e.g. search-modal navigation).
+  const convQuery = useConversations()
+
   useEffect(() => {
     setSelectedBook(activeBook)
   }, [activeBook])
@@ -22,7 +31,6 @@ export default function Sidebar() {
     staleTime: Infinity,
   })
 
-  // Use live data if available, fall back to static lists
   const availableBooks = transData?.books
   const otBooks = availableBooks
     ? availableBooks.filter((b) => b.testament === 'OT')
@@ -46,6 +54,21 @@ export default function Sidebar() {
     setReference(bookName, ch)
     setSelectedBook(bookName)
   }, [setReference])
+
+  const navigateToConversation = useCallback((conv) => {
+    setReference(conv.book, conv.chapter)
+    setRightPanel('ai')
+  }, [setReference, setRightPanel])
+
+  const handleDeleteConversation = useCallback(async (e, ref) => {
+    e.stopPropagation()
+    try {
+      await api.deleteConversation(ref)
+      convQuery.refetch()
+    } catch {}
+  }, [convQuery])
+
+  const conversations = convQuery.data?.conversations?.filter((c) => c.message_count > 0) || []
 
   return (
     <div className="text-sm">
@@ -84,6 +107,55 @@ export default function Sidebar() {
         onSelectBook={selectBook}
         onSelectChapter={selectChapter}
       />
+
+      {/* AI Conversations section */}
+      <div>
+        <button
+          onClick={() => toggleSection('conversations')}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          <span className="flex items-center gap-1.5">
+            <MessageSquare size={12} />
+            AI History
+          </span>
+          {expanded.conversations ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </button>
+
+        {expanded.conversations && (
+          <div className="max-h-60 overflow-y-auto">
+            {conversations.length === 0 && (
+              <p className="px-3 py-3 text-xs text-gray-400 dark:text-gray-500 text-center italic">
+                No saved conversations
+              </p>
+            )}
+            {conversations.map((conv) => (
+              <button
+                key={conv.reference}
+                onClick={() => navigateToConversation(conv)}
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center justify-between gap-1 group"
+              >
+                <span className="truncate flex-1">
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {conv.title
+                      ? conv.title.length > 30
+                        ? conv.title.slice(0, 30) + '…'
+                        : conv.title
+                      : conv.reference}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500 ml-1">
+                    ({conv.message_count})
+                  </span>
+                </span>
+                <Trash2
+                  size={12}
+                  onClick={(e) => handleDeleteConversation(e, conv.reference)}
+                  className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

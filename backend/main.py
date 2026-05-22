@@ -30,6 +30,7 @@ from .auth import auth_is_enabled, get_current_user, require_app_password
 from .database import db_status, init_db
 from .routers import (
     ai,
+    ai_conversations,
     bible,
     bookmarks,
     commentary,
@@ -125,6 +126,9 @@ app.include_router(users.router)
 
 # AI router carries its own dependencies (auth + rate limit) at the router level.
 app.include_router(ai.router)
+
+# AI conversations — user-scoped, read-write.
+app.include_router(ai_conversations.router)
 
 # Factbook router carries its own dependencies (auth + rate limit).
 app.include_router(factbook.router)

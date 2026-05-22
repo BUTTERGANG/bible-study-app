@@ -39,9 +39,12 @@ const post = (path, body) =>
   request(path, { method: 'POST', body: JSON.stringify(body ?? {}) })
 const put = (path, body) =>
   request(path, { method: 'PUT', body: JSON.stringify(body ?? {}) })
+const patch = (path, body) =>
+  request(path, { method: 'PATCH', body: JSON.stringify(body ?? {}) })
 
 export const api = {
   generateOutline: (reference, translation) => post('/ai/outline', { reference, translation }),
+  topicStudy: (topic) => post('/ai/chat', { mode: 'topic', topic }),
   // Health / auth
   getHealth: () => get('/health'),
   getAuthStatus: () => get('/auth/status'),
@@ -185,6 +188,18 @@ export const api = {
   },
   getDictionaryEntry: (source, term) =>
     get(`/dictionary/${source}/${encodeURIComponent(term)}`),
+
+  // AI Conversations
+  listConversations: (limit = 50, offset = 0) =>
+    get(`/ai/conversations?limit=${limit}&offset=${offset}`),
+  getConversation: (reference) =>
+    get(`/ai/conversations/${encodeURIComponent(reference)}`),
+  saveConversation: (reference, data) =>
+    put(`/ai/conversations/${encodeURIComponent(reference)}`, { ...data, reference }),
+  updateConversation: (reference, data) =>
+    patch(`/ai/conversations/${encodeURIComponent(reference)}`, data),
+  deleteConversation: (reference) =>
+    del(`/ai/conversations/${encodeURIComponent(reference)}`),
 }
 
 export { authHeaders }
