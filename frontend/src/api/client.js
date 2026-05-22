@@ -45,6 +45,8 @@ const patch = (path, body) =>
 export const api = {
   generateOutline: (reference, translation) => post('/ai/outline', { reference, translation }),
   topicStudy: (topic, depth = 'overview') => post('/ai/topic-study', { topic, depth }),
+  getPassageInsights: (book, chapter, verse, translation = 'KJV') =>
+    post('/ai/insights', { book, chapter, verse, translation }),
   // Health / auth
   getHealth: () => get('/health'),
   getAuthStatus: () => get('/auth/status'),
@@ -148,6 +150,32 @@ export const api = {
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/interlinear`),
 
   // Factbook
+  // Bible Study Builder
+  listStudies: () => get('/studies'),
+  createStudy: (data) => post('/studies', data),
+  updateStudy: (id, data) => patch(`/studies/${id}`, data),
+  deleteStudy: (id) => del(`/studies/${id}`),
+  upsertStudySection: (projectId, sectionType, content) =>
+    put(`/studies/${projectId}/sections/${sectionType}`, { content }),
+
+  // Prayer Journal
+  listPrayers: (status) => get(`/prayer${status ? '?status=' + status : ''}`),
+  createPrayer: (data) => post('/prayer', data),
+  updatePrayer: (id, data) => patch(`/prayer/${id}`, data),
+  deletePrayer: (id) => del(`/prayer/${id}`),
+
+  // Verse Memorization
+  listMemoryVerses: () => get('/memorize'),
+  addMemoryVerse: (data) => post('/memorize', data),
+  removeMemoryVerse: (id) => del(`/memorize/${id}`),
+  recordQuizResult: (id, correct) => post(`/memorize/${id}/quiz`, { correct }),
+
+  getFactbookQuestions: (entityName, entityType) => {
+    const params = new URLSearchParams()
+    if (entityType) params.set('entity_type', entityType)
+    const qs = params.toString()
+    return get(`/factbook/${encodeURIComponent(entityName)}/questions${qs ? '?' + qs : ''}`)
+  },
   getFactbookEntry: (entityName, entityType, refresh = false) => {
     const params = new URLSearchParams()
     if (entityType) params.set('entity_type', entityType)
@@ -165,6 +193,13 @@ export const api = {
   },
   generateFactbookEntry: (entityName, entityType = 'person') =>
     post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
+
+  // Dashboard
+  getDashboard: () => get('/dashboard'),
+
+  // Book introductions
+  getBookIntroduction: (book, refresh = false) =>
+    get(`/bible/books/${encodeURIComponent(book)}/introduction${refresh ? '?refresh=true' : ''}`),
 
   // NT Use of OT
   getNtOtConnections: (params = {}) => {

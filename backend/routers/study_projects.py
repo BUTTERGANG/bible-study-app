@@ -1,4 +1,4 @@
-"""Sermon Builder — CRUD for sermon projects and their sections."""
+"""Bible Study Builder — CRUD for personal study projects and sections."""
 
 from datetime import datetime
 from typing import Optional
@@ -11,33 +11,33 @@ from sqlalchemy.orm import selectinload
 
 from ..auth import CurrentUser, get_current_user
 from ..database import get_db
-from ..models import SermonProject, SermonSection
+from ..models import StudyProject, StudySection
 
-router = APIRouter(prefix="/api/sermons", tags=["sermons"])
+router = APIRouter(prefix="/api/studies", tags=["studies"])
 
 
-class ProjectCreate(BaseModel):
+class StudyCreate(BaseModel):
     title: str
     passage_ref: str
-    audience: str = "general"
+    study_type: str = "inductive"
 
 
-class ProjectUpdate(BaseModel):
+class StudyUpdate(BaseModel):
     title: Optional[str] = None
     passage_ref: Optional[str] = None
-    audience: Optional[str] = None
+    study_type: Optional[str] = None
 
 
 class SectionUpsert(BaseModel):
     content: str
 
 
-def _project_out(p: SermonProject) -> dict:
+def _project_out(p: StudyProject) -> dict:
     return {
         "id": p.id,
         "title": p.title,
         "passage_ref": p.passage_ref,
-        "audience": p.audience,
+        "study_type": p.study_type,
         "created_at": p.created_at.isoformat(),
         "updated_at": p.updated_at.isoformat(),
         "sections": [
@@ -48,98 +48,95 @@ def _project_out(p: SermonProject) -> dict:
 
 
 @router.get("")
-async def list_projects(
+async def list_studies(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(SermonProject)
-        .options(selectinload(SermonProject.sections))
-        .where(SermonProject.user_id == user.id)
-        .order_by(SermonProject.updated_at.desc())
+        select(StudyProject)
+        .options(selectinload(StudyProject.sections))
+        .where(StudyProject.user_id == user.id)
+        .order_by(StudyProject.updated_at.desc())
     )
-    projects = result.scalars().all()
-    return {"projects": [_project_out(p) for p in projects]}
+    return {"studies": [_project_out(p) for p in result.scalars().all()]}
 
 
 @router.post("", status_code=201)
-async def create_project(
-    body: ProjectCreate,
+async def create_study(
+    body: StudyCreate,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    project = SermonProject(
+    project = StudyProject(
+        user_id=user.id,
         title=body.title,
         passage_ref=body.passage_ref,
-        audience=body.audience,
-        user_id=user.id,
+        study_type=body.study_type,
     )
     db.add(project)
     await db.commit()
     await db.refresh(project)
-    # Load sections relationship (empty on creation)
-    await db.execute(select(SermonSection).where(SermonSection.project_id == project.id))
     project.sections = []
     return _project_out(project)
 
 
 @router.get("/{project_id}")
-async def get_project(
+async def get_study(
     project_id: int,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(SermonProject)
-        .options(selectinload(SermonProject.sections))
-        .where(SermonProject.id == project_id, SermonProject.user_id == user.id)
+        select(StudyProject)
+        .options(selectinload(StudyProject.sections))
+        .where(StudyProject.id == project_id, StudyProject.user_id == user.id)
     )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Sermon project not found")
-    return _project_out(project)
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Study not found")
+    return _project_out(p)
 
 
 @router.patch("/{project_id}")
-async def update_project(
+async def update_study(
     project_id: int,
-    body: ProjectUpdate,
+    body: StudyUpdate,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(SermonProject)
-        .options(selectinload(SermonProject.sections))
-        .where(SermonProject.id == project_id, SermonProject.user_id == user.id)
+        select(StudyProject)
+        .options(selectinload(StudyProject.sections))
+        .where(StudyProject.id == project_id, StudyProject.user_id == user.id)
     )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Sermon project not found")
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Study not found")
     if body.title is not None:
-        project.title = body.title
+        p.title = body.title
     if body.passage_ref is not None:
-        project.passage_ref = body.passage_ref
-    if body.audience is not None:
-        project.audience = body.audience
-    project.updated_at = datetime.utcnow()
+        p.passage_ref = body.passage_ref
+    if body.study_type is not None:
+        p.study_type = body.study_type
+    p.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(project)
-    return _project_out(project)
+    await db.refresh(p)
+    return _project_out(p)
 
 
 @router.delete("/{project_id}", status_code=204)
-async def delete_project(
+async def delete_study(
     project_id: int,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(SermonProject).where(SermonProject.id == project_id, SermonProject.user_id == user.id)
+        select(StudyProject).where(StudyProject.id == project_id, StudyProject.user_id == user.id)
     )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Sermon project not found")
-    await db.delete(project)
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Study not found")
+    await db.delete(p)
     await db.commit()
 
 
@@ -151,21 +148,21 @@ async def upsert_section(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    VALID_TYPES = {"outline", "illustrations", "questions", "applications", "full_sermon"}
+    VALID_TYPES = {"observations", "cross_refs", "application", "prayer", "notes"}
     if section_type not in VALID_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid section_type. Must be one of: {', '.join(VALID_TYPES)}")
 
     proj_result = await db.execute(
-        select(SermonProject).where(SermonProject.id == project_id, SermonProject.user_id == user.id)
+        select(StudyProject).where(StudyProject.id == project_id, StudyProject.user_id == user.id)
     )
     proj = proj_result.scalar_one_or_none()
     if not proj:
-        raise HTTPException(status_code=404, detail="Sermon project not found")
+        raise HTTPException(status_code=404, detail="Study not found")
 
     existing = await db.execute(
-        select(SermonSection).where(
-            SermonSection.project_id == project_id,
-            SermonSection.section_type == section_type,
+        select(StudySection).where(
+            StudySection.project_id == project_id,
+            StudySection.section_type == section_type,
         )
     )
     section = existing.scalar_one_or_none()
@@ -173,7 +170,7 @@ async def upsert_section(
         section.content = body.content
         section.updated_at = datetime.utcnow()
     else:
-        section = SermonSection(project_id=project_id, section_type=section_type, content=body.content)
+        section = StudySection(project_id=project_id, section_type=section_type, content=body.content)
         db.add(section)
 
     proj.updated_at = datetime.utcnow()

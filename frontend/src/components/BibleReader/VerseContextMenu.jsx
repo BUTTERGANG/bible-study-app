@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  AlertCircle, Bookmark, Copy, Download, Highlighter, Layers, Link,
+  AlertCircle, Bookmark, Copy, Download, Highlighter, Image, Layers, Link,
   Loader2, MessageSquare, Share2, StickyNote, X,
 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import { getVerseExportData } from '../../utils/export'
+import ShareCardModal from './ShareCardModal'
 import clsx from 'clsx'
 
 const COLORS = [
@@ -28,6 +29,7 @@ export default function VerseContextMenu({
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [showCard, setShowCard] = useState(false)
 
   useEffect(() => {
     function handler(e) {
@@ -136,6 +138,7 @@ export default function VerseContextMenu({
   }
 
   return (
+    <>
     <div
       ref={ref}
       style={style}
@@ -165,6 +168,11 @@ export default function VerseContextMenu({
       <button onClick={shareVerse} className="menu-item">
         <Share2 size={13} />
         Share verse
+      </button>
+
+      <button onClick={() => setShowCard(true)} className="menu-item">
+        <Image size={13} />
+        Share as card
       </button>
 
       <button onClick={exportPassage} disabled={isExporting} className="menu-item">
@@ -246,5 +254,17 @@ export default function VerseContextMenu({
         </div>
       </div>
     </div>
+
+    {showCard && (
+      <ShareCardModal
+        verse={verse}
+        text={text}
+        book={book}
+        chapter={chapter}
+        translation={translation}
+        onClose={() => { setShowCard(false); onClose() }}
+      />
+    )}
+    </>
   )
 }

@@ -28,7 +28,7 @@ export const useStudyStore = create(
       translation: 'KJV',
 
       // UI state
-      rightPanel: 'commentary', // 'commentary' | 'ai' | 'notes' | 'word-study'
+      rightPanel: 'home',
       sidebarOpen: true,
       rightPanelOpen: true,
       interlinearMode: false,

@@ -172,6 +172,50 @@ class GenerateRequest(BaseModel):
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
 
+@router.get("/{entity_name}/questions")
+async def get_factbook_questions(
+    entity_name: str,
+    entity_type: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return 5 AI-generated study questions about a factbook entity."""
+    result = await db.execute(
+        select(FactbookEntry).where(FactbookEntry.entity_name.ilike(entity_name))
+    )
+    entry = result.scalar_one_or_none()
+    content_snippet = entry.content[:1500] if entry else ""
+    resolved_type = (entity_type or (entry.entity_type if entry else "person"))
+
+    client = _client()
+    response = await client.messages.create(
+        model=MODEL,
+        max_tokens=400,
+        messages=[{
+            "role": "user",
+            "content": f"""Generate exactly 5 insightful Bible study questions about {entity_name} ({resolved_type}).
+These should prompt personal reflection and deeper study.
+{f"Context from factbook entry:{chr(10)}{content_snippet}" if content_snippet else ""}
+
+Respond ONLY with a JSON array of 5 question strings. No markdown, no explanation.
+Example: ["Question one?", "Question two?", ...]""",
+        }],
+    )
+    raw = response.content[0].text.strip()
+    try:
+        questions = json.loads(raw)
+        if not isinstance(questions, list):
+            questions = []
+    except json.JSONDecodeError:
+        start = raw.find("[")
+        end = raw.rfind("]") + 1
+        try:
+            questions = json.loads(raw[start:end]) if start != -1 else []
+        except json.JSONDecodeError:
+            questions = []
+
+    return {"entity_name": entity_name, "questions": questions[:5]}
+
+
 @router.get("/{entity_name}")
 async def get_factbook_entry(
     entity_name: str,

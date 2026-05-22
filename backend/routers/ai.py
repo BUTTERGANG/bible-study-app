@@ -14,11 +14,12 @@ import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import require_app_password
 from ..database import get_db
+from ..models import BibleVerse
 from ..rate_limit import ai_rate_limit
 
 router = APIRouter(
@@ -540,5 +541,143 @@ Make the sermon practical, biblically faithful, and engaging. Write as if the pa
             system=system_blocks,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=4000,
+        )
+    )
+
+
+class InsightsRequest(BaseModel):
+    book: str
+    chapter: int
+    verse: int
+    translation: str = "KJV"
+
+
+@router.post("/insights")
+async def passage_insights(body: InsightsRequest, db: AsyncSession = Depends(get_db)):
+    """Return a quick JSON insights card: 2-sentence summary + key people, places, themes."""
+    result = await db.execute(
+        select(BibleVerse).where(
+            BibleVerse.book == body.book,
+            BibleVerse.chapter == body.chapter,
+            BibleVerse.verse == body.verse,
+            BibleVerse.translation == body.translation,
+        )
+    )
+    verse_row = result.scalar_one_or_none()
+    verse_text = verse_row.text if verse_row else ""
+
+    chapter_rows = await db.execute(
+        select(BibleVerse).where(
+            BibleVerse.book == body.book,
+            BibleVerse.chapter == body.chapter,
+            BibleVerse.translation == body.translation,
+        ).order_by(BibleVerse.verse)
+    )
+    chapter_text = " ".join(r.text for r in chapter_rows.scalars().all())[:2000]
+
+    reference = f"{body.book} {body.chapter}:{body.verse}"
+    prompt = f"""You are a biblical scholar. Analyze this passage and respond ONLY with a JSON object — no markdown, no explanation.
+
+Reference: {reference} ({body.translation})
+Verse: {verse_text}
+Chapter context (first 2000 chars): {chapter_text}
+
+Return exactly this JSON shape:
+{{
+  "summary": "Two sentences of concise contextual insight about this verse within its chapter.",
+  "key_people": ["Person 1", "Person 2"],
+  "key_places": ["Place 1", "Place 2"],
+  "key_themes": ["Theme 1", "Theme 2", "Theme 3"]
+}}
+
+Rules:
+- summary: exactly 2 sentences, insightful not generic
+- key_people: 0-4 named individuals from the passage (empty array if none)
+- key_places: 0-4 geographic locations mentioned (empty array if none)
+- key_themes: 2-4 theological or thematic concepts
+- All arrays: strings only, no objects"""
+
+    client = _client()
+    message = await client.messages.create(
+        model=MODEL,
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = message.content[0].text.strip()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        data = json.loads(raw[start:end]) if start != -1 else {}
+
+    return {
+        "reference": reference,
+        "summary": data.get("summary", ""),
+        "key_people": data.get("key_people", []),
+        "key_places": data.get("key_places", []),
+        "key_themes": data.get("key_themes", []),
+    }
+
+
+class SearchSynopsisRequest(BaseModel):
+    query: str
+    results: List[dict]  # [{reference, text/snippet, ...}]
+
+
+@router.post("/search-synopsis")
+async def search_synopsis(body: SearchSynopsisRequest):
+    """Stream a 1-2 sentence AI synthesis of what the top search results share."""
+    if not body.results:
+        return _stream_response(lambda: (x for x in []))
+
+    snippets = "\n".join(
+        f"- {r.get('reference', '')}: {(r.get('text') or r.get('snippet') or '')[:120]}"
+        for r in body.results[:8]
+    )
+    prompt = f"""A user searched for: "{body.query}"
+
+Top matching Bible passages:
+{snippets}
+
+Write 1-2 sentences synthesizing what these passages have in common and what they reveal about "{body.query}". Be specific and insightful. Do not use filler phrases like "These verses show..." — start directly with the insight."""
+
+    return _stream_response(
+        lambda: _stream_text(
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+        )
+    )
+
+
+class StudyObservationsRequest(BaseModel):
+    reference: str
+    translation: str = "KJV"
+    verse_text: Optional[str] = None
+
+
+@router.post("/study-observations")
+async def study_observations(body: StudyObservationsRequest):
+    """Generate inductive-study observations for a passage (streaming)."""
+    verse_note = f"\n\nVerse text: {body.verse_text}" if body.verse_text else ""
+    prompt = f"""Perform an inductive Bible study on **{body.reference}** ({body.translation}).{verse_note}
+
+Answer these three questions in detail using markdown:
+
+## Observation — What does it say?
+List 6-8 key observations about the text. What stands out? Who, what, where, when, why, how?
+
+## Interpretation — What does it mean?
+Explain the meaning in historical, cultural, and theological context. What was the original author communicating?
+
+## Application — How does it apply?
+Provide 3-4 practical ways this passage applies to a modern believer's life."""
+
+    return _stream_response(
+        lambda: _stream_text(
+            system=None,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2000,
         )
     )

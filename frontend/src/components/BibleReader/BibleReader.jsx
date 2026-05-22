@@ -5,6 +5,7 @@ import VerseText from './VerseText'
 import CompareView from './CompareView'
 import InterlinearVerse from './InterlinearVerse'
 import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
+import BookIntroCard from './BookIntroCard'
 
 export default function BibleReader() {
   const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, openWordStudy } = useStudyStore()
@@ -97,6 +98,9 @@ export default function BibleReader() {
           </p>
           <div className="w-16 h-px bg-gray-300 dark:bg-gray-600 mx-auto mt-3" />
         </div>
+
+        {/* Book introduction card — chapter 1 only */}
+        {data.chapter === 1 && <BookIntroCard book={data.book} />}
 
         {/* Verses */}
         <div

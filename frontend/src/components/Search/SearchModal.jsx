@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, Sparkles, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
+import { streamAI } from '../../api/streamAI'
 import clsx from 'clsx'
 
 export default function SearchModal({ onClose }) {
@@ -11,8 +12,11 @@ export default function SearchModal({ onClose }) {
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
+  const [synopsis, setSynopsis] = useState('')
+  const [synopsisLoading, setSynopsisLoading] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
+  const synopsisStopRef = useRef(null)
   const { translation, setReference } = useStudyStore()
 
   useEffect(() => {
@@ -20,7 +24,7 @@ export default function SearchModal({ onClose }) {
   }, [])
 
   useEffect(() => {
-    if (query.length < 3) { setResults(null); setActiveIdx(-1); return }
+    if (query.length < 3) { setResults(null); setActiveIdx(-1); setSynopsis(''); return }
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
@@ -29,11 +33,29 @@ export default function SearchModal({ onClose }) {
           : await api.search(query, scope, translation)
         setResults(data)
         setActiveIdx(-1)
+
+        // Stream AI synopsis for non-empty results
+        if (data?.results?.length > 0) {
+          synopsisStopRef.current?.()
+          setSynopsis('')
+          setSynopsisLoading(true)
+          synopsisStopRef.current = streamAI(
+            'search-synopsis',
+            { query, results: data.results.slice(0, 8) },
+            (chunk) => setSynopsis((s) => s + chunk),
+            () => setSynopsisLoading(false),
+          )
+        } else {
+          setSynopsis('')
+        }
       } finally {
         setLoading(false)
       }
     }, 300)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      synopsisStopRef.current?.()
+    }
   }, [query, scope, semantic, translation])
 
   const resultList = results?.results ?? []
@@ -152,6 +174,20 @@ export default function SearchModal({ onClose }) {
           <div className="px-4 py-1.5 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-100 dark:border-purple-900/50">
             <p className="text-[10px] text-purple-600 dark:text-purple-400">
               Themes matched: {results.matched_themes.join(', ')}
+            </p>
+          </div>
+        )}
+
+        {/* AI Synopsis */}
+        {(synopsis || synopsisLoading) && (
+          <div className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-indigo-900/50">
+            <p className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400 mb-1 flex items-center gap-1">
+              <Sparkles size={9} />
+              AI Synthesis
+            </p>
+            <p className="text-xs text-indigo-800 dark:text-indigo-200 leading-relaxed">
+              {synopsis}
+              {synopsisLoading && <span className="inline-block w-1.5 h-3 bg-indigo-400 animate-pulse ml-0.5 rounded-sm" />}
             </p>
           </div>
         )}

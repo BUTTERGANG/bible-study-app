@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, RefreshCw, BookOpen, MapPin, Users, Sparkles, Loader } from 'lucide-react'
+import { Search, RefreshCw, BookOpen, MapPin, Users, Sparkles, Loader, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -49,6 +49,7 @@ export default function FactbookPanel() {
   const [selectedEntity, setSelectedEntity] = useState(null)
   const [selectedType, setSelectedType] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [questionsOpen, setQuestionsOpen] = useState(false)
   const bottomRef = useRef(null)
   const qc = useQueryClient()
 
@@ -69,6 +70,13 @@ export default function FactbookPanel() {
       50
     ),
     retry: false,
+  })
+
+  const { data: questionsData, isLoading: questionsLoading } = useQuery({
+    queryKey: ['factbook-questions', selectedEntity, selectedType],
+    queryFn: () => api.getFactbookQuestions(selectedEntity, selectedType || undefined),
+    enabled: !!selectedEntity && questionsOpen,
+    staleTime: 1000 * 60 * 30,
   })
 
   useEffect(() => {
@@ -242,6 +250,43 @@ export default function FactbookPanel() {
               >
                 {entry.content}
               </ReactMarkdown>
+            </div>
+
+            {/* Study Questions */}
+            <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+              <button
+                onClick={() => setQuestionsOpen(o => !o)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 transition-colors w-full"
+              >
+                <HelpCircle size={12} />
+                Study Questions
+                {questionsOpen ? <ChevronDown size={11} className="ml-auto" /> : <ChevronRight size={11} className="ml-auto" />}
+              </button>
+
+              {questionsOpen && (
+                <div className="mt-2 space-y-2">
+                  {questionsLoading ? (
+                    <div className="space-y-1.5">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-3 bg-amber-50 dark:bg-amber-900/20 rounded animate-pulse" />
+                      ))}
+                    </div>
+                  ) : questionsData?.questions?.length > 0 ? (
+                    <ol className="space-y-2 list-none">
+                      {questionsData.questions.map((q, i) => (
+                        <li key={i} className="flex gap-2 text-xs text-gray-700 dark:text-gray-300">
+                          <span className="flex-shrink-0 w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] flex items-center justify-center font-semibold">
+                            {i + 1}
+                          </span>
+                          <span className="leading-relaxed">{q}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="text-xs text-gray-400">No questions available.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div ref={bottomRef} />

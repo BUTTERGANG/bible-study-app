@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
+import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -22,8 +22,15 @@ const TimelinePanel = lazy(() => import('../Timeline/TimelinePanel'))
 const MapPanel = lazy(() => import('../Maps/MapPanel'))
 const ComparePanel = lazy(() => import('../Compare/ComparePanel'))
 const TopicalSearchPanel = lazy(() => import('../TopicalSearchPanel/TopicalSearchPanel'))
+const InsightsPanel = lazy(() => import('../Insights/InsightsPanel'))
+const MemorizePanel = lazy(() => import('../Memorize/MemorizePanel'))
+const PrayerPanel = lazy(() => import('../Prayer/PrayerPanel'))
+const StudyBuilder = lazy(() => import('../StudyBuilder/StudyBuilder'))
+const DashboardPanel = lazy(() => import('../Dashboard/DashboardPanel'))
 
 const TABS = [
+  { id: 'home', label: 'Home', icon: BookOpen },
+  { id: 'insights', label: 'Insights', icon: Lightbulb },
   { id: 'guide', label: 'Guide', icon: Compass },
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
   { id: 'compare', label: 'Compare', icon: Layers },
@@ -41,6 +48,9 @@ const TABS = [
   { id: 'timeline', label: 'Timeline', icon: Clock },
   { id: 'maps', label: 'Maps', icon: Map },
   { id: 'topical', label: 'Topical', icon: TrendingUp },
+  { id: 'memorize', label: 'Memorize', icon: Brain },
+  { id: 'prayer', label: 'Prayer', icon: Heart },
+  { id: 'study', label: 'Study', icon: GraduationCap },
 ]
 
 function PanelSkeleton() {
@@ -74,6 +84,8 @@ export default function RightPanel() {
 
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<PanelSkeleton />}>
+          {rightPanel === 'home' && <DashboardPanel />}
+          {rightPanel === 'insights' && <InsightsPanel />}
           {rightPanel === 'guide' && <PassageGuidePanel />}
           {rightPanel === 'commentary' && <CommentaryPanel />}
           {rightPanel === 'compare' && <ComparePanel />}
@@ -91,6 +103,9 @@ export default function RightPanel() {
           {rightPanel === 'timeline' && <TimelinePanel />}
           {rightPanel === 'maps' && <MapPanel />}
           {rightPanel === 'topical' && <TopicalSearchPanel />}
+          {rightPanel === 'memorize' && <MemorizePanel />}
+          {rightPanel === 'prayer' && <PrayerPanel />}
+          {rightPanel === 'study' && <StudyBuilder />}
         </Suspense>
       </div>
     </div>
