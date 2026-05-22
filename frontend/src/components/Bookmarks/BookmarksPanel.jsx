@@ -79,8 +79,13 @@ function BookmarkRow({ bm, onGo, onDelete }) {
           </span>
           <ChevronRight size={12} className="text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
+        {bm.preview_text && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+            "{bm.preview_text}"
+          </p>
+        )}
         {bm.note && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 truncate">
             {bm.note}
           </p>
         )}
