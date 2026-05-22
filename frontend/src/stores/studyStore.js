@@ -39,6 +39,10 @@ export const useStudyStore = create(
       compareMode: false,
       compareTranslations: [],
 
+      // Commentary source filter preferences
+      commentarySources: [],
+      setCommentarySources: (sources) => set({ commentarySources: sources }),
+
       // AI Conversation history
       aiHistory: {},
       setAiHistory: (key, messages) => set((s) => ({
@@ -101,6 +105,7 @@ export const useStudyStore = create(
         fontSizeIdx: s.fontSizeIdx,
         compareMode: s.compareMode,
         compareTranslations: s.compareTranslations,
+        commentarySources: s.commentarySources,
         aiHistory: s.aiHistory,
         visualFiltersEnabled: s.visualFiltersEnabled,
         visualFilters: s.visualFilters,

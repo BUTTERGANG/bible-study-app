@@ -6,10 +6,11 @@ import { BookOpen, Check, ChevronDown, ChevronRight, Filter } from 'lucide-react
 import clsx from 'clsx'
 
 export default function CommentaryPanel() {
-  const { book, chapter, verse } = useStudyStore()
+  const { book, chapter, verse, commentarySources, setCommentarySources } = useStudyStore()
   const [expandedSources, setExpandedSources] = useState(new Set(['MHC', 'JFB']))
-  const [selectedSources, setSelectedSources] = useState([])
   const [showSourcePicker, setShowSourcePicker] = useState(false)
+
+  const selectedSources = commentarySources
 
   const { data: sourcesData } = useQuery({
     queryKey: ['commentary-sources'],
@@ -32,8 +33,10 @@ export default function CommentaryPanel() {
   }
 
   function toggleFilterSource(sourceId) {
-    setSelectedSources((prev) =>
-      prev.includes(sourceId) ? prev.filter((s) => s !== sourceId) : [...prev, sourceId]
+    setCommentarySources(
+      selectedSources.includes(sourceId)
+        ? selectedSources.filter((s) => s !== sourceId)
+        : [...selectedSources, sourceId]
     )
   }
 
@@ -77,7 +80,7 @@ export default function CommentaryPanel() {
               </p>
               {activeFilterCount > 0 && (
                 <button
-                  onClick={() => setSelectedSources([])}
+                  onClick={() => setCommentarySources([])}
                   className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   Clear all

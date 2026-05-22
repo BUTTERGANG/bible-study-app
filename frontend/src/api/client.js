@@ -44,7 +44,7 @@ const patch = (path, body) =>
 
 export const api = {
   generateOutline: (reference, translation) => post('/ai/outline', { reference, translation }),
-  topicStudy: (topic) => post('/ai/chat', { mode: 'topic', topic }),
+  topicStudy: (topic, depth = 'overview') => post('/ai/topic-study', { topic, depth }),
   // Health / auth
   getHealth: () => get('/health'),
   getAuthStatus: () => get('/auth/status'),
@@ -140,6 +140,8 @@ export const api = {
     get(`/library/books${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   getBookPage: (id, page) => get(`/library/books/${id}/page/${page}`),
   getBookToc: (id) => get(`/library/books/${id}/toc`),
+  searchLibrary: (q, limit = 20) =>
+    get(`/library/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
   // Interlinear
   getChapterInterlinear: (translation, book, chapter) =>

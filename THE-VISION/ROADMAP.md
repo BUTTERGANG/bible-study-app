@@ -1,6 +1,8 @@
 # Roadmap
 
-Last updated: 2026-05-16
+Last updated: 2026-05-21
+
+> **See also**: `FEATURE-GAPS.md` for a full Logos Bible Software comparison and prioritized gap analysis with 18 backlog items across 6 categories.
 
 ## Recently Shipped (2026-05-16 — part 2)
 
@@ -105,3 +107,22 @@ Last updated: 2026-05-16
 - Bible/commentary/lexicon stay in SQLite (read-only, bulk content)
 - User-mutable tables move to Postgres for multi-instance scale
 - Not urgent until 5.1 lands or traffic actually requires it
+
+## Priority 6 — Logos-Gap Features (from 2026-05-21 analysis)
+
+### 6.1 Passage Guide (unified view)
+- Logos' marquee feature: commentary + word study + cross-refs in one view
+- All pieces exist in our app but are scattered across separate tabs
+- Build a unified "Passage Guide" view triggered from any verse/chapter
+- See backlog: `passage_guide_unified_view`
+
+### 6.2 Advanced topical search
+- Logos: "See what the Bible says about anything"
+- We have AI topic study mode but no dedicated topical index UI
+- Build topical search browser with AI-generated verse lists + Factbook integration
+- See backlog: `advanced_topical_search_browser`
+
+### 6.3 Offline / PWA
+- Logos has mobile apps with offline access
+- Add service worker + cache strategy for chapter + commentary
+- See backlog: `offline_pwa_support`

@@ -90,6 +90,7 @@ export default function RightPanel() {
           {rightPanel === 'reading' && <ReadingPlansPanel />}
           {rightPanel === 'timeline' && <TimelinePanel />}
           {rightPanel === 'maps' && <MapPanel />}
+          {rightPanel === 'topical' && <TopicalSearchPanel />}
         </Suspense>
       </div>
     </div>

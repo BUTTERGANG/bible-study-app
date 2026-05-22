@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { useStudyStore } from './stores/studyStore'
 import { useUrlSync } from './hooks/useUrlSync'
+import { useOnlineStatus } from './hooks/useOnlineStatus'
 import Sidebar from './components/Sidebar/Sidebar'
 import BibleReader from './components/BibleReader/BibleReader'
 import RightPanel from './components/layout/RightPanel'
@@ -15,6 +16,7 @@ export default function App() {
   const { sidebarOpen, rightPanelOpen, darkMode } = useStudyStore()
   const [searchOpen, setSearchOpen] = useState(false)
   const [morphSearchOpen, setMorphSearchOpen] = useState(false)
+  const online = useOnlineStatus()
   useUrlSync()
 
   useEffect(() => {
@@ -35,6 +37,12 @@ export default function App() {
   return (
     <AuthGate>
       <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
+        {!online && (
+          <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500 text-white text-xs font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80 animate-pulse" />
+            Offline — showing cached content
+          </div>
+        )}
         <TopBar onSearch={() => setSearchOpen(true)} onMorphSearch={() => setMorphSearchOpen(true)} />
 
         <div className="flex flex-1 overflow-hidden">

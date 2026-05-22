@@ -8,7 +8,7 @@ except (ImportError, OSError):
     _FITZ_OK = False
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -150,6 +150,46 @@ async def get_table_of_contents(book_id: int, db: AsyncSession = Depends(get_db)
             raise HTTPException(status_code=500, detail=str(e))
 
     return {"title": book.title, "toc": []}
+
+
+@router.get("/search")
+async def search_library(
+    q: str = Query(..., min_length=2),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Full-text search across all library pages using FTS5."""
+    # Escape special FTS5 characters to prevent query syntax errors
+    safe_q = q.replace('"', '""')
+    rows = await db.execute(
+        text("""
+            SELECT
+                lp.book_id,
+                lp.page_num,
+                lb.title,
+                lb.author,
+                lb.category,
+                snippet(library_pages_fts, 0, '<mark>', '</mark>', '…', 20) AS snippet
+            FROM library_pages_fts
+            JOIN library_pages lp ON lp.id = library_pages_fts.rowid
+            JOIN library_books lb ON lb.id = lp.book_id
+            WHERE library_pages_fts MATCH :q
+            ORDER BY rank
+            LIMIT :limit
+        """),
+        {"q": f'"{safe_q}"', "limit": limit},
+    )
+    results = []
+    for row in rows:
+        results.append({
+            "book_id": row.book_id,
+            "page_num": row.page_num,
+            "title": row.title,
+            "author": row.author,
+            "category": row.category,
+            "snippet": row.snippet,
+        })
+    return {"query": q, "results": results, "count": len(results)}
 
 
 @router.get("/categories")
