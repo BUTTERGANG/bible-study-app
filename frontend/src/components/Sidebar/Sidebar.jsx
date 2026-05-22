@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, memo } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Search as SearchIcon, X } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -10,6 +10,7 @@ export default function Sidebar() {
   const { book: activeBook, chapter: activeChapter, translation, setReference } = useStudyStore()
   const [expanded, setExpanded] = useState({ OT: true, NT: true, APO: false })
   const [selectedBook, setSelectedBook] = useState(activeBook)
+
   // Keep the locally-expanded book in sync when activeBook changes from
   // outside the sidebar (e.g. search-modal navigation).
   useEffect(() => {
@@ -34,18 +35,18 @@ export default function Sidebar() {
     ? availableBooks.filter((b) => b.testament === 'APO')
     : []
 
-  const toggleSection = useCallback((sect) => {
+  function toggleSection(sect) {
     setExpanded((e) => ({ ...e, [sect]: !e[sect] }))
-  }, [])
+  }
 
-  const selectBook = useCallback((bookName) => {
-    setSelectedBook((prev) => (bookName === prev ? null : bookName))
-  }, [])
+  function selectBook(bookName) {
+    setSelectedBook(bookName === selectedBook ? null : bookName)
+  }
 
-  const selectChapter = useCallback((bookName, ch) => {
+  function selectChapter(bookName, ch) {
     setReference(bookName, ch)
     setSelectedBook(bookName)
-  }, [setReference])
+  }
 
   return (
     <div className="text-sm">
@@ -88,7 +89,7 @@ export default function Sidebar() {
   )
 }
 
-const BookSection = memo(function BookSection({
+function BookSection({
   label, books, expanded, onToggle,
   selectedBook, activeBook, activeChapter,
   onSelectBook, onSelectChapter,
@@ -143,4 +144,4 @@ const BookSection = memo(function BookSection({
       ))}
     </div>
   )
-})
+}

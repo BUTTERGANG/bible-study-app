@@ -11,11 +11,6 @@ export default function CommentaryPanel() {
   const [selectedSources, setSelectedSources] = useState([])
   const [showSourcePicker, setShowSourcePicker] = useState(false)
 
-  const { data: sourcesData } = useQuery({
-    queryKey: ['commentary-sources'],
-    queryFn: api.getCommentarySources,
-  })
-
   const { data, isLoading } = useQuery({
     queryKey: ['commentary', book, chapter, verse, selectedSources.join(',')],
     queryFn: () => api.getVerseCommentary(book, chapter, verse, selectedSources.join(',')),
@@ -128,7 +123,6 @@ export default function CommentaryPanel() {
           groupBySource(data.entries).map(([source, entries]) => (
             <CommentarySource
               key={source}
-              sourceId={source}
               displayName={entries[0].display_name}
               entries={entries}
               expanded={expandedSources.has(source)}
@@ -140,7 +134,7 @@ export default function CommentaryPanel() {
   )
 }
 
-function CommentarySource({ sourceId, displayName, entries, expanded, onToggle }) {
+function CommentarySource({ displayName, entries, expanded, onToggle }) {
   return (
     <div className="border-b border-gray-100 dark:border-gray-700">
       <button

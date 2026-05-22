@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useStudyStore } from '../stores/studyStore'
 
 // Bidirectionally sync the URL `/:translation/:book/:chapter/:verse?` with the
