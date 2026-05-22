@@ -6,6 +6,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
+import { getVerseExportData } from '../../utils/export'
 import clsx from 'clsx'
 
 const COLORS = [
@@ -26,6 +27,7 @@ export default function VerseContextMenu({
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     function handler(e) {
@@ -95,26 +97,26 @@ export default function VerseContextMenu({
     onClose()
   }
 
-  function exportPassage() {
-    const refText = `${book} ${chapter}:${verse}`
-    const content = [
-      `${refText} (${translation})`,
-      '',
-      text,
-      '',
-      `— Exported from LOGOS Bible Study`,
-      `— ${new Date().toLocaleDateString()}`,
-    ].join('\n')
-
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${book}-${chapter}-${verse}.txt`
-    a.click()
-    // Revoke after a tick so the download has time to start
-    setTimeout(() => URL.revokeObjectURL(url), 100)
-    onClose()
+  async function exportPassage() {
+    setIsExporting(true)
+    try {
+      const content = await getVerseExportData(book, chapter, verse, text, translation)
+      
+      const blob = new Blob([content], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${book}-${chapter}-${verse}.md`
+      a.click()
+      
+      // Revoke after a tick so the download has time to start
+      setTimeout(() => URL.revokeObjectURL(url), 100)
+      onClose()
+    } catch (err) {
+      console.error(err)
+      setError('Failed to export passage')
+      setIsExporting(false)
+    }
   }
 
   function openPanel(panel) {
@@ -165,8 +167,8 @@ export default function VerseContextMenu({
         Share verse
       </button>
 
-      <button onClick={exportPassage} className="menu-item">
-        <Download size={13} />
+      <button onClick={exportPassage} disabled={isExporting} className="menu-item">
+        {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
         Export passage
       </button>
 
