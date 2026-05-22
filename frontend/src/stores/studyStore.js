@@ -88,6 +88,8 @@ export const useStudyStore = create(
         interlinearMode: s.interlinearMode,
         darkMode: s.darkMode,
         fontSizeIdx: s.fontSizeIdx,
+        compareMode: s.compareMode,
+        compareTranslations: s.compareTranslations,
         visualFiltersEnabled: s.visualFiltersEnabled,
         visualFilters: s.visualFilters,
       }),
