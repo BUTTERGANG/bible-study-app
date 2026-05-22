@@ -19,9 +19,11 @@ const LibraryReader = lazy(() => import('../Library/LibraryReader'))
 const NtOtPanel = lazy(() => import('../NtOt/NtOtPanel'))
 const TimelinePanel = lazy(() => import('../Timeline/TimelinePanel'))
 const MapPanel = lazy(() => import('../Maps/MapPanel'))
+const ComparePanel = lazy(() => import('../Compare/ComparePanel'))
 
 const TABS = [
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
+  { id: 'compare', label: 'Compare', icon: Layers },
   { id: 'cross-ref', label: 'Cross-Ref', icon: Cross },
   { id: 'nt-ot', label: 'NT-OT', icon: Link2 },
   { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
@@ -69,6 +71,7 @@ export default function RightPanel() {
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<PanelSkeleton />}>
           {rightPanel === 'commentary' && <CommentaryPanel />}
+          {rightPanel === 'compare' && <ComparePanel />}
           {rightPanel === 'cross-ref' && <CrossReferencePanel />}
           {rightPanel === 'nt-ot' && <NtOtPanel />}
           {rightPanel === 'dictionary' && <DictionaryPanel />}

@@ -172,6 +172,11 @@ export default function VerseContextMenu({
 
       <div className="border-t border-gray-100 dark:border-gray-700" />
 
+      <button onClick={() => openPanel('compare')} className="menu-item">
+        <Layers size={13} />
+        Compare translations
+      </button>
+
       <button onClick={() => openPanel('notes')} className="menu-item">
         <StickyNote size={13} />
         Add note
