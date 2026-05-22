@@ -41,6 +41,7 @@ const put = (path, body) =>
   request(path, { method: 'PUT', body: JSON.stringify(body ?? {}) })
 
 export const api = {
+  generateOutline: (reference, translation) => post('/ai/outline', { reference, translation }),
   // Health / auth
   getHealth: () => get('/health'),
   getAuthStatus: () => get('/auth/status'),
