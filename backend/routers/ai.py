@@ -14,8 +14,11 @@ import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import require_app_password
+from ..database import get_db
 from ..rate_limit import ai_rate_limit
 
 router = APIRouter(
@@ -69,6 +72,7 @@ class AskRequest(BaseModel):
     verse_text: Optional[str] = None
     chapter_text: Optional[str] = None
     conversation_history: Optional[List[dict]] = None
+    include_library_context: bool = True
 
 
 class ExplainRequest(BaseModel):
@@ -109,15 +113,58 @@ class SermonRequest(BaseModel):
     chapter_text: Optional[str] = None
 
 
-def _system_blocks(reference: Optional[str], translation: Optional[str]) -> list:
+async def _fetch_library_context(db: AsyncSession, question: str, limit: int = 3) -> list:
+    """Search library pages via FTS5 and return top relevant passages.
+    Degrades gracefully if library has no pages or FTS5 is unavailable."""
+    try:
+        # Use up to the first 10 words to keep the FTS5 query clean
+        safe_q = question.replace('"', '""')
+        query_words = " ".join(safe_q.split()[:10])
+        if not query_words:
+            return []
+        rows = await db.execute(
+            text("""
+                SELECT
+                    lb.title,
+                    lb.author,
+                    lp.book_id,
+                    lp.page_num,
+                    snippet(library_pages_fts, 0, '', '', '…', 40) AS snippet
+                FROM library_pages_fts
+                JOIN library_pages lp ON lp.id = library_pages_fts.rowid
+                JOIN library_books lb ON lb.id = lp.book_id
+                WHERE library_pages_fts MATCH :q
+                ORDER BY rank
+                LIMIT :limit
+            """),
+            {"q": f'"{query_words}"', "limit": limit},
+        )
+        return [
+            {
+                "title": r.title,
+                "author": r.author or "",
+                "book_id": r.book_id,
+                "page": r.page_num,
+                "snippet": r.snippet or "",
+            }
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def _system_blocks(reference: Optional[str], translation: Optional[str], has_library: bool = False) -> list:
     """Build a cacheable system prompt. The expertise block (large, stable) is
     marked with ephemeral cache_control; the per-request line about the
     current passage is appended uncached."""
     blocks = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": _CACHE}]
-    blocks.append({
-        "type": "text",
-        "text": f"\nThe user is currently studying {reference or 'the passage'} in {translation or 'KJV'}.",
-    })
+    passage_note = f"\nThe user is currently studying {reference or 'the passage'} in {translation or 'KJV'}."
+    if has_library:
+        passage_note += (
+            " Relevant passages from their personal library have been included as context below. "
+            "When drawing on library content, cite the source inline as [Source: Book Title, p.N]."
+        )
+    blocks.append({"type": "text", "text": passage_note})
     return blocks
 
 
@@ -127,8 +174,9 @@ def _user_message_with_context(
     translation: Optional[str],
     verse_text: Optional[str],
     chapter_text: Optional[str],
+    library_context: Optional[list] = None,
 ) -> dict:
-    """User-turn message with optional passage context. The chapter_text — if
+    """User-turn message with optional passage and library context. The chapter_text — if
     present and long — gets its own cache point so subsequent turns about the
     same chapter reuse it."""
     blocks: list = []
@@ -139,10 +187,15 @@ def _user_message_with_context(
         })
     if chapter_text:
         chapter_block = {"type": "text", "text": f"Full chapter context:\n{chapter_text}"}
-        # Only worth caching when there's meaningful content.
         if len(chapter_text) > 800:
             chapter_block["cache_control"] = _CACHE
         blocks.append(chapter_block)
+    if library_context:
+        lib_lines = ["**Relevant passages from your library:**\n"]
+        for i, item in enumerate(library_context, 1):
+            author_note = f" by {item['author']}" if item["author"] else ""
+            lib_lines.append(f"[{i}] *{item['title']}{author_note}* (p.{item['page']}):\n{item['snippet']}")
+        blocks.append({"type": "text", "text": "\n\n".join(lib_lines)})
     blocks.append({"type": "text", "text": question})
     return {"role": "user", "content": blocks}
 
@@ -182,17 +235,22 @@ async def _stream_text(*, system, messages: list, max_tokens: int):
 
 
 @router.post("/ask")
-async def ask_question(body: AskRequest):
+async def ask_question(body: AskRequest, db: AsyncSession = Depends(get_db)):
+    library_context = []
+    if body.include_library_context:
+        library_context = await _fetch_library_context(db, body.question)
+
     messages = list(body.conversation_history or [])
     messages.append(
         _user_message_with_context(
             body.question, body.reference, body.translation,
             body.verse_text, body.chapter_text,
+            library_context or None,
         )
     )
     return _stream_response(
         lambda: _stream_text(
-            system=_system_blocks(body.reference, body.translation),
+            system=_system_blocks(body.reference, body.translation, has_library=bool(library_context)),
             messages=messages,
             max_tokens=2048,
         )
@@ -319,6 +377,78 @@ Format as a clean list."""
         messages=[{"role": "user", "content": prompt}],
     )
     return {"cross_references": response.content[0].text, "reference": body.reference}
+
+
+class SermonSectionRequest(BaseModel):
+    passage: str
+    translation: str = "KJV"
+    audience: Optional[str] = "general"
+    outline: Optional[str] = None  # existing outline for context
+
+
+@router.post("/illustrations")
+async def generate_illustrations(body: SermonSectionRequest):
+    audience_desc = SERMON_AUDIENCE_GUIDE.get(body.audience, SERMON_AUDIENCE_GUIDE["general"]) if body.audience else "a general congregation"
+    outline_note = f"\n\nThe sermon outline so far:\n{body.outline}" if body.outline else ""
+
+    prompt = f"""Generate 3 compelling sermon illustrations for **{body.passage}** ({body.translation}), suitable for {audience_desc}.{outline_note}
+
+For each illustration provide:
+### Illustration [N]: [Short Title]
+**Type:** (story / analogy / historical example / contemporary example)
+**Tone:** (inspirational / convicting / comforting / challenging)
+**Content:** A vivid, 100-150 word illustration ready to use from the pulpit.
+**Bridge:** One sentence connecting the illustration back to the passage.
+
+Make the illustrations relatable, memorable, and theologically grounded."""
+
+    return _stream_response(
+        lambda: _stream_text(system=None, messages=[{"role": "user", "content": prompt}], max_tokens=1500)
+    )
+
+
+@router.post("/discussion-questions")
+async def generate_discussion_questions(body: SermonSectionRequest):
+    outline_note = f"\n\nBased on this outline:\n{body.outline}" if body.outline else ""
+
+    prompt = f"""Generate 6 discussion questions for **{body.passage}** ({body.translation}) suitable for small group use after a sermon.{outline_note}
+
+Format each as:
+**Q[N]. [Question]**
+*Purpose: [what this question helps the group explore]*
+
+Include a mix of:
+- Observation questions (what does the text say?)
+- Interpretation questions (what does it mean?)
+- Application questions (how do we live this out?)
+- Personal reflection questions
+
+Keep questions open-ended and encourage personal engagement with Scripture."""
+
+    return _stream_response(
+        lambda: _stream_text(system=None, messages=[{"role": "user", "content": prompt}], max_tokens=1000)
+    )
+
+
+@router.post("/applications")
+async def generate_applications(body: SermonSectionRequest):
+    audience_desc = SERMON_AUDIENCE_GUIDE.get(body.audience, SERMON_AUDIENCE_GUIDE["general"]) if body.audience else "a general congregation"
+    outline_note = f"\n\nBased on this outline:\n{body.outline}" if body.outline else ""
+
+    prompt = f"""Generate 4 practical life applications from **{body.passage}** ({body.translation}) for {audience_desc}.{outline_note}
+
+For each application:
+### Application [N]: [Action-Oriented Title]
+**The Principle:** One sentence stating the biblical principle.
+**This Week:** A specific, concrete action the listener can take in the next 7 days.
+**Long-term:** A habit or posture to develop over the next 30 days.
+**Reflection question:** One question to carry through the week.
+
+Make applications specific, measurable, and spiritually transformative — not generic."""
+
+    return _stream_response(
+        lambda: _stream_text(system=None, messages=[{"role": "user", "content": prompt}], max_tokens=1200)
+    )
 
 
 SERMON_AUDIENCE_GUIDE = {

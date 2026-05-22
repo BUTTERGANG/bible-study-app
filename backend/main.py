@@ -44,6 +44,7 @@ from .routers import (
     nt_ot,
     reading_plans,
     search,
+    sermons,
     timeline_maps,
     users,
     word_study,
@@ -129,6 +130,9 @@ app.include_router(ai.router)
 
 # AI conversations — user-scoped, read-write.
 app.include_router(ai_conversations.router)
+
+# Sermon Builder — projects and sections.
+app.include_router(sermons.router)
 
 # Factbook router carries its own dependencies (auth + rate limit).
 app.include_router(factbook.router)

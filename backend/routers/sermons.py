@@ -1,0 +1,159 @@
+"""Sermon Builder — CRUD for sermon projects and their sections."""
+
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from ..auth import get_current_user
+from ..database import get_db
+from ..models import SermonProject, SermonSection
+
+router = APIRouter(prefix="/api/sermons", tags=["sermons"])
+
+
+class ProjectCreate(BaseModel):
+    title: str
+    passage_ref: str
+    audience: str = "general"
+
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    passage_ref: Optional[str] = None
+    audience: Optional[str] = None
+
+
+class SectionUpsert(BaseModel):
+    content: str
+
+
+def _project_out(p: SermonProject) -> dict:
+    return {
+        "id": p.id,
+        "title": p.title,
+        "passage_ref": p.passage_ref,
+        "audience": p.audience,
+        "created_at": p.created_at.isoformat(),
+        "updated_at": p.updated_at.isoformat(),
+        "sections": [
+            {"section_type": s.section_type, "content": s.content, "updated_at": s.updated_at.isoformat()}
+            for s in (p.sections or [])
+        ],
+    }
+
+
+@router.get("")
+async def list_projects(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SermonProject)
+        .options(selectinload(SermonProject.sections))
+        .where(SermonProject.user_id == 0)
+        .order_by(SermonProject.updated_at.desc())
+    )
+    projects = result.scalars().all()
+    return {"projects": [_project_out(p) for p in projects]}
+
+
+@router.post("", status_code=201)
+async def create_project(body: ProjectCreate, db: AsyncSession = Depends(get_db)):
+    project = SermonProject(
+        title=body.title,
+        passage_ref=body.passage_ref,
+        audience=body.audience,
+    )
+    db.add(project)
+    await db.commit()
+    await db.refresh(project)
+    # Load sections relationship (empty on creation)
+    await db.execute(select(SermonSection).where(SermonSection.project_id == project.id))
+    project.sections = []
+    return _project_out(project)
+
+
+@router.get("/{project_id}")
+async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SermonProject)
+        .options(selectinload(SermonProject.sections))
+        .where(SermonProject.id == project_id)
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Sermon project not found")
+    return _project_out(project)
+
+
+@router.patch("/{project_id}")
+async def update_project(project_id: int, body: ProjectUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SermonProject)
+        .options(selectinload(SermonProject.sections))
+        .where(SermonProject.id == project_id)
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Sermon project not found")
+    if body.title is not None:
+        project.title = body.title
+    if body.passage_ref is not None:
+        project.passage_ref = body.passage_ref
+    if body.audience is not None:
+        project.audience = body.audience
+    project.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(project)
+    return _project_out(project)
+
+
+@router.delete("/{project_id}", status_code=204)
+async def delete_project(project_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SermonProject).where(SermonProject.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Sermon project not found")
+    await db.delete(project)
+    await db.commit()
+
+
+@router.put("/{project_id}/sections/{section_type}")
+async def upsert_section(
+    project_id: int,
+    section_type: str,
+    body: SectionUpsert,
+    db: AsyncSession = Depends(get_db),
+):
+    VALID_TYPES = {"outline", "illustrations", "questions", "applications", "full_sermon"}
+    if section_type not in VALID_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid section_type. Must be one of: {', '.join(VALID_TYPES)}")
+
+    result = await db.execute(select(SermonProject).where(SermonProject.id == project_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Sermon project not found")
+
+    existing = await db.execute(
+        select(SermonSection).where(
+            SermonSection.project_id == project_id,
+            SermonSection.section_type == section_type,
+        )
+    )
+    section = existing.scalar_one_or_none()
+    if section:
+        section.content = body.content
+        section.updated_at = datetime.utcnow()
+    else:
+        section = SermonSection(project_id=project_id, section_type=section_type, content=body.content)
+        db.add(section)
+
+    # Bump project updated_at so list sorts correctly
+    proj_result = await db.execute(select(SermonProject).where(SermonProject.id == project_id))
+    proj = proj_result.scalar_one_or_none()
+    if proj:
+        proj.updated_at = datetime.utcnow()
+
+    await db.commit()
+    return {"section_type": section_type, "content": body.content}

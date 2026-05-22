@@ -32,6 +32,8 @@ export const useStudyStore = create(
       sidebarOpen: true,
       rightPanelOpen: true,
       interlinearMode: false,
+      reverseInterlinear: false,
+      focusedStrongs: null,
       darkMode: false,
       fontSizeIdx: 1,
 
@@ -74,6 +76,10 @@ export const useStudyStore = create(
       toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
       setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
       toggleInterlinear: () => set((s) => ({ interlinearMode: !s.interlinearMode })),
+      toggleReverseInterlinear: () => set((s) => ({ reverseInterlinear: !s.reverseInterlinear })),
+      openWordStudy: (strongsNum) =>
+        set({ rightPanel: 'word-study', rightPanelOpen: true, focusedStrongs: strongsNum }),
+      clearFocusedStrongs: () => set({ focusedStrongs: null }),
       toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
       setFontSizeIdx: (idx) =>
         set({ fontSizeIdx: Math.max(0, Math.min(FONT_SIZES.length - 1, idx)) }),
@@ -101,6 +107,7 @@ export const useStudyStore = create(
         sidebarOpen: s.sidebarOpen,
         rightPanelOpen: s.rightPanelOpen,
         interlinearMode: s.interlinearMode,
+        reverseInterlinear: s.reverseInterlinear,
         darkMode: s.darkMode,
         fontSizeIdx: s.fontSizeIdx,
         compareMode: s.compareMode,

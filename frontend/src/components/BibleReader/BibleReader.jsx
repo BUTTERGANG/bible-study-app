@@ -7,7 +7,7 @@ import InterlinearVerse from './InterlinearVerse'
 import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 
 export default function BibleReader() {
-  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode } = useStudyStore()
+  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, openWordStudy } = useStudyStore()
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['chapter', translation, book, chapter],
@@ -26,7 +26,7 @@ export default function BibleReader() {
   const { data: interlinearData, isLoading: interlinearLoading } = useQuery({
     queryKey: ['interlinear', translation, book, chapter],
     queryFn: () => api.getChapterInterlinear(translation, book, chapter),
-    enabled: !!book && !!chapter && interlinearMode && !compareMode,
+    enabled: !!book && !!chapter && (interlinearMode || reverseInterlinear) && !compareMode,
   })
 
   const highlights = highlightData?.highlights ?? {}
@@ -92,7 +92,8 @@ export default function BibleReader() {
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Chapter {data.chapter} · {data.translation}
-            {interlinearMode && <span className="ml-2 text-blue-500">· Interlinear</span>}
+            {interlinearMode && !reverseInterlinear && <span className="ml-2 text-blue-500">· Interlinear</span>}
+            {reverseInterlinear && <span className="ml-2 text-purple-500">· Reverse Interlinear</span>}
           </p>
           <div className="w-16 h-px bg-gray-300 dark:bg-gray-600 mx-auto mt-3" />
         </div>
@@ -102,7 +103,7 @@ export default function BibleReader() {
           className="bible-text space-y-0.5 text-gray-900 dark:text-gray-100"
           style={{ fontSize: FONT_SIZES[fontSizeIdx] }}
         >
-          {interlinearMode && interlinearLoading && (
+          {(interlinearMode || reverseInterlinear) && interlinearLoading && (
             <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-400 dark:text-gray-500">
               <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
               Loading interlinear data…
@@ -110,7 +111,7 @@ export default function BibleReader() {
           )}
 
           {data.verses.map(({ verse, text }) => {
-            if (interlinearMode) {
+            if (interlinearMode || reverseInterlinear) {
               return (
                 <InterlinearVerse
                   key={verse}
@@ -124,6 +125,8 @@ export default function BibleReader() {
                   highlightId={highlights[String(verse)]?.id}
                   words={interlinearMap[verse] || []}
                   language={interlinearData?.language || 'greek'}
+                  reverseMode={reverseInterlinear}
+                  onWordClick={reverseInterlinear ? openWordStudy : null}
                 />
               )
             }

@@ -14,7 +14,7 @@ const BookmarksPanel = lazy(() => import('../Bookmarks/BookmarksPanel'))
 const ReadingPlansPanel = lazy(() => import('../ReadingPlans/ReadingPlansPanel'))
 const DictionaryPanel = lazy(() => import('../Dictionary/DictionaryPanel'))
 const CrossReferencePanel = lazy(() => import('../CrossReference/CrossReferencePanel'))
-const SermonAssistant = lazy(() => import('../SermonAssistant/SermonAssistant'))
+const SermonBuilder = lazy(() => import('../SermonBuilder/SermonBuilder'))
 const FactbookPanel = lazy(() => import('../Factbook/FactbookPanel'))
 const LibraryReader = lazy(() => import('../Library/LibraryReader'))
 const NtOtPanel = lazy(() => import('../NtOt/NtOtPanel'))
@@ -81,7 +81,7 @@ export default function RightPanel() {
           {rightPanel === 'nt-ot' && <NtOtPanel />}
           {rightPanel === 'dictionary' && <DictionaryPanel />}
           {rightPanel === 'ai' && <AIAssistant />}
-          {rightPanel === 'sermon' && <SermonAssistant />}
+          {rightPanel === 'sermon' && <SermonBuilder />}
           {rightPanel === 'factbook' && <FactbookPanel />}
           {rightPanel === 'notes' && <NotesPanel />}
           {rightPanel === 'word-study' && <WordStudyPanel />}

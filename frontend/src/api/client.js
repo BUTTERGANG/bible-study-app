@@ -191,6 +191,15 @@ export const api = {
   getDictionaryEntry: (source, term) =>
     get(`/dictionary/${source}/${encodeURIComponent(term)}`),
 
+  // Sermon Builder
+  listSermons: () => get('/sermons'),
+  createSermon: (data) => post('/sermons', data),
+  getSermon: (id) => get(`/sermons/${id}`),
+  updateSermon: (id, data) => patch(`/sermons/${id}`, data),
+  deleteSermon: (id) => del(`/sermons/${id}`),
+  upsertSermonSection: (id, sectionType, content) =>
+    put(`/sermons/${id}/sections/${sectionType}`, { content }),
+
   // AI Conversations
   listConversations: (limit = 50, offset = 0) =>
     get(`/ai/conversations?limit=${limit}&offset=${offset}`),

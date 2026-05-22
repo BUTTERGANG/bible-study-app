@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { MessageSquare, Send, Square } from 'lucide-react'
+import { Library, MessageSquare, Send, Square } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -50,6 +50,7 @@ export default function AIAssistant() {
   const { book, chapter, verse, selectedVerseText, translation, aiHistory, setAiHistory, clearAiHistory } = useStudyStore()
   const qc = useQueryClient()
   const [input, setInput] = useState('')
+  const [includeLibrary, setIncludeLibrary] = useState(true)
   const bottomRef = useRef(null)
   const saveTimer = useRef(null)
   const restoringRef = useRef(null)
@@ -119,9 +120,10 @@ export default function AIAssistant() {
         verse_text: selectedVerseText || undefined,
         chapter_text: chapterText || undefined,
         conversation_history: history,
+        include_library_context: includeLibrary,
       }
     },
-    [qc, translation, book, chapter, reference, selectedVerseText]
+    [qc, translation, book, chapter, reference, selectedVerseText, includeLibrary]
   )
 
   const { streaming, send, stop, clear } = useStreamingAI('ask', bodyFor, messages, setMessages)
@@ -150,14 +152,29 @@ export default function AIAssistant() {
           <MessageSquare size={13} />
           AI Study Assistant
         </span>
-        {messages.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleClear}
-            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            onClick={() => setIncludeLibrary((v) => !v)}
+            title={includeLibrary ? 'Library context on — click to disable' : 'Library context off — click to enable'}
+            className={clsx(
+              'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border transition-colors',
+              includeLibrary
+                ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                : 'text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-400'
+            )}
           >
-            Clear
+            <Library size={9} />
+            {includeLibrary ? 'Library on' : 'Library off'}
           </button>
-        )}
+          {messages.length > 0 && (
+            <button
+              onClick={handleClear}
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/40">
