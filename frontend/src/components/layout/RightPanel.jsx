@@ -1,10 +1,11 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock } from 'lucide-react'
+import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
 // Each panel is lazy-loaded so we don't pay for AI/word-study bundle weight on
 // users who only read scripture + commentary.
+const PassageGuidePanel = lazy(() => import('../PassageGuide/PassageGuidePanel'))
 const CommentaryPanel = lazy(() => import('../CommentaryPanel/CommentaryPanel'))
 const AIAssistant = lazy(() => import('../AIAssistant/AIAssistant'))
 const NotesPanel = lazy(() => import('../Notes/NotesPanel'))
@@ -22,6 +23,7 @@ const MapPanel = lazy(() => import('../Maps/MapPanel'))
 const ComparePanel = lazy(() => import('../Compare/ComparePanel'))
 
 const TABS = [
+  { id: 'guide', label: 'Guide', icon: Compass },
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
   { id: 'compare', label: 'Compare', icon: Layers },
   { id: 'cross-ref', label: 'Cross-Ref', icon: Cross },
@@ -50,13 +52,13 @@ export default function RightPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+      <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 scrollbar-hide">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setRightPanel(id)}
             className={clsx(
-              'flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors',
+              'flex flex-col items-center gap-0.5 py-2 px-3 text-xs font-medium transition-colors min-w-[72px]',
               rightPanel === id
                 ? 'text-blue-600 border-b-2 border-blue-600 bg-white dark:bg-gray-800'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -70,6 +72,7 @@ export default function RightPanel() {
 
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<PanelSkeleton />}>
+          {rightPanel === 'guide' && <PassageGuidePanel />}
           {rightPanel === 'commentary' && <CommentaryPanel />}
           {rightPanel === 'compare' && <ComparePanel />}
           {rightPanel === 'cross-ref' && <CrossReferencePanel />}
