@@ -607,6 +607,56 @@ def ingest_commentary_with_pysword(module_name: str, extract_dir: Path, conn: sq
         return 0
 
 
+def _read_rawld_module(conf_path: Path, data_path: Path):
+    """
+    Parse a SWORD RawLD lexicon/dictionary module.
+    Returns list of (key, text) tuples.
+
+    RawLD file layout:
+      .idx  6-byte records: (uint32 LE offset_in_dat, uint16 LE length_in_dat)
+      .dat  at each (offset, length): key\n<entry_text>
+            The key is the first line (up to first \\n). For Strong's entries
+            the key line ends with a backslash (e.g. "00001\\") which is stripped.
+    """
+    import struct as st
+
+    idx_file = data_path.with_suffix('.idx')
+    dat_file = data_path.with_suffix('.dat')
+    if not idx_file.exists():
+        idx_file = Path(str(data_path) + '.idx')
+        dat_file = Path(str(data_path) + '.dat')
+    if not (idx_file.exists() and dat_file.exists()):
+        return []
+
+    results = []
+    try:
+        idx_data = idx_file.read_bytes()
+        dat_data = dat_file.read_bytes()
+        num_entries = len(idx_data) // 6
+        for i in range(num_entries):
+            offset, length = st.unpack_from('<IH', idx_data, i * 6)
+            raw = dat_data[offset:offset + length]
+            if not raw:
+                continue
+            try:
+                text = raw.decode('utf-8', errors='replace')
+            except Exception:
+                continue
+            # First line is the key (strip trailing backslash used in Strong's entries)
+            nl = text.find('\n')
+            if nl == -1:
+                key = text.strip().rstrip('\\')
+                content = ''
+            else:
+                key = text[:nl].strip().rstrip('\\')
+                content = text[nl + 1:].strip()
+            if key and content:
+                results.append((key, content))
+    except Exception as e:
+        print(f"  rawLD parse error for {data_path}: {e}")
+    return results
+
+
 def _read_zld_module(conf_path: Path, data_path: Path):
     """
     Parse a SWORD zLD lexicon/dictionary module.
@@ -757,10 +807,17 @@ def ingest_lexicon(module_name: str, extract_dir: Path, conn: sqlite3.Connection
             return 0
 
         data_path = extract_dir / data_path_rel
-        # data_path points to e.g. modules/lexdict/zld/strongsgreek/dict
-        # so dict.idx, dict.dat etc live there
 
-        entries = _read_zld_module(conf_path, data_path)
+        # Detect format: zLD has .zdx/.zdt, rawLD has only .idx/.dat
+        zdx = Path(str(data_path) + '.zdx')
+        zdx2 = data_path.with_suffix('.zdx')
+        is_rawld = not (zdx.exists() or zdx2.exists())
+
+        if is_rawld:
+            entries = _read_rawld_module(conf_path, data_path)
+        else:
+            entries = _read_zld_module(conf_path, data_path)
+
         if not entries:
             print(f"  Could not parse {module_name} lexicon (0 entries from zLD parser)")
             return 0

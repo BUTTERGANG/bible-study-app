@@ -28,16 +28,33 @@ export const useStudyStore = create(
       translation: 'KJV',
 
       // UI state
-      rightPanel: 'commentary', // 'commentary' | 'ai' | 'notes' | 'word-study'
+      rightPanel: 'home',
       sidebarOpen: true,
       rightPanelOpen: true,
       interlinearMode: false,
+      reverseInterlinear: false,
+      focusedStrongs: null,
       darkMode: false,
       fontSizeIdx: 1,
 
       // Compare mode state
       compareMode: false,
       compareTranslations: [],
+
+      // Commentary source filter preferences
+      commentarySources: [],
+      setCommentarySources: (sources) => set({ commentarySources: sources }),
+
+      // AI Conversation history
+      aiHistory: {},
+      setAiHistory: (key, messages) => set((s) => ({
+        aiHistory: { ...s.aiHistory, [key]: messages }
+      })),
+      clearAiHistory: (key) => set((s) => {
+        const newHistory = { ...s.aiHistory }
+        delete newHistory[key]
+        return { aiHistory: newHistory }
+      }),
 
       // Visual filters state
       visualFiltersEnabled: false,
@@ -59,6 +76,10 @@ export const useStudyStore = create(
       toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
       setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
       toggleInterlinear: () => set((s) => ({ interlinearMode: !s.interlinearMode })),
+      toggleReverseInterlinear: () => set((s) => ({ reverseInterlinear: !s.reverseInterlinear })),
+      openWordStudy: (strongsNum) =>
+        set({ rightPanel: 'word-study', rightPanelOpen: true, focusedStrongs: strongsNum }),
+      clearFocusedStrongs: () => set({ focusedStrongs: null }),
       toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
       setFontSizeIdx: (idx) =>
         set({ fontSizeIdx: Math.max(0, Math.min(FONT_SIZES.length - 1, idx)) }),
@@ -86,8 +107,13 @@ export const useStudyStore = create(
         sidebarOpen: s.sidebarOpen,
         rightPanelOpen: s.rightPanelOpen,
         interlinearMode: s.interlinearMode,
+        reverseInterlinear: s.reverseInterlinear,
         darkMode: s.darkMode,
         fontSizeIdx: s.fontSizeIdx,
+        compareMode: s.compareMode,
+        compareTranslations: s.compareTranslations,
+        commentarySources: s.commentarySources,
+        aiHistory: s.aiHistory,
         visualFiltersEnabled: s.visualFiltersEnabled,
         visualFilters: s.visualFilters,
       }),

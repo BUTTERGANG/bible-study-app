@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from ..auth import CurrentUser, get_current_user
 from ..bible_data import resolve_book_name
 from ..database import get_db
-from ..models import Bookmark
+from ..models import Bookmark, BibleVerse
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 
@@ -20,7 +21,7 @@ class BookmarkCreate(BaseModel):
     note: Optional[str] = None
 
 
-def _bookmark_dict(b: Bookmark) -> dict:
+def _bookmark_dict(b: Bookmark, preview_text: Optional[str] = None) -> dict:
     return {
         "id": b.id,
         "book": b.book,
@@ -31,6 +32,7 @@ def _bookmark_dict(b: Bookmark) -> dict:
         ),
         "note": b.note,
         "created_at": b.created_at.isoformat() if b.created_at else None,
+        "preview_text": preview_text,
     }
 
 
@@ -63,14 +65,31 @@ async def list_bookmarks(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(Bookmark)
+    # Join with BibleVerse to get preview text (using ASV or KJV as default)
+    bv = aliased(BibleVerse)
+    stmt = (
+        select(Bookmark, bv.text)
+        .outerjoin(
+            bv,
+            (Bookmark.book == bv.book)
+            & (Bookmark.chapter == bv.chapter)
+            & (Bookmark.verse == bv.verse)
+            & (bv.translation == 'KJV')
+        )
         .where(Bookmark.user_id == user.id)
         .order_by(Bookmark.created_at.desc())
         .offset(offset)
         .limit(limit)
     )
-    return {"bookmarks": [_bookmark_dict(b) for b in result.scalars().all()], "offset": offset, "limit": limit}
+    
+    result = await db.execute(stmt)
+    rows = result.all()
+    
+    return {
+        "bookmarks": [_bookmark_dict(b, text) for b, text in rows],
+        "offset": offset,
+        "limit": limit
+    }
 
 
 @router.delete("/{bookmark_id}")

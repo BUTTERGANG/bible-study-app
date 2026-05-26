@@ -1,10 +1,11 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Calendar, Cross, Layers, Library, Link2, Map, MessageSquare, StickyNote, Church, BookMarked, Clock } from 'lucide-react'
+import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
 // Each panel is lazy-loaded so we don't pay for AI/word-study bundle weight on
 // users who only read scripture + commentary.
+const PassageGuidePanel = lazy(() => import('../PassageGuide/PassageGuidePanel'))
 const CommentaryPanel = lazy(() => import('../CommentaryPanel/CommentaryPanel'))
 const AIAssistant = lazy(() => import('../AIAssistant/AIAssistant'))
 const NotesPanel = lazy(() => import('../Notes/NotesPanel'))
@@ -13,15 +14,26 @@ const BookmarksPanel = lazy(() => import('../Bookmarks/BookmarksPanel'))
 const ReadingPlansPanel = lazy(() => import('../ReadingPlans/ReadingPlansPanel'))
 const DictionaryPanel = lazy(() => import('../Dictionary/DictionaryPanel'))
 const CrossReferencePanel = lazy(() => import('../CrossReference/CrossReferencePanel'))
-const SermonAssistant = lazy(() => import('../SermonAssistant/SermonAssistant'))
+const SermonBuilder = lazy(() => import('../SermonBuilder/SermonBuilder'))
 const FactbookPanel = lazy(() => import('../Factbook/FactbookPanel'))
 const LibraryReader = lazy(() => import('../Library/LibraryReader'))
 const NtOtPanel = lazy(() => import('../NtOt/NtOtPanel'))
 const TimelinePanel = lazy(() => import('../Timeline/TimelinePanel'))
 const MapPanel = lazy(() => import('../Maps/MapPanel'))
+const ComparePanel = lazy(() => import('../Compare/ComparePanel'))
+const TopicalSearchPanel = lazy(() => import('../TopicalSearchPanel/TopicalSearchPanel'))
+const InsightsPanel = lazy(() => import('../Insights/InsightsPanel'))
+const MemorizePanel = lazy(() => import('../Memorize/MemorizePanel'))
+const PrayerPanel = lazy(() => import('../Prayer/PrayerPanel'))
+const StudyBuilder = lazy(() => import('../StudyBuilder/StudyBuilder'))
+const DashboardPanel = lazy(() => import('../Dashboard/DashboardPanel'))
 
 const TABS = [
+  { id: 'home', label: 'Home', icon: BookOpen },
+  { id: 'insights', label: 'Insights', icon: Lightbulb },
+  { id: 'guide', label: 'Guide', icon: Compass },
   { id: 'commentary', label: 'Commentary', icon: BookOpen },
+  { id: 'compare', label: 'Compare', icon: Layers },
   { id: 'cross-ref', label: 'Cross-Ref', icon: Cross },
   { id: 'nt-ot', label: 'NT-OT', icon: Link2 },
   { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
@@ -35,6 +47,10 @@ const TABS = [
   { id: 'reading', label: 'Plans', icon: Calendar },
   { id: 'timeline', label: 'Timeline', icon: Clock },
   { id: 'maps', label: 'Maps', icon: Map },
+  { id: 'topical', label: 'Topical', icon: TrendingUp },
+  { id: 'memorize', label: 'Memorize', icon: Brain },
+  { id: 'prayer', label: 'Prayer', icon: Heart },
+  { id: 'study', label: 'Study', icon: GraduationCap },
 ]
 
 function PanelSkeleton() {
@@ -48,13 +64,13 @@ export default function RightPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+      <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 scrollbar-hide">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setRightPanel(id)}
             className={clsx(
-              'flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors',
+              'flex flex-col items-center gap-0.5 py-2 px-3 text-xs font-medium transition-colors min-w-[72px]',
               rightPanel === id
                 ? 'text-blue-600 border-b-2 border-blue-600 bg-white dark:bg-gray-800'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -68,12 +84,16 @@ export default function RightPanel() {
 
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<PanelSkeleton />}>
+          {rightPanel === 'home' && <DashboardPanel />}
+          {rightPanel === 'insights' && <InsightsPanel />}
+          {rightPanel === 'guide' && <PassageGuidePanel />}
           {rightPanel === 'commentary' && <CommentaryPanel />}
+          {rightPanel === 'compare' && <ComparePanel />}
           {rightPanel === 'cross-ref' && <CrossReferencePanel />}
           {rightPanel === 'nt-ot' && <NtOtPanel />}
           {rightPanel === 'dictionary' && <DictionaryPanel />}
           {rightPanel === 'ai' && <AIAssistant />}
-          {rightPanel === 'sermon' && <SermonAssistant />}
+          {rightPanel === 'sermon' && <SermonBuilder />}
           {rightPanel === 'factbook' && <FactbookPanel />}
           {rightPanel === 'notes' && <NotesPanel />}
           {rightPanel === 'word-study' && <WordStudyPanel />}
@@ -82,6 +102,10 @@ export default function RightPanel() {
           {rightPanel === 'reading' && <ReadingPlansPanel />}
           {rightPanel === 'timeline' && <TimelinePanel />}
           {rightPanel === 'maps' && <MapPanel />}
+          {rightPanel === 'topical' && <TopicalSearchPanel />}
+          {rightPanel === 'memorize' && <MemorizePanel />}
+          {rightPanel === 'prayer' && <PrayerPanel />}
+          {rightPanel === 'study' && <StudyBuilder />}
         </Suspense>
       </div>
     </div>

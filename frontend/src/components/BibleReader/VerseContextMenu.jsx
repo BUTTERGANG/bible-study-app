@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  AlertCircle, Bookmark, Copy, Download, Highlighter, Layers, Link,
+  AlertCircle, Bookmark, Copy, Download, Highlighter, Image, Layers, Link,
   Loader2, MessageSquare, Share2, StickyNote, X,
 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
+import { getVerseExportData } from '../../utils/export'
+import ShareCardModal from './ShareCardModal'
 import clsx from 'clsx'
 
 const COLORS = [
@@ -26,6 +28,8 @@ export default function VerseContextMenu({
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [showCard, setShowCard] = useState(false)
 
   useEffect(() => {
     function handler(e) {
@@ -95,26 +99,26 @@ export default function VerseContextMenu({
     onClose()
   }
 
-  function exportPassage() {
-    const refText = `${book} ${chapter}:${verse}`
-    const content = [
-      `${refText} (${translation})`,
-      '',
-      text,
-      '',
-      `— Exported from LOGOS Bible Study`,
-      `— ${new Date().toLocaleDateString()}`,
-    ].join('\n')
-
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${book}-${chapter}-${verse}.txt`
-    a.click()
-    // Revoke after a tick so the download has time to start
-    setTimeout(() => URL.revokeObjectURL(url), 100)
-    onClose()
+  async function exportPassage() {
+    setIsExporting(true)
+    try {
+      const content = await getVerseExportData(book, chapter, verse, text, translation)
+      
+      const blob = new Blob([content], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${book}-${chapter}-${verse}.md`
+      a.click()
+      
+      // Revoke after a tick so the download has time to start
+      setTimeout(() => URL.revokeObjectURL(url), 100)
+      onClose()
+    } catch (err) {
+      console.error(err)
+      setError('Failed to export passage')
+      setIsExporting(false)
+    }
   }
 
   function openPanel(panel) {
@@ -134,6 +138,7 @@ export default function VerseContextMenu({
   }
 
   return (
+    <>
     <div
       ref={ref}
       style={style}
@@ -165,12 +170,22 @@ export default function VerseContextMenu({
         Share verse
       </button>
 
-      <button onClick={exportPassage} className="menu-item">
-        <Download size={13} />
+      <button onClick={() => setShowCard(true)} className="menu-item">
+        <Image size={13} />
+        Share as card
+      </button>
+
+      <button onClick={exportPassage} disabled={isExporting} className="menu-item">
+        {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
         Export passage
       </button>
 
       <div className="border-t border-gray-100 dark:border-gray-700" />
+
+      <button onClick={() => openPanel('compare')} className="menu-item">
+        <Layers size={13} />
+        Compare translations
+      </button>
 
       <button onClick={() => openPanel('notes')} className="menu-item">
         <StickyNote size={13} />
@@ -239,5 +254,17 @@ export default function VerseContextMenu({
         </div>
       </div>
     </div>
+
+    {showCard && (
+      <ShareCardModal
+        verse={verse}
+        text={text}
+        book={book}
+        chapter={chapter}
+        translation={translation}
+        onClose={() => { setShowCard(false); onClose() }}
+      />
+    )}
+    </>
   )
 }

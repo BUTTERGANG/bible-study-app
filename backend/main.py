@@ -30,19 +30,26 @@ from .auth import auth_is_enabled, get_current_user, require_app_password
 from .database import db_status, init_db
 from .routers import (
     ai,
+    ai_conversations,
     bible,
+    book_intros,
     bookmarks,
     commentary,
+    dashboard,
     dictionary,
     factbook,
     health,
     highlights,
     lexicon,
     library,
+    memorize,
     notes,
     nt_ot,
+    prayer,
     reading_plans,
     search,
+    sermons,
+    study_projects,
     timeline_maps,
     users,
     word_study,
@@ -105,6 +112,7 @@ if _cors_origins:
 # Read-only routers — no auth required.
 app.include_router(health.router)
 app.include_router(bible.router)
+app.include_router(book_intros.router)
 app.include_router(commentary.router)
 app.include_router(search.router)
 app.include_router(word_study.router)
@@ -125,6 +133,24 @@ app.include_router(users.router)
 
 # AI router carries its own dependencies (auth + rate limit) at the router level.
 app.include_router(ai.router)
+
+# AI conversations — user-scoped, read-write.
+app.include_router(ai_conversations.router)
+
+# Sermon Builder — projects and sections.
+app.include_router(sermons.router)
+
+# Verse Memorization — user-scoped.
+app.include_router(memorize.router)
+
+# Prayer Journal — user-scoped.
+app.include_router(prayer.router)
+
+# Bible Study Builder — user-scoped.
+app.include_router(study_projects.router)
+
+# Dashboard — user-scoped.
+app.include_router(dashboard.router)
 
 # Factbook router carries its own dependencies (auth + rate limit).
 app.include_router(factbook.router)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Layers, ExternalLink } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
@@ -6,10 +6,18 @@ import { api } from '../../api/client'
 import clsx from 'clsx'
 
 export default function WordStudyPanel() {
-  const { book, chapter, verse, interlinearMode, toggleInterlinear, setReference } = useStudyStore()
+  const { book, chapter, verse, interlinearMode, reverseInterlinear, toggleInterlinear, toggleReverseInterlinear, focusedStrongs, clearFocusedStrongs, setReference } = useStudyStore()
   const [selectedWord, setSelectedWord] = useState(null)
   const [expandedStrongs, setExpandedStrongs] = useState(null)
   const [showOccurrences, setShowOccurrences] = useState(null)
+
+  useEffect(() => {
+    if (focusedStrongs) {
+      setExpandedStrongs(focusedStrongs)
+      setSelectedWord(null)
+      clearFocusedStrongs()
+    }
+  }, [focusedStrongs, clearFocusedStrongs])
 
   const { data, isLoading } = useQuery({
     queryKey: ['words', book, chapter, verse],
@@ -43,17 +51,31 @@ export default function WordStudyPanel() {
           <Layers size={13} />
           Word Study
         </span>
-        <button
-          onClick={toggleInterlinear}
-          className={clsx(
-            'text-xs px-2 py-0.5 rounded-full border transition-colors',
-            interlinearMode
-              ? 'bg-blue-100 text-blue-700 border-blue-300'
-              : 'text-gray-500 border-gray-300 hover:border-gray-400'
-          )}
-        >
-          Interlinear
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={toggleInterlinear}
+            className={clsx(
+              'text-xs px-2 py-0.5 rounded-full border transition-colors',
+              interlinearMode
+                ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600'
+                : 'text-gray-500 border-gray-300 hover:border-gray-400 dark:text-gray-400 dark:border-gray-600'
+            )}
+          >
+            Interlinear
+          </button>
+          <button
+            onClick={toggleReverseInterlinear}
+            className={clsx(
+              'text-xs px-2 py-0.5 rounded-full border transition-colors',
+              reverseInterlinear
+                ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-600'
+                : 'text-gray-500 border-gray-300 hover:border-gray-400 dark:text-gray-400 dark:border-gray-600'
+            )}
+            title="Show English-first interlinear with clickable word tiles"
+          >
+            Reverse
+          </button>
+        </div>
       </div>
 
       <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">

@@ -39,8 +39,14 @@ const post = (path, body) =>
   request(path, { method: 'POST', body: JSON.stringify(body ?? {}) })
 const put = (path, body) =>
   request(path, { method: 'PUT', body: JSON.stringify(body ?? {}) })
+const patch = (path, body) =>
+  request(path, { method: 'PATCH', body: JSON.stringify(body ?? {}) })
 
 export const api = {
+  generateOutline: (reference, translation) => post('/ai/outline', { reference, translation }),
+  topicStudy: (topic, depth = 'overview') => post('/ai/topic-study', { topic, depth }),
+  getPassageInsights: (book, chapter, verse, translation = 'KJV') =>
+    post('/ai/insights', { book, chapter, verse, translation }),
   // Health / auth
   getHealth: () => get('/health'),
   getAuthStatus: () => get('/auth/status'),
@@ -136,12 +142,40 @@ export const api = {
     get(`/library/books${category ? `?category=${encodeURIComponent(category)}` : ''}`),
   getBookPage: (id, page) => get(`/library/books/${id}/page/${page}`),
   getBookToc: (id) => get(`/library/books/${id}/toc`),
+  searchLibrary: (q, limit = 20) =>
+    get(`/library/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
   // Interlinear
   getChapterInterlinear: (translation, book, chapter) =>
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/interlinear`),
 
   // Factbook
+  // Bible Study Builder
+  listStudies: () => get('/studies'),
+  createStudy: (data) => post('/studies', data),
+  updateStudy: (id, data) => patch(`/studies/${id}`, data),
+  deleteStudy: (id) => del(`/studies/${id}`),
+  upsertStudySection: (projectId, sectionType, content) =>
+    put(`/studies/${projectId}/sections/${sectionType}`, { content }),
+
+  // Prayer Journal
+  listPrayers: (status) => get(`/prayer${status ? '?status=' + status : ''}`),
+  createPrayer: (data) => post('/prayer', data),
+  updatePrayer: (id, data) => patch(`/prayer/${id}`, data),
+  deletePrayer: (id) => del(`/prayer/${id}`),
+
+  // Verse Memorization
+  listMemoryVerses: () => get('/memorize'),
+  addMemoryVerse: (data) => post('/memorize', data),
+  removeMemoryVerse: (id) => del(`/memorize/${id}`),
+  recordQuizResult: (id, correct) => post(`/memorize/${id}/quiz`, { correct }),
+
+  getFactbookQuestions: (entityName, entityType) => {
+    const params = new URLSearchParams()
+    if (entityType) params.set('entity_type', entityType)
+    const qs = params.toString()
+    return get(`/factbook/${encodeURIComponent(entityName)}/questions${qs ? '?' + qs : ''}`)
+  },
   getFactbookEntry: (entityName, entityType, refresh = false) => {
     const params = new URLSearchParams()
     if (entityType) params.set('entity_type', entityType)
@@ -159,6 +193,13 @@ export const api = {
   },
   generateFactbookEntry: (entityName, entityType = 'person') =>
     post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
+
+  // Dashboard
+  getDashboard: () => get('/dashboard'),
+
+  // Book introductions
+  getBookIntroduction: (book, refresh = false) =>
+    get(`/bible/books/${encodeURIComponent(book)}/introduction${refresh ? '?refresh=true' : ''}`),
 
   // NT Use of OT
   getNtOtConnections: (params = {}) => {
@@ -184,6 +225,27 @@ export const api = {
   },
   getDictionaryEntry: (source, term) =>
     get(`/dictionary/${source}/${encodeURIComponent(term)}`),
+
+  // Sermon Builder
+  listSermons: () => get('/sermons'),
+  createSermon: (data) => post('/sermons', data),
+  getSermon: (id) => get(`/sermons/${id}`),
+  updateSermon: (id, data) => patch(`/sermons/${id}`, data),
+  deleteSermon: (id) => del(`/sermons/${id}`),
+  upsertSermonSection: (id, sectionType, content) =>
+    put(`/sermons/${id}/sections/${sectionType}`, { content }),
+
+  // AI Conversations
+  listConversations: (limit = 50, offset = 0) =>
+    get(`/ai/conversations?limit=${limit}&offset=${offset}`),
+  getConversation: (reference) =>
+    get(`/ai/conversations/${encodeURIComponent(reference)}`),
+  saveConversation: (reference, data) =>
+    put(`/ai/conversations/${encodeURIComponent(reference)}`, { ...data, reference }),
+  updateConversation: (reference, data) =>
+    patch(`/ai/conversations/${encodeURIComponent(reference)}`, data),
+  deleteConversation: (reference) =>
+    del(`/ai/conversations/${encodeURIComponent(reference)}`),
 }
 
 export { authHeaders }

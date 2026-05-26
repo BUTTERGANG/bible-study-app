@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pip3 install *)"
+      "Bash(pip3 install *)",
+      "mcp__scrum-vault__get_task"
     ]
   }
 }

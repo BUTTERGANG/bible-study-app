@@ -15,6 +15,7 @@ const HIGHLIGHT_CLASSES = {
 export default function InterlinearVerse({
   verse, text, book, chapter, translation,
   isActive, highlightColor, highlightId, words, language = 'greek',
+  reverseMode = false, onWordClick = null,
 }) {
   const selectVerse = useStudyStore((s) => s.selectVerse)
   const { visualFiltersEnabled, visualFilters } = useStudyStore()
@@ -63,8 +64,8 @@ export default function InterlinearVerse({
         {text}{' '}
       </span>
 
-      {/* Interlinear words toggle */}
-      {words.length > 0 && (
+      {/* Interlinear words toggle — hidden in reverse mode (always expanded) */}
+      {!reverseMode && words.length > 0 && (
         <button
           onClick={(e) => { e.stopPropagation(); setShowWords(!showWords) }}
           className="ml-1 text-[9px] text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 align-super opacity-60 hover:opacity-100 transition-opacity"
@@ -74,8 +75,8 @@ export default function InterlinearVerse({
         </button>
       )}
 
-      {/* Interlinear word display with visual filter highlighting */}
-      {showWords && words.length > 0 && (
+      {/* Interlinear word display — forward mode (original first) */}
+      {!reverseMode && showWords && words.length > 0 && (
         <div className="mt-1 ml-4 pl-2 border-l-2 border-blue-200 dark:border-blue-800">
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
             {words.map((word, i) => {
@@ -102,6 +103,44 @@ export default function InterlinearVerse({
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Reverse interlinear — English gloss prominent, original below, clickable */}
+      {reverseMode && words.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {words.map((word, i) => {
+            const vfClass = getHighlightClass(word.morphology, language, activeFilterSet)
+            const vfStyle = vfClass
+              ? { backgroundColor: getFilterColor(word.morphology, language, activeFilterSet) }
+              : {}
+            const clickable = !!onWordClick && !!word.strongs
+
+            return (
+              <span
+                key={i}
+                onClick={clickable ? (e) => { e.stopPropagation(); onWordClick(word.strongs) } : undefined}
+                className={clsx(
+                  'inline-flex flex-col items-center rounded border px-1.5 py-1 text-[11px] transition-colors',
+                  'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800',
+                  clickable && 'cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30',
+                  vfClass && 'vf-word-highlight'
+                )}
+                style={vfStyle}
+                title={clickable ? `Open word study for ${word.strongs}` : undefined}
+              >
+                <span className="font-medium text-gray-800 dark:text-gray-100 text-[12px] leading-tight">
+                  {word.gloss || '—'}
+                </span>
+                <span className="font-serif text-gray-500 dark:text-gray-400 text-[10px] leading-tight">
+                  {word.original}
+                </span>
+                {word.strongs && (
+                  <span className="text-blue-500 dark:text-blue-400 text-[8px] leading-tight">{word.strongs}</span>
+                )}
+              </span>
+            )
+          })}
         </div>
       )}
 

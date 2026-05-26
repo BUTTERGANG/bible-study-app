@@ -282,6 +282,59 @@ class JourneyRoute(Base):
     color: Mapped[str] = mapped_column(String(20), default="#3b82f6")  # tailwind blue-500
 
 
+class AiConversation(Base):
+    """Persisted AI conversation history keyed by reference (book/chapter).
+    Each message is stored as a JSON blob so we preserve the full message
+    structure (role, content, metadata like verse selections) without schema
+    churn for every new AI feature."""
+
+    __tablename__ = "ai_conversations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "reference", name="uq_ai_conv_ref"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    reference: Mapped[str] = mapped_column(String(100), index=True)
+    # e.g. "KJV/John/3" — matches the aiHistory key in the frontend store
+    translation: Mapped[str] = mapped_column(String(10), default="KJV")
+    book: Mapped[str] = mapped_column(String(50))
+    chapter: Mapped[int] = mapped_column(Integer)
+    messages: Mapped[str] = mapped_column(Text)  # JSON array of {role, content}
+    message_count: Mapped[int] = mapped_column(Integer, default=0)
+    title: Mapped[str] = mapped_column(String(200), nullable=True)
+    # Auto-generated title like "Main theme of John 3" or first prompt
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SermonProject(Base):
+    __tablename__ = "sermon_projects"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    passage_ref: Mapped[str] = mapped_column(String(100))
+    audience: Mapped[str] = mapped_column(String(50), default="general")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    sections: Mapped[list["SermonSection"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+
+
+class SermonSection(Base):
+    __tablename__ = "sermon_sections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("sermon_projects.id"), index=True)
+    section_type: Mapped[str] = mapped_column(String(30), index=True)
+    # outline | illustrations | questions | applications | full_sermon
+    content: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    project: Mapped["SermonProject"] = relationship(back_populates="sections")
+
+
 class NtOtConnection(Base):
     """Curated OT-NT connections: quotations, allusions, verbal parallels, thematic echoes."""
     __tablename__ = "nt_ot_connections"
@@ -308,3 +361,89 @@ class NtOtConnection(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     ot_context: Mapped[str] = mapped_column(Text, nullable=True)  # surrounding OT verses
     nt_context: Mapped[str] = mapped_column(Text, nullable=True)  # surrounding NT verses
+
+
+class MemoryVerse(Base):
+    __tablename__ = "memory_verses"
+    __table_args__ = (
+        UniqueConstraint("user_id", "translation", "book", "chapter", "verse", name="uq_memory_verse"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    translation: Mapped[str] = mapped_column(String(10), default="KJV")
+    book: Mapped[str] = mapped_column(String(50), index=True)
+    chapter: Mapped[int] = mapped_column(Integer, index=True)
+    verse: Mapped[int] = mapped_column(Integer, index=True)
+    verse_text: Mapped[str] = mapped_column(Text)
+    # quiz state: 0=not started, 1=learning, 2=familiar, 3=mastered
+    mastery_level: Mapped[int] = mapped_column(Integer, default=0)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    correct_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_reviewed: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PrayerEntry(Base):
+    __tablename__ = "prayer_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    content: Mapped[str] = mapped_column(Text)
+    # linked verse (optional)
+    book: Mapped[str] = mapped_column(String(50), nullable=True, index=True)
+    chapter: Mapped[int] = mapped_column(Integer, nullable=True)
+    verse: Mapped[int] = mapped_column(Integer, nullable=True)
+    # status: active, answered, archived
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=True)
+    answered_note: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class StudyProject(Base):
+    __tablename__ = "study_projects"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    passage_ref: Mapped[str] = mapped_column(String(100))
+    study_type: Mapped[str] = mapped_column(String(30), default="inductive")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    sections: Mapped[list["StudySection"]] = relationship("StudySection", back_populates="project", cascade="all, delete-orphan")
+
+
+class StudySection(Base):
+    __tablename__ = "study_sections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("study_projects.id", ondelete="CASCADE"), index=True)
+    section_type: Mapped[str] = mapped_column(String(30))
+    content: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    project: Mapped["StudyProject"] = relationship("StudyProject", back_populates="sections")
+
+
+class DailyDevotion(Base):
+    __tablename__ = "daily_devotions"
+    __table_args__ = (
+        UniqueConstraint("verse_ref", "date", name="uq_devotion_verse_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    verse_ref: Mapped[str] = mapped_column(String(100), index=True)
+    date: Mapped[str] = mapped_column(String(10), index=True)
+    reflection: Mapped[str] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class BookIntroduction(Base):
+    __tablename__ = "book_introductions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    book_name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    content_json: Mapped[str] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

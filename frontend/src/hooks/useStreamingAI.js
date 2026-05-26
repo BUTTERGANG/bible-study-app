@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { streamAI } from '../api/streamAI'
 
 // Conversational streaming hook for the AI assistant.
-//   const { messages, streaming, send, stop, clear } = useStreamingAI('ask')
+//   const [messages, setMessages] = useState([])
+//   const { streaming, send, stop, clear } = useStreamingAI('ask', bodyFor, messages, setMessages)
 //
 // `bodyFor(prompt, prior)` builds the request payload — it receives the
 // current user prompt and the array of prior {role, content} turns.
-export function useStreamingAI(endpoint, bodyFor) {
-  const [messages, setMessages] = useState([])
+export function useStreamingAI(endpoint, bodyFor, messages, setMessages) {
   const [streaming, setStreaming] = useState(false)
   const stopRef = useRef(null)
 
@@ -50,7 +50,7 @@ export function useStreamingAI(endpoint, bodyFor) {
       })
       setStreaming(true)
     },
-    [endpoint, bodyFor, streaming]
+    [endpoint, bodyFor, streaming, setMessages]
   )
 
   const stop = useCallback(() => {
@@ -62,7 +62,7 @@ export function useStreamingAI(endpoint, bodyFor) {
     stopRef.current?.()
     setMessages([])
     setStreaming(false)
-  }, [])
+  }, [setMessages])
 
-  return { messages, streaming, send, stop, clear }
+  return { streaming, send, stop, clear }
 }

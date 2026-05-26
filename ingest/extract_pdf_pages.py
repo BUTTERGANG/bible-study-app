@@ -45,6 +45,10 @@ def extract(book_id: int | None, force: bool) -> None:
         """
     )
     cur.execute("CREATE INDEX IF NOT EXISTS ix_library_pages_book ON library_pages(book_id)")
+    cur.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS library_pages_fts
+        USING fts5(text, content=library_pages, content_rowid=id, tokenize='porter ascii')
+    """)
 
     where = ["source_format = 'pdf'"]
     params: list = []
@@ -93,6 +97,13 @@ def extract(book_id: int | None, force: bool) -> None:
         )
         conn.commit()
         print(f"    wrote {len(rows)} pages")
+
+    # Rebuild FTS index to include any newly extracted pages
+    print("Rebuilding library FTS index…")
+    cur.execute("INSERT INTO library_pages_fts(library_pages_fts) VALUES('rebuild')")
+    conn.commit()
+    fts_count = cur.execute("SELECT COUNT(*) FROM library_pages_fts").fetchone()[0]
+    print(f"FTS index: {fts_count:,} pages indexed")
 
     conn.close()
 

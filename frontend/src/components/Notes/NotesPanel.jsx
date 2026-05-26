@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Edit2, Filter, Plus, StickyNote, Tag, Trash2, X } from 'lucide-react'
+import { Check, Edit2, Filter, Loader2, Plus, Sparkles, StickyNote, Tag, Trash2, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
 export default function NotesPanel() {
-  const { book, chapter, verse } = useStudyStore()
+  const { book, chapter, verse, translation } = useStudyStore()
   const qc = useQueryClient()
   const [editing, setEditing] = useState(null)
   const [newNote, setNewNote] = useState('')
@@ -15,6 +15,7 @@ export default function NotesPanel() {
   const [viewAll, setViewAll] = useState(false)
   const [filterTag, setFilterTag] = useState('')
   const [editTags, setEditTags] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const reference = verse ? `${book} ${chapter}:${verse}` : `${book} ${chapter}`
   const notesKey = viewAll
@@ -74,6 +75,21 @@ export default function NotesPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notes'] }),
   })
 
+  const generateOutline = async () => {
+    setIsGenerating(true)
+    try {
+      const res = await api.generateOutline(reference, translation)
+      setNewNote(res.outline)
+      setNewTags('outline, study')
+      setShowNew(true)
+    } catch (err) {
+      console.error('Failed to generate outline:', err)
+      // Optional: add toast or error state here
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="panel-header">
@@ -82,6 +98,17 @@ export default function NotesPanel() {
           Notes
         </span>
         <div className="flex items-center gap-1">
+          {!viewAll && (
+            <button
+              onClick={generateOutline}
+              disabled={isGenerating}
+              className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 mr-1 disabled:opacity-50"
+              title="Generate AI study outline"
+            >
+              {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              AI Outline
+            </button>
+          )}
           <button
             onClick={() => setViewAll(!viewAll)}
             className={clsx(
