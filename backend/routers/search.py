@@ -20,14 +20,29 @@ def set_fts_availability(*, bible: bool, commentary: bool) -> None:
 
 
 def _sanitize_fts(query: str) -> str:
-    """Quote each token so FTS5 doesn't interpret colons, hyphens, parens, etc.
-    as syntax. Tokens are split on whitespace; double quotes inside tokens are
-    escaped by doubling. Result is a space-joined sequence of phrase queries
-    which FTS5 treats as an implicit AND."""
-    tokens = [t for t in re.split(r"\s+", query.strip()) if t]
+    """Build an FTS5 prefix-match expression from raw user input.
+
+    Each whitespace-separated token becomes a prefix query (token*) so that
+    partial words like 'burning bu' match 'burning bush'. FTS5 special chars
+    are stripped from each token to avoid syntax errors.
+    """
+    # Strip FTS5 special characters; keep only alphanumeric + apostrophe
+    tokens = [re.sub(r'[^\w\']', '', t) for t in re.split(r"\s+", query.strip()) if t]
+    tokens = [t for t in tokens if t]
     if not tokens:
         return '""'
-    return " ".join('"' + t.replace('"', '""') + '"' for t in tokens)
+    return " ".join(t + "*" for t in tokens)
+
+
+def _term_to_fts(term: str) -> str:
+    """Convert a single theme term to an FTS5 expression.
+
+    Multi-word phrases stay quoted (exact phrase match).
+    Single words/stems get a prefix wildcard so 'forgiv' matches 'forgiven'.
+    """
+    if " " in term:
+        return '"' + term.replace('"', '""') + '"'
+    return re.sub(r'[^\w\']', '', term) + "*"
 
 
 def _snippet(text_in: str, query: str, max_len: int = 200) -> str:
@@ -73,12 +88,12 @@ async def search(
                     FROM bible_verses_fts fts
                     JOIN bible_verses b ON b.rowid = fts.rowid
                     WHERE fts.text MATCH :query
-                      AND b.translation = :trans
+                      AND lower(b.translation) = lower(:trans)
                     ORDER BY rank
                     LIMIT :lim
                     """
                 ),
-                {"query": fts_query, "trans": translation.upper(), "lim": limit},
+                {"query": fts_query, "trans": translation, "lim": limit},
             )
         else:
             rows = await db.execute(
@@ -86,12 +101,12 @@ async def search(
                     """
                     SELECT book, chapter, verse, text, translation
                     FROM bible_verses
-                    WHERE translation = :trans AND text LIKE :q
+                    WHERE lower(translation) = lower(:trans) AND text LIKE :q
                     ORDER BY book_num, chapter, verse
                     LIMIT :lim
                     """
                 ),
-                {"trans": translation.upper(), "q": f"%{q}%", "lim": limit},
+                {"trans": translation, "q": f"%{q}%", "lim": limit},
             )
         for row in rows:
             results.append({
@@ -214,8 +229,8 @@ def _expand_query(q: str) -> tuple[list[str], str]:
             seen.add(t)
             unique_terms.append(t)
 
-    # Build FTS5 OR query: "term1" OR "term2" OR ...
-    fts_parts = ['"' + t.replace('"', '""') + '"' for t in unique_terms]
+    # Build FTS5 OR query using prefix for single words, quoted for phrases
+    fts_parts = [_term_to_fts(t) for t in unique_terms]
     return matched, " OR ".join(fts_parts)
 
 
@@ -242,7 +257,7 @@ async def semantic_search(
                 FROM bible_verses_fts fts
                 JOIN bible_verses b ON b.rowid = fts.rowid
                 WHERE fts.text MATCH :query
-                  AND b.translation = :trans
+                  AND lower(b.translation) = lower(:trans)
                 ORDER BY rank
                 LIMIT :lim
             """),
@@ -265,7 +280,7 @@ async def semantic_search(
             text("""
                 SELECT book, chapter, verse, text, translation
                 FROM bible_verses
-                WHERE translation = :trans AND text LIKE :pat
+                WHERE lower(translation) = lower(:trans) AND text LIKE :pat
                 LIMIT :lim
             """),
             {"trans": translation, "pat": f"%{q}%", "lim": limit},

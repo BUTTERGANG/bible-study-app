@@ -15,7 +15,7 @@ export LD_LIBRARY_PATH="${NIX_STDCXX}:${LD_LIBRARY_PATH:-}"
 # Skip install if every required package is importable — keeps cold-restart fast.
 echo "Checking Python dependencies..."
 export PYTHONPATH="$VENV_SITE:${PYTHONPATH:-}"
-if ! python3 -c "import fastapi, sqlalchemy, anthropic, aiosqlite, dotenv" 2>/dev/null; then
+if ! python3 -c "import fastapi, sqlalchemy, anthropic, aiosqlite, dotenv, jose, passlib" 2>/dev/null; then
   echo "Installing Python dependencies..."
   pip3 install -r requirements.txt \
       --target "$VENV_SITE" \

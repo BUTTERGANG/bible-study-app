@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 import VerseContextMenu from './VerseContextMenu'
 import clsx from 'clsx'
@@ -17,7 +17,16 @@ export default function VerseText({
 }) {
   const selectVerse = useStudyStore((s) => s.selectVerse)
   const [menuPos, setMenuPos] = useState(null)
+  const [flashing, setFlashing] = useState(false)
   const ref = useRef(null)
+
+  useEffect(() => {
+    if (!isActive) return
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setFlashing(true)
+    const t = setTimeout(() => setFlashing(false), 1400)
+    return () => clearTimeout(t)
+  }, [isActive])
 
   function handleClick() {
     selectVerse(verse, text)
@@ -40,6 +49,7 @@ export default function VerseText({
         className={clsx(
           'cursor-pointer rounded px-0.5 transition-colors hover:bg-blue-50',
           isActive && 'verse-selected',
+          flashing && 'verse-flash',
           highlightColor && HIGHLIGHT_CLASSES[highlightColor]
         )}
       >

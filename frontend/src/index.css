@@ -34,6 +34,21 @@
     @apply dark:bg-blue-900/30;
   }
 
+  @keyframes verse-flash {
+    0%, 35% { background-color: rgb(254 249 195); }   /* yellow-100 */
+    100%    { background-color: rgb(239 246 255); }   /* blue-50, matches verse-selected */
+  }
+  @keyframes verse-flash-dark {
+    0%, 35% { background-color: rgb(113 63 18 / 0.5); }  /* yellow-900/50 */
+    100%    { background-color: rgb(30 58 138 / 0.3); }  /* blue-900/30, matches dark verse-selected */
+  }
+  .verse-flash {
+    animation: verse-flash 1.4s ease-out;
+  }
+  .dark .verse-flash {
+    animation: verse-flash-dark 1.4s ease-out;
+  }
+
   .menu-item {
     @apply w-full text-left px-3 py-1.5 flex items-center gap-2 text-gray-700 hover:bg-gray-50 transition-colors;
     @apply dark:text-gray-200 dark:hover:bg-gray-700;

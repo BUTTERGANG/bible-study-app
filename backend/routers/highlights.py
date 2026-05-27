@@ -79,7 +79,7 @@ async def get_chapter_highlights(
         Highlight.chapter == chapter,
     )
     if translation:
-        query = query.where(Highlight.translation == translation.upper())
+        query = query.where(Highlight.translation == translation)
     result = await db.execute(query)
     highlights = result.scalars().all()
     return {

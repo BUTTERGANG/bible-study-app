@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import clsx from 'clsx'
 import { useStudyStore } from '../../stores/studyStore'
 import { getHighlightClass, DEFAULT_COLORS } from '../../utils/morphology'
@@ -21,7 +21,16 @@ export default function InterlinearVerse({
   const { visualFiltersEnabled, visualFilters } = useStudyStore()
   const [menuPos, setMenuPos] = useState(null)
   const [showWords, setShowWords] = useState(false)
+  const [flashing, setFlashing] = useState(false)
   const ref = useRef(null)
+
+  useEffect(() => {
+    if (!isActive) return
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setFlashing(true)
+    const t = setTimeout(() => setFlashing(false), 1400)
+    return () => clearTimeout(t)
+  }, [isActive])
 
   // Build active filter set for quick lookup
   const activeFilterSet = useMemo(() => {
@@ -51,6 +60,7 @@ export default function InterlinearVerse({
       className={clsx(
         'rounded-lg px-2 py-1.5 transition-colors',
         isActive && 'verse-selected',
+        flashing && 'verse-flash',
         highlightColor && HIGHLIGHT_CLASSES[highlightColor]
       )}
     >

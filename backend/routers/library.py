@@ -1,4 +1,5 @@
 import os
+import re
 
 try:
     import fitz  # PyMuPDF
@@ -159,8 +160,11 @@ async def search_library(
     db: AsyncSession = Depends(get_db),
 ):
     """Full-text search across all library pages using FTS5."""
-    # Escape special FTS5 characters to prevent query syntax errors
-    safe_q = q.replace('"', '""')
+    # Build a prefix-match expression so partial words match (e.g. 'burning bu'
+    # finds 'burning bush'). Strip FTS5 special chars from each token.
+    tokens = [re.sub(r'[^\w\']', '', t) for t in q.split() if t]
+    tokens = [t for t in tokens if t]
+    fts_q = " ".join(t + "*" for t in tokens) if tokens else '""'
     rows = await db.execute(
         text("""
             SELECT
@@ -177,7 +181,7 @@ async def search_library(
             ORDER BY rank
             LIMIT :limit
         """),
-        {"q": f'"{safe_q}"', "limit": limit},
+        {"q": fts_q, "limit": limit},
     )
     results = []
     for row in rows:
