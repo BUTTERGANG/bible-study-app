@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, Layers, Menu, Moon,
+  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Layers, Menu, Moon,
   PanelRightClose, PanelRightOpen, Search, Sun, X, Filter, Languages,
 } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
@@ -16,7 +16,7 @@ export default function TopBar({ onSearch, onMorphSearch }) {
     book, chapter, translation,
     setTranslation, setReference,
     toggleSidebar,
-    rightPanelOpen, toggleRightPanel,
+    rightPanelOpen, toggleRightPanel, rightPanel, setRightPanel,
     darkMode, toggleDarkMode,
     fontSizeIdx, setFontSizeIdx,
     compareMode, toggleCompareMode,
@@ -325,6 +325,25 @@ export default function TopBar({ onSearch, onMorphSearch }) {
       </button>
 
       <div className="w-px h-6 bg-slate-600" />
+
+      <button
+        onClick={() => {
+          if (!rightPanelOpen || rightPanel !== 'study') {
+            setRightPanel('study')
+            if (!rightPanelOpen) toggleRightPanel()
+          }
+        }}
+        className={clsx(
+          'flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors',
+          rightPanel === 'study' && rightPanelOpen
+            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+            : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'
+        )}
+        title="Open Study Builder"
+      >
+        <GraduationCap size={13} />
+        <span className="hidden sm:block">Study</span>
+      </button>
 
       <button
         onClick={onMorphSearch}

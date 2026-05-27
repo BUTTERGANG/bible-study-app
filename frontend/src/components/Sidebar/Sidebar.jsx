@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Search as SearchIcon, X, MessageSquare, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Library, MessageSquare, Search as SearchIcon, StickyNote, Trash2, X } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -71,8 +71,31 @@ export default function Sidebar() {
 
   const conversations = convQuery.data?.conversations?.filter((c) => c.message_count > 0) || []
 
+  function QuickAction({ icon: Icon, label, panel, onClick }) {
+    const handleClick = onClick || (() => setRightPanel(panel))
+    return (
+      <button
+        onClick={handleClick}
+        className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2.5 text-gray-700 dark:text-gray-300 transition-colors"
+      >
+        <Icon size={14} className="text-gray-400 dark:text-gray-500" />
+        <span className="font-medium">{label}</span>
+      </button>
+    )
+  }
+
   return (
     <div className="text-sm">
+      {/* Quick Actions */}
+      <div>
+        <div className="px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">
+          Quick Actions
+        </div>
+        <QuickAction icon={StickyNote} label="Notes" panel="notes" />
+        <QuickAction icon={Library} label="Library" panel="library" />
+      </div>
+      <div className="h-px bg-gray-200 dark:bg-gray-700 mx-2" />
+
       <BookSection
         label="Old Testament"
         books={otBooks}
