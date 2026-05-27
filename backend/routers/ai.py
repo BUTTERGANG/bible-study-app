@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import require_app_password
 from ..database import get_db
-from ..models import BibleVerse
+from ..models import BibleVerse, LibraryBook, LibraryPage, LibrarySummary
 from ..rate_limit import ai_rate_limit
 
 router = APIRouter(
@@ -681,3 +681,263 @@ Provide 3-4 practical ways this passage applies to a modern believer's life."""
             max_tokens=2000,
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# Resource Summarizer
+# ---------------------------------------------------------------------------
+
+SUMMARY_SYSTEM_PROMPT = """You are a knowledgeable Bible study assistant and theological librarian.
+Your task is to summarize books, commentaries, and articles from a user's personal library.
+Provide clear, structured summaries that help the reader quickly grasp the content.
+
+Always structure your response as follows. Be substantive — avoid generic filler;
+draw out the actual arguments and themes of the work."""
+
+
+class SummarizeRequest(BaseModel):
+    resource_id: int
+    chunk_size: int = 0  # 0 = auto (chunk if >100 pages)
+
+
+_CHUNK_THRESHOLD = 100  # pages — above this, we chunk
+_CHUNK_SIZE_PAGES = 50  # pages per chunk
+
+
+async def _fetch_book_pages(db: AsyncSession, book_id: int, page_start: int = 0, page_end: int = 0) -> tuple:
+    """Fetch book metadata and page text. Returns (book, concatenated_text)."""
+    book_result = await db.execute(select(LibraryBook).where(LibraryBook.id == book_id))
+    book = book_result.scalar_one_or_none()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    pages_query = select(LibraryPage).where(LibraryPage.book_id == book_id)
+    if page_start > 0:
+        pages_query = pages_query.where(LibraryPage.page_num >= page_start)
+    if page_end > 0:
+        pages_query = pages_query.where(LibraryPage.page_num <= page_end)
+    pages_query = pages_query.order_by(LibraryPage.page_num)
+
+    pages_result = await db.execute(pages_query)
+    pages = pages_result.scalars().all()
+    if not pages:
+        raise HTTPException(status_code=404, detail="No pre-extracted pages found for this book")
+
+    text = "\n\n".join(f"[Page {p.page_num}]\n{p.text}" for p in pages)
+    return book, text
+
+
+async def _get_cached_summary(db: AsyncSession, book_id: int, chunk_size: int):
+    """Return a cached summary if one exists."""
+    result = await db.execute(
+        select(LibrarySummary).where(
+            LibrarySummary.book_id == book_id,
+            LibrarySummary.chunk_size == chunk_size,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def _save_summary(
+    db: AsyncSession,
+    book_id: int,
+    chunk_size: int,
+    tldr: str,
+    key_points: list,
+    outline: str,
+) -> None:
+    """Persist a summary to the database (upsert semantics)."""
+    from datetime import datetime as _dt
+
+    existing = await db.execute(
+        select(LibrarySummary).where(
+            LibrarySummary.book_id == book_id,
+            LibrarySummary.chunk_size == chunk_size,
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row:
+        row.tldr = tldr
+        row.key_points = json.dumps(key_points)
+        row.outline = outline
+        row.generated_at = _dt.utcnow()
+    else:
+        row = LibrarySummary(
+            book_id=book_id,
+            chunk_size=chunk_size,
+            tldr=tldr,
+            key_points=json.dumps(key_points),
+            outline=outline,
+        )
+        db.add(row)
+    await db.commit()
+
+
+@router.post("/summarize")
+async def summarize_resource(body: SummarizeRequest, db: AsyncSession = Depends(get_db)):
+    """Stream an AI-generated summary of a library book.
+
+    Accepts resource_id and optional chunk_size (pages per chunk).
+    If chunk_size is 0, auto-decides based on book length.
+    Emits SSE events:
+      {"stage": "status", "message": "..."}  -- progress updates
+      {"stage": "tldr", "text": "..."}       -- the tldr section
+      {"stage": "key_points", "text": "..."}  -- the key points section (JSON array string)
+      {"stage": "outline", "text": "..."}     -- the outline section (markdown)
+      {"stage": "done"}                       -- finished
+      {"error": "..."}                        -- on failure (then [DONE])
+    """
+    book_result = await db.execute(select(LibraryBook).where(LibraryBook.id == body.resource_id))
+    book = book_result.scalar_one_or_none()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    chunk_size = body.chunk_size
+
+    async def generate():
+        try:
+            # Check cache first
+            cached = await _get_cached_summary(db, body.resource_id, chunk_size)
+            if cached:
+                yield f"data: {json.dumps({'stage': 'status', 'message': 'Loading cached summary…'})}\n\n"
+                yield f"data: {json.dumps({'stage': 'tldr', 'text': cached.tldr})}\n\n"
+                kp = json.loads(cached.key_points) if cached.key_points else []
+                yield f"data: {json.dumps({'stage': 'key_points', 'text': json.dumps(kp)})}\n\n"
+                yield f"data: {json.dumps({'stage': 'outline', 'text': cached.outline})}\n\n"
+                yield f"data: {json.dumps({'stage': 'done', 'cached': True})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # Determine chunking strategy
+            total_pages = book.page_count or 0
+            if chunk_size == 0 and total_pages > _CHUNK_THRESHOLD:
+                chunk_size = _CHUNK_SIZE_PAGES
+
+            if chunk_size > 0 and total_pages > 0:
+                chunks = []
+                for start in range(1, total_pages + 1, chunk_size):
+                    end = min(start + chunk_size - 1, total_pages)
+                    chunks.append((start, end))
+                yield f"data: {json.dumps({'stage': 'status', 'message': f'Summarizing {book.title} in {len(chunks)} parts ({total_pages} pages)…'})}\n\n"
+            else:
+                chunks = [(0, 0)]  # full book, no chunking
+                yield f"data: {json.dumps({'stage': 'status', 'message': f'Summarizing {book.title} ({total_pages} pages)…'})}\n\n"
+
+            all_tldrs = []
+            all_key_points = []
+            all_outlines = []
+
+            for idx, (p_start, p_end) in enumerate(chunks):
+                if len(chunks) > 1:
+                    yield f"data: {json.dumps({'stage': 'status', 'message': f'Processing part {idx + 1}/{len(chunks)} (pages {p_start}-{p_end})…'})}\n\n"
+
+                book_meta, text = await _fetch_book_pages(db, body.resource_id, p_start, p_end)
+                if not text.strip():
+                    continue
+
+                # Truncate very long texts to respect context window (~4 chars/token)
+                max_chars = 180_000
+                if len(text) > max_chars:
+                    text = text[:max_chars] + "\n\n[Content truncated due to length…]"
+
+                author_note = f" by {book_meta.author}" if book_meta.author else ""
+                page_range = f" (pages {p_start}-{p_end})" if p_start > 0 else ""
+
+                prompt = f"""Summarize the following content from the book **{book_meta.title}**{author_note}{page_range}.
+
+Content:
+---
+
+{text}
+
+---
+
+Provide a structured summary with:
+
+## TL;DR
+Write 2-3 sentences summarizing the entire content at a high level.
+
+## Key Points
+List 5-10 key takeaways as bullet points. Each should be a single substantive sentence capturing a major argument, theme, or insight.
+
+## Outline
+Provide a structured outline of the content using ## headings and - sub-points. Capture the logical flow of the work."""
+
+                client = _client()
+                accumulated = ""
+                async with client.messages.stream(
+                    model=MODEL,
+                    max_tokens=3000,
+                    system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": _CACHE}],
+                    messages=[{"role": "user", "content": prompt}],
+                ) as stream:
+                    async for chunk_text in stream.text_stream:
+                        accumulated += chunk_text
+
+                # Parse the markdown response
+                tldr = ""
+                key_points = []
+                outline = ""
+
+                sections = accumulated.split("## ")
+                for section in sections:
+                    section = section.strip()
+                    if not section:
+                        continue
+                    lines = section.split("\n", 1)
+                    heading = lines[0].strip().lower()
+                    body = lines[1].strip() if len(lines) > 1 else ""
+
+                    if "tldr" in heading or "tl;dr" in heading:
+                        tldr = body.strip()
+                    elif "key point" in heading:
+                        for line in body.split("\n"):
+                            line = line.strip()
+                            if line.startswith("- ") or line.startswith("* "):
+                                key_points.append(line[2:].strip())
+                            elif line and not line.startswith("#"):
+                                key_points.append(line)
+                    elif "outline" in heading:
+                        outline = body.strip()
+
+                # Fallback: if parsing failed, use the whole response
+                if not tldr and not key_points and not outline:
+                    tldr = accumulated.strip()[:500]
+                    outline = accumulated.strip()
+
+                if tldr:
+                    all_tldrs.append(tldr)
+                if key_points:
+                    all_key_points.extend(key_points)
+                if outline:
+                    all_outlines.append(outline)
+
+            # Combine chunk results
+            final_tldr = " ".join(all_tldrs) if all_tldrs else "No summary generated."
+            # Deduplicate key points while preserving order
+            seen = set()
+            deduped_kp = []
+            for kp in all_key_points:
+                kp_clean = kp.strip()
+                if kp_clean and kp_clean not in seen:
+                    seen.add(kp_clean)
+                    deduped_kp.append(kp_clean)
+            final_outline = "\n\n".join(all_outlines) if all_outlines else "No outline generated."
+
+            # Cache the combined result
+            await _save_summary(db, body.resource_id, chunk_size, final_tldr, deduped_kp, final_outline)
+
+            # Stream the final result
+            yield f"data: {json.dumps({'stage': 'tldr', 'text': final_tldr})}\n\n"
+            yield f"data: {json.dumps({'stage': 'key_points', 'text': json.dumps(deduped_kp)})}\n\n"
+            yield f"data: {json.dumps({'stage': 'outline', 'text': final_outline})}\n\n"
+            yield f"data: {json.dumps({'stage': 'done', 'cached': False})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")

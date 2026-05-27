@@ -17,6 +17,93 @@ function isRetryable(status) {
   return status === 429 || status >= 500
 }
 
+// Stream the /api/ai/summarize endpoint. onStage({ stage, text }) is called
+// for each SSE stage event (status, tldr, key_points, outline, done).
+// onDone(err) is called at the end. Returns an abort function.
+export function streamSummarize(body, onStage, onDone) {
+  const controller = new AbortController()
+  let attempt = 0
+
+  function doFetch() {
+    attempt++
+
+    fetch(`/api/ai/summarize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          let detail = `${res.status} ${res.statusText}`
+          try {
+            const j = await res.json()
+            if (j?.detail) detail = j.detail
+          } catch {}
+          if (isRetryable(res.status) && attempt <= MAX_RETRIES) {
+            const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1)
+            onStage?.({ stage: 'status', text: `Retrying in ${delay / 1000}s…` })
+            setTimeout(doFetch, delay)
+            return
+          }
+          throw new Error(detail)
+        }
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let serverError = null
+
+        function readLoop() {
+          return reader.read().then(({ done, value }) => {
+            if (done) {
+              onDone?.(serverError)
+              return
+            }
+            buffer += decoder.decode(value, { stream: true })
+
+            let sep
+            while ((sep = buffer.indexOf('\n\n')) !== -1) {
+              const event = buffer.slice(0, sep)
+              buffer = buffer.slice(sep + 2)
+
+              for (const rawLine of event.split('\n')) {
+                if (!rawLine.startsWith('data: ')) continue
+                const data = rawLine.slice(6)
+                if (data === '[DONE]') {
+                  onDone?.(serverError)
+                  return
+                }
+                try {
+                  const parsed = JSON.parse(data)
+                  if (parsed.text) onStage?.({ stage: parsed.stage, text: parsed.text })
+                  if (parsed.error) serverError = new Error(parsed.error)
+                } catch {}
+              }
+            }
+            return readLoop()
+          })
+        }
+
+        return readLoop()
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return
+        if (err instanceof TypeError && attempt <= MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1)
+          onStage?.({ stage: 'status', text: `Connection failed — retrying in ${delay / 1000}s…` })
+          setTimeout(doFetch, delay)
+          return
+        }
+        onDone?.(err)
+      })
+  }
+
+  doFetch()
+
+  return () => controller.abort()
+}
+
+
 export function streamAI(endpoint, body, onChunk, onDone) {
   const controller = new AbortController()
   let attempt = 0

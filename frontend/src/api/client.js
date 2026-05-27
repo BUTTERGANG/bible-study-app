@@ -145,6 +145,10 @@ export const api = {
   searchLibrary: (q, limit = 20) =>
     get(`/library/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 
+  // Resource Summarizer
+  summarizeResource: (resourceId, chunkSize = 0) =>
+    post('/ai/summarize', { resource_id: resourceId, chunk_size: chunkSize }),
+
   // Interlinear
   getChapterInterlinear: (translation, book, chapter) =>
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/interlinear`),
