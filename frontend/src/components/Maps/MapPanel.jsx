@@ -177,7 +177,7 @@ export default function MapPanel() {
       <div className="flex-1 relative">
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-gray-900/60">
-            <p className="text-xs text-gray-500">Loading map data…</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Loading map data…</p>
           </div>
         )}
         <MapContainer
@@ -201,10 +201,10 @@ export default function MapPanel() {
                 <div className="text-xs space-y-1 max-w-[200px]">
                   <p className="font-bold text-sm">{place.place_name}</p>
                   {place.place_type && (
-                    <p className="text-gray-500 capitalize">{place.place_type}</p>
+                    <p className="text-gray-500 dark:text-gray-400 capitalize">{place.place_type}</p>
                   )}
                   {place.description && (
-                    <p className="text-gray-700 leading-snug">{place.description}</p>
+                    <p className="text-gray-700 dark:text-gray-300 leading-snug">{place.description}</p>
                   )}
                   {place.verse_refs && (
                     <p className="text-blue-600 italic text-[11px]">📖 {place.verse_refs}</p>
@@ -223,7 +223,7 @@ export default function MapPanel() {
               <Popup maxWidth={220}>
                 <div className="text-xs space-y-1 max-w-[200px]">
                   <p className="font-bold text-sm">{route.route_name}</p>
-                  {route.description && <p className="text-gray-700 leading-snug">{route.description}</p>}
+                  {route.description && <p className="text-gray-700 dark:text-gray-300 leading-snug">{route.description}</p>}
                   {route.verse_refs && (
                     <p className="text-blue-600 italic text-[11px]">📖 {route.verse_refs}</p>
                   )}

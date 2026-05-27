@@ -208,3 +208,13 @@
 .dark ::-webkit-scrollbar-track { background: #1e293b; }
 .dark ::-webkit-scrollbar-thumb { background: #475569; }
 .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ── Print styles ──────────────────────────────────────────────── */
+@media print {
+  .dark body,
+  .dark * {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -8,7 +9,7 @@ import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 import BookIntroCard from './BookIntroCard'
 
 export default function BibleReader() {
-  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, showLemmas, openWordStudy } = useStudyStore()
+  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, showLemmas, openWordStudy, setCurrentVerses } = useStudyStore()
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['chapter', translation, book, chapter],
@@ -36,6 +37,13 @@ export default function BibleReader() {
     queryFn: () => api.getChapterLemmas(translation, book, chapter),
     enabled: !!book && !!chapter && showLemmas && !compareMode && !interlinearMode && !reverseInterlinear,
   })
+
+  // Keep audio player in sync with current chapter verses
+  useEffect(() => {
+    if (data?.verses) {
+      setCurrentVerses(data.verses)
+    }
+  }, [data?.verses, setCurrentVerses])
 
   const highlights = highlightData?.highlights ?? {}
 

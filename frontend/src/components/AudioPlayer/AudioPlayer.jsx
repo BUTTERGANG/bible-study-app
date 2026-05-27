@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Pause, Play, Square, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { useAudioBible } from './useAudioBible'
 import clsx from 'clsx'
 
-export default function AudioPlayer({ verses, onClose }) {
-  const { book, chapter, translation, audioPlaying } = useStudyStore()
+export default function AudioPlayer({ onClose }) {
+  const { book, chapter, translation, audioPlaying, currentVerses } = useStudyStore()
+  const verses = currentVerses || []
   const {
     isSupported,
     isSpeaking,
