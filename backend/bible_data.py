@@ -97,8 +97,37 @@ _ALIASES = {
 }
 
 
-def resolve_book_name(name: str) -> str | None:
-    """Normalize any book name/abbreviation to canonical name."""
+def _levenshtein(a: str, b: str) -> int:
+    """Compute Levenshtein edit distance between two strings."""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    matrix = [[0] * (len(a) + 1) for _ in range(len(b) + 1)]
+    for i in range(len(b) + 1):
+        matrix[i][0] = i
+    for j in range(len(a) + 1):
+        matrix[0][j] = j
+    for i in range(1, len(b) + 1):
+        for j in range(1, len(a) + 1):
+            cost = 0 if a[j - 1] == b[i - 1] else 1
+            matrix[i][j] = min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost,
+            )
+    return matrix[len(b)][len(a)]
+
+
+def resolve_book_name(name: str, fuzzy: bool = True, max_distance: int = 2) -> str | None:
+    """Normalize any book name/abbreviation to canonical name.
+
+    Exact match is tried first (name, abbreviation, alias).
+    If no exact match and fuzzy=True, Levenshtein distance is used
+    against all known names and abbreviations.
+    """
     key = name.lower().strip()
     if key in BOOK_NAME_MAP:
         return BOOK_NAME_MAP[key]["name"]
@@ -106,4 +135,31 @@ def resolve_book_name(name: str) -> str | None:
         return BOOK_ABBREV_MAP[key]["name"]
     if key in _ALIASES:
         return _ALIASES[key]
-    return None
+
+    if not fuzzy:
+        return None
+
+    # Fuzzy fallback: try against canonical names and abbreviations
+    best_name = None
+    best_dist = max_distance + 1
+
+    for book in BOOKS:
+        # Try against full name
+        dist = _levenshtein(key, book["name"].lower())
+        if dist < best_dist:
+            best_dist = dist
+            best_name = book["name"]
+        # Try against abbreviation
+        dist = _levenshtein(key, book["abbrev"].lower())
+        if dist < best_dist:
+            best_dist = dist
+            best_name = book["name"]
+
+    # Also try against alias keys
+    for alias, canonical in _ALIASES.items():
+        dist = _levenshtein(key, alias.lower())
+        if dist < best_dist:
+            best_dist = dist
+            best_name = canonical
+
+    return best_name if best_dist <= max_distance else None

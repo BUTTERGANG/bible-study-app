@@ -3,6 +3,7 @@ import { Search, Sparkles, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import { streamAI } from '../../api/streamAI'
+import { parseReference, normalizeSearchInput, getSuggestions } from '../../utils/bibleSearch'
 import clsx from 'clsx'
 
 export default function SearchModal({ onClose }) {
@@ -19,18 +20,53 @@ export default function SearchModal({ onClose }) {
   const synopsisStopRef = useRef(null)
   const { translation, setReference } = useStudyStore()
 
+  // Fuzzy reference resolution state
+  const [resolvedRef, setResolvedRef] = useState(null)
+  const [suggestions, setSuggestions] = useState([])
+  const [normalizedQuery, setNormalizedQuery] = useState('')
+
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  // Fuzzy resolve the query as the user types
+  useEffect(() => {
+    if (query.length < 2) {
+      setResolvedRef(null)
+      setSuggestions([])
+      setNormalizedQuery('')
+      return
+    }
+
+    const normalized = normalizeSearchInput(query)
+    if (normalized.type === 'reference' && normalized.parsed) {
+      setResolvedRef(normalized.parsed)
+      setNormalizedQuery(normalized.query)
+      setSuggestions([])
+    } else {
+      setResolvedRef(null)
+      setNormalizedQuery(normalized.query)
+      // Check if the first word(s) are close to a book name
+      const words = query.trim().split(/\s+/)
+      if (words.length <= 3 && words[0].length >= 2) {
+        const sugg = getSuggestions(words[0])
+        setSuggestions(sugg)
+      } else {
+        setSuggestions([])
+      }
+    }
+  }, [query])
 
   useEffect(() => {
     if (query.length < 3) { setResults(null); setActiveIdx(-1); setSynopsis(''); return }
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
+        // Use normalized query if we resolved a reference, otherwise raw query
+        const searchQuery = normalizedQuery || query
         const data = semantic
-          ? await api.semanticSearch(query, translation)
-          : await api.search(query, scope, translation)
+          ? await api.semanticSearch(searchQuery, translation)
+          : await api.search(searchQuery, scope, translation)
         setResults(data)
         setActiveIdx(-1)
 
@@ -41,7 +77,7 @@ export default function SearchModal({ onClose }) {
           setSynopsisLoading(true)
           synopsisStopRef.current = streamAI(
             'search-synopsis',
-            { query, results: data.results.slice(0, 8) },
+            { query: searchQuery, results: data.results.slice(0, 8) },
             (chunk) => setSynopsis((s) => s + chunk),
             () => setSynopsisLoading(false),
           )
@@ -56,13 +92,31 @@ export default function SearchModal({ onClose }) {
       clearTimeout(timer)
       synopsisStopRef.current?.()
     }
-  }, [query, scope, semantic, translation])
+  }, [query, normalizedQuery, scope, semantic, translation])
 
   const resultList = results?.results ?? []
 
   function navigate(result) {
     setReference(result.book, result.chapter, result.verse)
     onClose()
+  }
+
+  // Navigate directly to a parsed reference
+  function navigateToReference(parsed) {
+    if (parsed && parsed.bookName && parsed.chapter) {
+      setReference(parsed.bookName, parsed.chapter, parsed.verse || null)
+      onClose()
+    }
+  }
+
+  // Accept a suggestion
+  function acceptSuggestion(suggestion) {
+    // Replace the first word with the suggestion, keep the rest
+    const words = query.trim().split(/\s+/)
+    words[0] = suggestion
+    const newQuery = words.join(' ')
+    setQuery(newQuery)
+    setSuggestions([])
   }
 
   const handleKeyDown = useCallback((e) => {
@@ -76,7 +130,6 @@ export default function SearchModal({ onClose }) {
       e.preventDefault()
       setActiveIdx((prev) => {
         const next = prev < resultList.length - 1 ? prev + 1 : 0
-        // Scroll active item into view
         const list = listRef.current
         if (list) {
           const item = list.children[next]
@@ -117,7 +170,6 @@ export default function SearchModal({ onClose }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              // Prevent ArrowDown/ArrowUp from moving cursor in input when navigating
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || (e.key === 'Enter' && activeIdx >= 0)) {
                 e.preventDefault()
                 handleKeyDown(e)
@@ -130,6 +182,40 @@ export default function SearchModal({ onClose }) {
             <X size={18} />
           </button>
         </div>
+
+        {/* Fuzzy reference resolution banner */}
+        {resolvedRef && resolvedRef.reference && (
+          <div className="px-4 py-2 bg-green-50 dark:bg-green-950/30 border-b border-green-100 dark:border-green-900/50 flex items-center justify-between">
+            <p className="text-xs text-green-700 dark:text-green-300">
+              <span className="font-medium">Resolved:</span>{' '}
+              <span className="font-semibold">{resolvedRef.reference}</span>
+            </p>
+            <button
+              onClick={() => navigateToReference(resolvedRef)}
+              className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-0.5 rounded font-medium transition-colors"
+            >
+              Go
+            </button>
+          </div>
+        )}
+
+        {/* Did you mean suggestions */}
+        {suggestions.length > 0 && !resolvedRef && (
+          <div className="px-4 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/50">
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-1">Did you mean?</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => acceptSuggestion(s)}
+                  className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Scope tabs + Semantic toggle */}
         <div className="flex items-center border-b border-gray-100 dark:border-gray-700 px-2 bg-white dark:bg-gray-800">
@@ -200,7 +286,7 @@ export default function SearchModal({ onClose }) {
 
           {!loading && query.length >= 3 && results?.results?.length === 0 && (
             <div className="p-4 text-sm text-gray-400 text-center">
-              No results for "{query}"
+              No results for "{normalizedQuery || query}"
             </div>
           )}
 
