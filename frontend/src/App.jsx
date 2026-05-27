@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { useStudyStore } from './stores/studyStore'
 import { useUrlSync } from './hooks/useUrlSync'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { useOfflineSync } from './hooks/useOfflineSync'
 import Sidebar from './components/Sidebar/Sidebar'
 import BibleReader from './components/BibleReader/BibleReader'
 import RightPanel from './components/layout/RightPanel'
@@ -19,6 +20,7 @@ export default function App() {
   const [morphSearchOpen, setMorphSearchOpen] = useState(false)
   const [audioOpen, setAudioOpen] = useState(false)
   const online = useOnlineStatus()
+  const { syncStatus, queueLength } = useOfflineSync()
   useUrlSync()
 
   useEffect(() => {
@@ -43,6 +45,16 @@ export default function App() {
           <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500 text-white text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80 animate-pulse" />
             Offline — showing cached content
+            {queueLength > 0 && (
+              <span className="ml-1 bg-white/20 rounded px-1.5 py-0.5 text-[10px]">
+                {queueLength} change{queueLength !== 1 ? 's' : ''} queued
+              </span>
+            )}
+          </div>
+        )}
+        {online && syncStatus === 'conflict' && queueLength === 0 && (
+          <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium">
+            Sync conflicts resolved — some changes were skipped
           </div>
         )}
         <TopBar

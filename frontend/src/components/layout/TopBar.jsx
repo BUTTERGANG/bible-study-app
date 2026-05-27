@@ -8,6 +8,7 @@ import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
 import { api } from '../../api/client'
 import clsx from 'clsx'
+import SyncStatus from './SyncStatus'
 
 const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 'BSB', 'LEB']
 
@@ -366,6 +367,8 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
       >
         <Volume2 size={16} />
       </button>
+
+      <SyncStatus />
 
       <button
         onClick={onSearch}
