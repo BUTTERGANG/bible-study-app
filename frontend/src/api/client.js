@@ -153,6 +153,10 @@ export const api = {
   getChapterInterlinear: (translation, book, chapter) =>
     get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/interlinear`),
 
+  // Lemma data for inline passage view
+  getChapterLemmas: (translation, book, chapter) =>
+    get(`/bible/${encodeURIComponent(translation)}/${encodeURIComponent(book)}/${chapter}/lemmas`),
+
   // Factbook
   // Bible Study Builder
   listStudies: () => get('/studies'),

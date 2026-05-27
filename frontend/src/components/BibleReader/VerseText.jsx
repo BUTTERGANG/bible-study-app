@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 import VerseContextMenu from './VerseContextMenu'
+import LemmaInline from './LemmaInline'
 import clsx from 'clsx'
 
 const HIGHLIGHT_CLASSES = {
@@ -14,8 +15,10 @@ const HIGHLIGHT_CLASSES = {
 export default function VerseText({
   verse, text, book, chapter, translation,
   isActive, highlightColor, highlightId,
+  lemmaWords, lemmaLanguage,
 }) {
   const selectVerse = useStudyStore((s) => s.selectVerse)
+  const { showLemmas, lemmaPosition } = useStudyStore()
   const [menuPos, setMenuPos] = useState(null)
   const [flashing, setFlashing] = useState(false)
   const ref = useRef(null)
@@ -39,6 +42,9 @@ export default function VerseText({
     setMenuPos({ x: e.clientX, y: e.clientY })
   }
 
+  // When lemmas are enabled and data is available, render via LemmaInline
+  const hasLemmaData = showLemmas && lemmaWords && lemmaWords.length > 0
+
   return (
     <>
       <span
@@ -50,11 +56,20 @@ export default function VerseText({
           'cursor-pointer rounded px-0.5 transition-colors hover:bg-blue-50',
           isActive && 'verse-selected',
           flashing && 'verse-flash',
-          highlightColor && HIGHLIGHT_CLASSES[highlightColor]
+          highlightColor && HIGHLIGHT_CLASSES[highlightColor],
+          hasLemmaData && 'lemma-verse'
         )}
       >
         <sup className="verse-num">{verse}</sup>
-        {text}{' '}
+        {hasLemmaData ? (
+          <LemmaInline
+            words={lemmaWords}
+            text={text}
+            position={lemmaPosition}
+          />
+        ) : (
+          <>{text}{' '}</>
+        )}
       </span>
 
       {menuPos && (

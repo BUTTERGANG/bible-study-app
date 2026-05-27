@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from ..database import get_db
-from ..models import BibleVerse, GreekWord, HebrewWord
+from ..models import BibleVerse, GreekWord, HebrewWord, LexiconEntry
 from ..bible_data import BOOKS, resolve_book_name
 
 router = APIRouter(prefix="/api/bible", tags=["bible"])
@@ -202,6 +202,98 @@ async def get_chapter_interlinear(
 
     return {
         "translation": canonical_t,
+        "book": canonical,
+        "chapter": chapter,
+        "language": "greek" if is_nt else "hebrew",
+        "verses": [
+            {"verse": v, "words": ws}
+            for v, ws in sorted(verses_map.items())
+        ],
+    }
+
+
+@router.get("/{translation}/{book}/{chapter}/lemmas")
+async def get_chapter_lemmas(
+    translation: str,
+    book: str,
+    chapter: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return per-verse lemma data for inline display in the passage reader.
+
+    Lighter weight than full interlinear: includes lemma forms, Strong's numbers,
+    and morphology per word position, plus lexicon definitions in a single
+    joined query. Designed to be lazy-loaded per chapter.
+    """
+    canonical = resolve_book_name(book)
+    if not canonical:
+        raise HTTPException(status_code=404, detail=f"Book not found: {book}")
+
+    # Determine testament from book name
+    book_data = None
+    for b in BOOKS:
+        if b["name"] == canonical:
+            book_data = b
+            break
+    is_nt = book_data is not None and book_data["testament"] == "NT"
+
+    if is_nt:
+        # Fetch Greek words with lexicon join for definitions
+        result = await db.execute(
+            select(GreekWord, LexiconEntry)
+            .outerjoin(
+                LexiconEntry,
+                (GreekWord.strongs_num == LexiconEntry.strongs_num)
+                & (LexiconEntry.source == "AbbottSmith"),
+            )
+            .where(
+                GreekWord.book == canonical,
+                GreekWord.chapter == chapter,
+            )
+            .order_by(GreekWord.verse, GreekWord.word_position)
+        )
+        rows = result.all()
+        verses_map = {}
+        for greek_word, lex in rows:
+            verses_map.setdefault(greek_word.verse, []).append({
+                "position": greek_word.word_position,
+                "original": greek_word.greek,
+                "transliteration": greek_word.transliteration or "",
+                "morphology": greek_word.morphology or "",
+                "strongs": greek_word.strongs_num or "",
+                "gloss": greek_word.english_gloss or "",
+                "definition": lex.definition if lex else None,
+            })
+    else:
+        # Fetch Hebrew words with lexicon join for definitions
+        result = await db.execute(
+            select(HebrewWord, LexiconEntry)
+            .outerjoin(
+                LexiconEntry,
+                (HebrewWord.strongs_num == LexiconEntry.strongs_num)
+                & (LexiconEntry.source == "StrongsHebrew"),
+            )
+            .where(
+                HebrewWord.book == canonical,
+                HebrewWord.chapter == chapter,
+            )
+            .order_by(HebrewWord.verse, HebrewWord.word_position)
+        )
+        rows = result.all()
+        verses_map = {}
+        for hebrew_word, lex in rows:
+            verses_map.setdefault(hebrew_word.verse, []).append({
+                "position": hebrew_word.word_position,
+                "original": hebrew_word.hebrew,
+                "transliteration": hebrew_word.transliteration or "",
+                "morphology": hebrew_word.morphology or "",
+                "strongs": hebrew_word.strongs_num or "",
+                "gloss": hebrew_word.english_gloss or "",
+                "definition": lex.definition if lex else None,
+            })
+
+    return {
+        "translation": translation,
         "book": canonical,
         "chapter": chapter,
         "language": "greek" if is_nt else "hebrew",

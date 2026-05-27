@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, Layers, Menu, Moon,
-  PanelRightClose, PanelRightOpen, Search, Sun, X, Filter,
+  PanelRightClose, PanelRightOpen, Search, Sun, X, Filter, Languages,
 } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
@@ -22,6 +22,7 @@ export default function TopBar({ onSearch, onMorphSearch }) {
     compareMode, toggleCompareMode,
     compareTranslations, setCompareTranslations,
     interlinearMode, toggleInterlinear,
+    showLemmas, toggleShowLemmas, lemmaPosition, setLemmaPosition,
   } = useStudyStore()
   const qc = useQueryClient()
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
@@ -172,6 +173,25 @@ export default function TopBar({ onSearch, onMorphSearch }) {
         <Layers size={14} />
         <span className="hidden sm:block">Interlinear</span>
       </button>
+
+      {/* Lemma toggle */}
+      {!compareMode && (
+        <div className="relative">
+          <button
+            onClick={toggleShowLemmas}
+            className={clsx(
+              'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
+              showLemmas
+                ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700'
+                : 'text-slate-300 border-slate-600 hover:text-white hover:border-slate-500'
+            )}
+            title={showLemmas ? 'Hide lemma forms' : 'Show lemma forms (Hebrew/Greek)'}
+          >
+            <Languages size={14} />
+            <span className="hidden sm:block">Lemmas</span>
+          </button>
+        </div>
+      )}
 
       {/* Compare button */}
       <div className="relative" ref={pickerRef}>

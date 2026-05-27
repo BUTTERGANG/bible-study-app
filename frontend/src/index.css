@@ -65,6 +65,45 @@
     @apply rounded-sm px-0.5;
     transition: background-color 0.15s ease;
   }
+
+  /* Lemma inline display */
+  .lemma-verse {
+    line-height: 2.4;
+  }
+
+  .lemma-below-wrapper {
+    vertical-align: top;
+  }
+
+  .lemma-text {
+    display: inline;
+  }
+
+  .lemma-forms-below {
+    @apply text-gray-500 dark:text-gray-400;
+    font-size: 0.6rem;
+  }
+
+  .lemma-word {
+    transition: background-color 0.1s ease;
+  }
+
+  .lemma-word:hover {
+    @apply bg-blue-50 dark:bg-blue-900/20;
+  }
+
+  .lemma-inline-wrapper {
+    display: inline;
+  }
+
+  .lemma-forms-inline {
+    display: none;
+  }
+
+  /* Inline lemma words - shown when parent verse is hovered */
+  .lemma-inline-word:hover {
+    @apply bg-blue-50 dark:bg-blue-900/20 rounded;
+  }
 }
 
 /* ── Notes markdown rendering ─────────────────────────────────────────── */

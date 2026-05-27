@@ -33,6 +33,8 @@ export const useStudyStore = create(
       rightPanelOpen: true,
       interlinearMode: false,
       reverseInterlinear: false,
+      showLemmas: false,
+      lemmaPosition: 'below', // 'below' | 'inline'
       focusedStrongs: null,
       darkMode: false,
       fontSizeIdx: 1,
@@ -77,6 +79,8 @@ export const useStudyStore = create(
       setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
       toggleInterlinear: () => set((s) => ({ interlinearMode: !s.interlinearMode })),
       toggleReverseInterlinear: () => set((s) => ({ reverseInterlinear: !s.reverseInterlinear })),
+      toggleShowLemmas: () => set((s) => ({ showLemmas: !s.showLemmas })),
+      setLemmaPosition: (position) => set({ lemmaPosition: position }),
       openWordStudy: (strongsNum) =>
         set({ rightPanel: 'word-study', rightPanelOpen: true, focusedStrongs: strongsNum }),
       clearFocusedStrongs: () => set({ focusedStrongs: null }),
@@ -108,6 +112,8 @@ export const useStudyStore = create(
         rightPanelOpen: s.rightPanelOpen,
         interlinearMode: s.interlinearMode,
         reverseInterlinear: s.reverseInterlinear,
+        showLemmas: s.showLemmas,
+        lemmaPosition: s.lemmaPosition,
         darkMode: s.darkMode,
         fontSizeIdx: s.fontSizeIdx,
         compareMode: s.compareMode,

@@ -8,7 +8,7 @@ import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 import BookIntroCard from './BookIntroCard'
 
 export default function BibleReader() {
-  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, openWordStudy } = useStudyStore()
+  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, showLemmas, openWordStudy } = useStudyStore()
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['chapter', translation, book, chapter],
@@ -28,6 +28,13 @@ export default function BibleReader() {
     queryKey: ['interlinear', translation, book, chapter],
     queryFn: () => api.getChapterInterlinear(translation, book, chapter),
     enabled: !!book && !!chapter && (interlinearMode || reverseInterlinear) && !compareMode,
+  })
+
+  // Fetch lemma data for inline display when showLemmas is on
+  const { data: lemmaData, isLoading: lemmaLoading } = useQuery({
+    queryKey: ['lemmas', translation, book, chapter],
+    queryFn: () => api.getChapterLemmas(translation, book, chapter),
+    enabled: !!book && !!chapter && showLemmas && !compareMode && !interlinearMode && !reverseInterlinear,
   })
 
   const highlights = highlightData?.highlights ?? {}
@@ -80,6 +87,14 @@ export default function BibleReader() {
     }
   }
 
+  // Build lemma map: verse -> words[]
+  const lemmaMap = {}
+  if (lemmaData?.verses) {
+    for (const v of lemmaData.verses) {
+      lemmaMap[v.verse] = v.words || []
+    }
+  }
+
   return (
     <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
       {/* Visual Filters toolbar — always visible when interlinear is on */}
@@ -95,6 +110,7 @@ export default function BibleReader() {
             Chapter {data.chapter} · {data.translation}
             {interlinearMode && !reverseInterlinear && <span className="ml-2 text-blue-500">· Interlinear</span>}
             {reverseInterlinear && <span className="ml-2 text-purple-500">· Reverse Interlinear</span>}
+            {showLemmas && !interlinearMode && !reverseInterlinear && <span className="ml-2 text-emerald-500">· Lemmas</span>}
           </p>
           <div className="w-16 h-px bg-gray-300 dark:bg-gray-600 mx-auto mt-3" />
         </div>
@@ -111,6 +127,13 @@ export default function BibleReader() {
             <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-400 dark:text-gray-500">
               <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
               Loading interlinear data…
+            </div>
+          )}
+
+          {(interlinearMode || reverseInterlinear) && lemmaLoading && (
+            <div className="flex items-center justify-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-500">
+              <div className="animate-spin w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full" />
+              Loading lemma data…
             </div>
           )}
 
@@ -145,6 +168,8 @@ export default function BibleReader() {
                 isActive={activeVerse === verse}
                 highlightColor={highlights[String(verse)]?.color}
                 highlightId={highlights[String(verse)]?.id}
+                lemmaWords={lemmaMap[verse] || []}
+                lemmaLanguage={lemmaData?.language || null}
               />
             )
           })}
