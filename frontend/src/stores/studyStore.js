@@ -59,6 +59,11 @@ export const useStudyStore = create(
         return { aiHistory: newHistory }
       }),
 
+      // Audio player state
+      audioPlaying: false,
+      audioSpeed: 1.0,
+      currentVerseIdx: null,
+
       // Visual filters state
       visualFiltersEnabled: false,
       visualFilters: defaultFilterState(),
@@ -103,6 +108,11 @@ export const useStudyStore = create(
         set((s) => ({
           visualFilters: { ...s.visualFilters, [category]: enabled },
         })),
+
+      // Audio actions
+      setAudioPlaying: (playing) => set({ audioPlaying: playing }),
+      setAudioSpeed: (speed) => set({ audioSpeed: speed }),
+      setCurrentVerseIdx: (idx) => set({ currentVerseIdx: idx }),
     }),
     {
       name: 'bible-study-state',

@@ -456,6 +456,22 @@ class BookIntroduction(Base):
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class CulturalNote(Base):
+    """AI-generated cultural/historical background notes per verse, cached in DB."""
+    __tablename__ = "cultural_notes"
+    __table_args__ = (
+        UniqueConstraint("book", "chapter", "verse", name="uq_cultural_note_verse"),
+        Index("ix_cultural_notes_lookup", "book", "chapter", "verse"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    book: Mapped[str] = mapped_column(String(50), index=True)
+    chapter: Mapped[int] = mapped_column(Integer, index=True)
+    verse: Mapped[int] = mapped_column(Integer, index=True)
+    content: Mapped[str] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class MediaFile(Base):
     """Uploaded media file (images, attachments) scoped to a user."""
     __tablename__ = "media_files"

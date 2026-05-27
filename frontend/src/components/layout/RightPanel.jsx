@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
+import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Globe, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -27,6 +27,7 @@ const MemorizePanel = lazy(() => import('../Memorize/MemorizePanel'))
 const PrayerPanel = lazy(() => import('../Prayer/PrayerPanel'))
 const StudyBuilder = lazy(() => import('../StudyBuilder/StudyBuilder'))
 const DashboardPanel = lazy(() => import('../Dashboard/DashboardPanel'))
+const CulturalContextPanel = lazy(() => import('../Insights/CulturalContextPanel'))
 
 const TABS = [
   { id: 'home', label: 'Home', icon: BookOpen },
@@ -51,6 +52,7 @@ const TABS = [
   { id: 'memorize', label: 'Memorize', icon: Brain },
   { id: 'prayer', label: 'Prayer', icon: Heart },
   { id: 'study', label: 'Study', icon: GraduationCap },
+  { id: 'cultural', label: 'Culture', icon: Globe },
 ]
 
 function PanelSkeleton() {
@@ -106,6 +108,7 @@ export default function RightPanel() {
           {rightPanel === 'memorize' && <MemorizePanel />}
           {rightPanel === 'prayer' && <PrayerPanel />}
           {rightPanel === 'study' && <StudyBuilder />}
+          {rightPanel === 'cultural' && <CulturalContextPanel />}
         </Suspense>
       </div>
     </div>

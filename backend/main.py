@@ -31,15 +31,19 @@ from .database import db_status, init_db
 from .routers import (
     ai,
     ai_conversations,
+    ai_reading_plans,
     bible,
     book_intros,
     bookmarks,
     commentary,
+    cultural_notes,
     dashboard,
     dictionary,
     factbook,
+    gospel_harmony,
     health,
     highlights,
+    lectionary,
     lexicon,
     library,
     media,
@@ -121,6 +125,15 @@ app.include_router(lexicon.router)
 app.include_router(library.router)
 app.include_router(dictionary.router)
 
+# Cultural Notes — read-only, no auth required.
+app.include_router(cultural_notes.router)
+
+# Gospel Harmony — read-only, no auth required.
+app.include_router(gospel_harmony.router)
+
+# Lectionary — read-only, no auth required.
+app.include_router(lectionary.router)
+
 # User-mutable routers — gated by get_current_user (raises 401 if auth fails).
 from fastapi import Depends  # noqa: E402  (kept here so the dep list is visible)
 _protected = [Depends(get_current_user)]
@@ -137,6 +150,9 @@ app.include_router(ai.router)
 
 # AI conversations — user-scoped, read-write.
 app.include_router(ai_conversations.router)
+
+# AI reading plan generation — auth + rate limit on router.
+app.include_router(ai_reading_plans.router)
 
 # Sermon Builder — projects and sections.
 app.include_router(sermons.router)

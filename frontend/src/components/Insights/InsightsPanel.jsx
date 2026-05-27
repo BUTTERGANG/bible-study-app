@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Lightbulb, MapPin, User, Tag, ExternalLink, BookOpen, RefreshCw } from 'lucide-react'
+import { Lightbulb, MapPin, User, Tag, ExternalLink, BookOpen, RefreshCw, Globe, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
@@ -133,6 +133,9 @@ export default function InsightsPanel() {
           )}
         </div>
 
+        {/* Cultural Context Card */}
+        <CulturalContextCard />
+
         {/* Key Themes */}
         {(insightsLoading || insights?.key_themes?.length > 0) && (
           <div>
@@ -257,6 +260,56 @@ export default function InsightsPanel() {
         )}
 
       </div>
+    </div>
+  )
+}
+
+/** Embedded cultural context shown inside the InsightsPanel for the active verse. */
+function CulturalContextCard() {
+  const { book, chapter, verse, selectedVerse } = useStudyStore()
+  const [expanded, setExpanded] = useState(false)
+  const activeVerse = selectedVerse || verse
+
+  const { data: notes, isLoading } = useQuery({
+    queryKey: ['cultural-notes', book, chapter],
+    queryFn: () => api.getCulturalNotes(book, chapter),
+    enabled: !!book && !!chapter && !!activeVerse,
+    staleTime: 1000 * 60 * 30,
+  })
+
+  if (!activeVerse || (!isLoading && (!notes || notes.length === 0))) return null
+
+  const verseNotes = (notes || []).filter(n => n.verse === activeVerse)
+
+  return (
+    <div className="rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10 p-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between"
+      >
+        <span className="flex items-center gap-1">
+          <Globe size={11} /> Cultural Context — {book} {chapter}:{activeVerse}
+          {verseNotes.length > 0 && (
+            <span className="bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300 text-[10px] rounded-full px-1.5 py-0.5 ml-1">
+              {verseNotes.length}
+            </span>
+          )}
+        </span>
+        {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+      </button>
+      {isLoading && (
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <Loader2 size={10} className="animate-spin" /> Loading cultural notes…
+        </div>
+      )}
+      {!isLoading && expanded && verseNotes.map((n, i) => (
+        <div key={i} className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed mt-1">
+          <div dangerouslySetInnerHTML={{
+            __html: n.content
+              .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300">$1</strong>')
+          }} />
+        </div>
+      ))}
     </div>
   )
 }

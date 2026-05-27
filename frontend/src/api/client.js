@@ -132,10 +132,13 @@ export const api = {
   // Reading plans
   getBuiltInPlans: () => get('/reading-plans/built-in'),
   getPlans: () => get('/reading-plans'),
+  getPlanDetail: (id) => get(`/reading-plans/${id}`),
   startPlan: (data) => post('/reading-plans/start', data),
+  startAiPlan: (data) => post('/reading-plans/start-ai', data),
   getTodayReadings: () => get('/reading-plans/today'),
   completeReading: (planId, reference) =>
     post(`/reading-plans/${planId}/complete?reference=${encodeURIComponent(reference)}`),
+  deletePlan: (id) => del(`/reading-plans/${id}`),
 
   // Library
   getLibraryBooks: (category) =>
@@ -202,12 +205,28 @@ export const api = {
   generateFactbookEntry: (entityName, entityType = 'person') =>
     post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
 
+  // Cultural context notes
+  getCulturalNotes: (book, chapter) =>
+    get(`/cultural/${encodeURIComponent(book)}/${chapter}`),
+  getCulturalNote: (book, chapter, verse) =>
+    get(`/cultural/${encodeURIComponent(book)}/${chapter}/${verse}`),
+
   // Dashboard
   getDashboard: () => get('/dashboard'),
 
   // Book introductions
   getBookIntroduction: (book, refresh = false) =>
     get(`/bible/books/${encodeURIComponent(book)}/introduction${refresh ? '?refresh=true' : ''}`),
+
+  // Gospel Harmony
+  getHarmonyList: () => get('/harmony'),
+  getHarmonyPericope: (pericopeId, translation = 'KJV') =>
+    get(`/harmony/${encodeURIComponent(pericopeId)}?translation=${encodeURIComponent(translation)}`),
+
+  // Lectionary
+  getTodayReadings: () => get('/lectionary/today'),
+  getReadingsByDate: (date) =>
+    get(`/lectionary/${encodeURIComponent(date)}`),
 
   // NT Use of OT
   getNtOtConnections: (params = {}) => {
