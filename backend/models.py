@@ -154,6 +154,9 @@ class ReadingPlan(Base):
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(Text, nullable=True)
     start_date: Mapped[str] = mapped_column(String(10), nullable=True)
+    plan_type: Mapped[str] = mapped_column(String(20), default="built-in", index=True)
+    # built-in, ai-generated, custom
+    goal: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     days: Mapped[list["ReadingPlanDay"]] = relationship(
         back_populates="plan", cascade="all, delete-orphan"
@@ -174,6 +177,10 @@ class ReadingPlanDay(Base):
     plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id"), index=True)
     date: Mapped[str] = mapped_column(String(10), index=True)
     reference: Mapped[str] = mapped_column(String(100))
+    day_label: Mapped[str] = mapped_column(String(50), nullable=True)
+    # e.g. "Day 1", "Week 1 - Mon" — optional display label
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    # AI-generated description for this day's reading
     plan: Mapped["ReadingPlan"] = relationship(back_populates="days")
 
 

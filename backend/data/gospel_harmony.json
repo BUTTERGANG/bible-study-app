@@ -1,0 +1,750 @@
+{
+  "sections": [
+    {
+      "id": "birth",
+      "label": "Birth & Infancy",
+      "pericopes": [
+        {
+          "id": "annunciation_mary",
+          "title": "Annunciation to Mary",
+          "matt": null,
+          "mark": null,
+          "luke": "1:26-38",
+          "john": null
+        },
+        {
+          "id": "birth_jesus",
+          "title": "Birth of Jesus",
+          "matt": "1:18-25",
+          "mark": null,
+          "luke": "2:1-7",
+          "john": null
+        },
+        {
+          "id": "shepherds",
+          "title": "Shepherds & Angels",
+          "matt": null,
+          "mark": null,
+          "luke": "2:8-20",
+          "john": null
+        },
+        {
+          "id": "presentation",
+          "title": "Presentation in the Temple",
+          "matt": null,
+          "mark": null,
+          "luke": "2:22-38",
+          "john": null
+        },
+        {
+          "id": "magi",
+          "title": "Visit of the Magi",
+          "matt": "2:1-12",
+          "mark": null,
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "flight_egypt",
+          "title": "Flight to Egypt & Return",
+          "matt": "2:13-23",
+          "mark": null,
+          "luke": null,
+          "john": null
+        }
+      ]
+    },
+    {
+      "id": "preparation",
+      "label": "Preparation for Ministry",
+      "pericopes": [
+        {
+          "id": "john_baptist_intro",
+          "title": "The Preaching of John the Baptist",
+          "matt": "3:1-12",
+          "mark": "1:1-8",
+          "luke": "3:1-18",
+          "john": "1:19-28"
+        },
+        {
+          "id": "baptism_jesus",
+          "title": "Baptism of Jesus",
+          "matt": "3:13-17",
+          "mark": "1:9-11",
+          "luke": "3:21-22",
+          "john": "1:29-34"
+        },
+        {
+          "id": "temptation",
+          "title": "Temptation in the Wilderness",
+          "matt": "4:1-11",
+          "mark": "1:12-13",
+          "luke": "4:1-13",
+          "john": null
+        },
+        {
+          "id": "first_disciples",
+          "title": "Calling of the First Disciples",
+          "matt": "4:18-22",
+          "mark": "1:16-20",
+          "luke": "5:1-11",
+          "john": "1:35-51"
+        }
+      ]
+    },
+    {
+      "id": "early_ministry",
+      "label": "Early Galilean Ministry",
+      "pericopes": [
+        {
+          "id": "wedding_cana",
+          "title": "Wedding at Cana",
+          "matt": null,
+          "mark": null,
+          "luke": null,
+          "john": "2:1-12"
+        },
+        {
+          "id": "cleansing_temple_early",
+          "title": "First Cleansing of the Temple",
+          "matt": null,
+          "mark": null,
+          "luke": null,
+          "john": "2:13-25"
+        },
+        {
+          "id": "nicodemus",
+          "title": "Nicodemus Visits Jesus",
+          "matt": null,
+          "mark": null,
+          "luke": null,
+          "john": "3:1-21"
+        },
+        {
+          "id": "woman_samaria",
+          "title": "Woman at the Well",
+          "matt": null,
+          "mark": null,
+          "luke": null,
+          "john": "4:1-42"
+        },
+        {
+          "id": "healing_nazareth",
+          "title": "Rejection at Nazareth",
+          "matt": "13:54-58",
+          "mark": "6:1-6",
+          "luke": "4:16-30",
+          "john": null
+        },
+        {
+          "id": "fishermen_called",
+          "title": "Fishing & Calling of Simon, Andrew, James, John",
+          "matt": "4:18-22",
+          "mark": "1:16-20",
+          "luke": "5:1-11",
+          "john": null
+        },
+        {
+          "id": "demoniac_capernaum",
+          "title": "Healing the Demoniac in Capernaum",
+          "matt": null,
+          "mark": "1:21-28",
+          "luke": "4:31-37",
+          "john": null
+        },
+        {
+          "id": "peters_mother_in_law",
+          "title": "Healing Peter's Mother-in-Law",
+          "matt": "8:14-15",
+          "mark": "1:29-31",
+          "luke": "4:38-39",
+          "john": null
+        },
+        {
+          "id": "healing_many",
+          "title": "Healing Many at Evening",
+          "matt": "8:16-17",
+          "mark": "1:32-34",
+          "luke": "4:40-41",
+          "john": null
+        },
+        {
+          "id": "preaching_galilee",
+          "title": "Preaching Tour of Galilee",
+          "matt": "4:23-25",
+          "mark": "1:35-39",
+          "luke": "4:42-44",
+          "john": null
+        },
+        {
+          "id": "leper_cleaned",
+          "title": "Cleansing a Leper",
+          "matt": "8:1-4",
+          "mark": "1:40-45",
+          "luke": "5:12-16",
+          "john": null
+        },
+        {
+          "id": "paralytic_forgiven",
+          "title": "Paralytic Healed & Sins Forgiven",
+          "matt": "9:1-8",
+          "mark": "2:1-12",
+          "luke": "5:17-26",
+          "john": null
+        }
+      ]
+    },
+    {
+      "id": "conflict",
+      "label": "Growing Conflict & Teaching",
+      "pericopes": [
+        {
+          "id": "call_matthew",
+          "title": "Calling of Matthew (Levi)",
+          "matt": "9:9-13",
+          "mark": "2:13-17",
+          "luke": "5:27-32",
+          "john": null
+        },
+        {
+          "id": "sabbath_argument",
+          "title": "Disciples Pick Grain on the Sabbath",
+          "matt": "12:1-8",
+          "mark": "2:23-28",
+          "luke": "6:1-5",
+          "john": null
+        },
+        {
+          "id": "withered_hand",
+          "title": "Man with Withered Hand Healed",
+          "matt": "12:9-14",
+          "mark": "3:1-6",
+          "luke": "6:6-11",
+          "john": null
+        },
+        {
+          "id": "multitude_healed",
+          "title": "Multitude Healed by the Sea",
+          "matt": "12:15-21",
+          "mark": "3:7-12",
+          "luke": "6:17-19",
+          "john": null
+        },
+        {
+          "id": "twelve_chosen",
+          "title": "Choosing of the Twelve Apostles",
+          "matt": null,
+          "mark": "3:13-19",
+          "luke": "6:12-16",
+          "john": null
+        },
+        {
+          "id": "sermon_mount",
+          "title": "Sermon on the Mount",
+          "matt": "5:1-7:29",
+          "mark": null,
+          "luke": "6:20-49",
+          "john": null
+        },
+        {
+          "id": "centurions_servant",
+          "title": "Centurion's Servant Healed",
+          "matt": "8:5-13",
+          "mark": null,
+          "luke": "7:1-10",
+          "john": null
+        },
+        {
+          "id": "widow_nain",
+          "title": "Raising of the Widow's Son at Nain",
+          "matt": null,
+          "mark": null,
+          "luke": "7:11-17",
+          "john": null
+        },
+        {
+          "id": "john_baptist_question",
+          "title": "Question from John the Baptist",
+          "matt": "11:2-19",
+          "mark": null,
+          "luke": "7:18-35",
+          "john": null
+        }
+      ]
+    },
+    {
+      "id": "parables_miracles",
+      "label": "Parables & Nature Miracles",
+      "pericopes": [
+        {
+          "id": "parable_sower",
+          "title": "Parable of the Sower",
+          "matt": "13:1-23",
+          "mark": "4:1-20",
+          "luke": "8:4-15",
+          "john": null
+        },
+        {
+          "id": "parable_tares",
+          "title": "Parable of the Wheat and Tares",
+          "matt": "13:24-30,36-43",
+          "mark": null,
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "seed_growing",
+          "title": "Parable of the Growing Seed",
+          "matt": null,
+          "mark": "4:26-29",
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "mustard_seed",
+          "title": "Parable of the Mustard Seed",
+          "matt": "13:31-32",
+          "mark": "4:30-32",
+          "luke": "13:18-19",
+          "john": null
+        },
+        {
+          "id": "storm_calmed",
+          "title": "Calming the Storm",
+          "matt": "8:23-27",
+          "mark": "4:35-41",
+          "luke": "8:22-25",
+          "john": null
+        },
+        {
+          "id": "gerasene_demoniac",
+          "title": "Gerasene Demoniac(s) Healed",
+          "matt": "8:28-34",
+          "mark": "5:1-20",
+          "luke": "8:26-39",
+          "john": null
+        },
+        {
+          "id": "jairus_daughter",
+          "title": "Raising of Jairus' Daughter",
+          "matt": "9:18-26",
+          "mark": "5:21-43",
+          "luke": "8:40-56",
+          "john": null
+        },
+        {
+          "id": "hemorrhage_woman",
+          "title": "Woman with Hemorrhage Healed",
+          "matt": "9:20-22",
+          "mark": "5:25-34",
+          "luke": "8:43-48",
+          "john": null
+        },
+        {
+          "id": "feeding_5000",
+          "title": "Feeding of the Five Thousand",
+          "matt": "14:13-21",
+          "mark": "6:30-44",
+          "luke": "9:10-17",
+          "john": "6:1-15"
+        },
+        {
+          "id": "walking_water",
+          "title": "Jesus Walks on the Water",
+          "matt": "14:22-33",
+          "mark": "6:45-52",
+          "luke": null,
+          "john": "6:16-21"
+        },
+        {
+          "id": "syrophoenician",
+          "title": "Syrophoenician (Canaanite) Woman",
+          "matt": "15:21-28",
+          "mark": "7:24-30",
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "deaf_mute",
+          "title": "Healing the Deaf Mute",
+          "matt": null,
+          "mark": "7:31-37",
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "feeding_4000",
+          "title": "Feeding of the Four Thousand",
+          "matt": "15:32-39",
+          "mark": "8:1-10",
+          "luke": null,
+          "john": null
+        }
+      ]
+    },
+    {
+      "id": "messianic_turning",
+      "label": "Messianic Confession & Transfiguration",
+      "pericopes": [
+        {
+          "id": "peters_confession",
+          "title": "Peter's Confession at Caesarea Philippi",
+          "matt": "16:13-20",
+          "mark": "8:27-30",
+          "luke": "9:18-21",
+          "john": null
+        },
+        {
+          "id": "first_passion_prediction",
+          "title": "First Passion Prediction",
+          "matt": "16:21-23",
+          "mark": "8:31-33",
+          "luke": "9:22",
+          "john": null
+        },
+        {
+          "id": "cross_take_up",
+          "title": "Taking Up One's Cross",
+          "matt": "16:24-28",
+          "mark": "8:34-9:1",
+          "luke": "9:23-27",
+          "john": null
+        },
+        {
+          "id": "transfiguration",
+          "title": "The Transfiguration",
+          "matt": "17:1-9",
+          "mark": "9:2-10",
+          "luke": "9:28-36",
+          "john": null
+        },
+        {
+          "id": "epileptic_boy",
+          "title": "Epileptic Boy Healed",
+          "matt": "17:14-20",
+          "mark": "9:14-29",
+          "luke": "9:37-43",
+          "john": null
+        },
+        {
+          "id": "second_passion_prediction",
+          "title": "Second Passion Prediction",
+          "matt": "17:22-23",
+          "mark": "9:30-32",
+          "luke": "9:44-45",
+          "john": null
+        }
+      ]
+    },
+    {
+      "id": "journey_jerusalem",
+      "label": "Journey to Jerusalem",
+      "pericopes": [
+        {
+          "id": "samaritan_village",
+          "title": "Samaritan Village Rejects Jesus",
+          "matt": null,
+          "mark": null,
+          "luke": "9:51-56",
+          "john": null
+        },
+        {
+          "id": "seventy_sent",
+          "title": "Sending Out the Seventy-Two",
+          "matt": null,
+          "mark": null,
+          "luke": "10:1-12,17-20",
+          "john": null
+        },
+        {
+          "id": "good_samaritan",
+          "title": "Parable of the Good Samaritan",
+          "matt": null,
+          "mark": null,
+          "luke": "10:25-37",
+          "john": null
+        },
+        {
+          "id": "martha_mary",
+          "title": "Mary and Martha",
+          "matt": null,
+          "mark": null,
+          "luke": "10:38-42",
+          "john": null
+        },
+        {
+          "id": "lords_prayer",
+          "title": "Lord's Prayer",
+          "matt": "6:9-13",
+          "mark": null,
+          "luke": "11:1-4",
+          "john": null
+        },
+        {
+          "id": "friend_midnight",
+          "title": "Parable of the Friend at Midnight",
+          "matt": null,
+          "mark": null,
+          "luke": "11:5-8",
+          "john": null
+        },
+        {
+          "id": "prodigal_son",
+          "title": "Parable of the Prodigal Son",
+          "matt": null,
+          "mark": null,
+          "luke": "15:11-32",
+          "john": null
+        },
+        {
+          "id": "shrewd_manager",
+          "title": "Parable of the Shrewd Manager",
+          "matt": null,
+          "mark": null,
+          "luke": "16:1-13",
+          "john": null
+        },
+        {
+          "id": "rich_man_lazarus",
+          "title": "Rich Man and Lazarus",
+          "matt": null,
+          "mark": null,
+          "luke": "16:19-31",
+          "john": null
+        },
+        {
+          "id": "persistent_widow",
+          "title": "Parable of the Persistent Widow",
+          "matt": null,
+          "mark": null,
+          "luke": "18:1-8",
+          "john": null
+        },
+        {
+          "id": "pharisee_tax_collector",
+          "title": "Parable of Pharisee & Tax Collector",
+          "matt": null,
+          "mark": null,
+          "luke": "18:9-14",
+          "john": null
+        },
+        {
+          "id": "bartimaeus",
+          "title": "Healing Blind Bartimaeus",
+          "matt": "20:29-34",
+          "mark": "10:46-52",
+          "luke": "18:35-43",
+          "john": null
+        },
+        {
+          "id": "zacchaeus",
+          "title": "Zacchaeus the Tax Collector",
+          "matt": null,
+          "mark": null,
+          "luke": "19:1-10",
+          "john": null
+        },
+        {
+          "id": "third_passion_prediction",
+          "title": "Third Passion Prediction",
+          "matt": "20:17-19",
+          "mark": "10:32-34",
+          "luke": "18:31-34",
+          "john": null
+        }
+      ]
+    },
+    {
+      "id": "ministry_jerusalem",
+      "label": "Jerusalem Ministry & Teaching",
+      "pericopes": [
+        {
+          "id": "triumphal_entry",
+          "title": "Triumphal Entry into Jerusalem",
+          "matt": "21:1-11",
+          "mark": "11:1-11",
+          "luke": "19:28-44",
+          "john": "12:12-19"
+        },
+        {
+          "id": "cleansing_temple",
+          "title": "Cleansing the Temple",
+          "matt": "21:12-17",
+          "mark": "11:15-19",
+          "luke": "19:45-48",
+          "john": null
+        },
+        {
+          "id": "fig_tree",
+          "title": "Cursing the Fig Tree",
+          "matt": "21:18-22",
+          "mark": "11:12-14,20-25",
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "authority_questioned",
+          "title": "Authority of Jesus Questioned",
+          "matt": "21:23-27",
+          "mark": "11:27-33",
+          "luke": "20:1-8",
+          "john": null
+        },
+        {
+          "id": "two_sons",
+          "title": "Parable of the Two Sons",
+          "matt": "21:28-32",
+          "mark": null,
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "wicked_tenants",
+          "title": "Parable of the Wicked Tenants",
+          "matt": "21:33-46",
+          "mark": "12:1-12",
+          "luke": "20:9-19",
+          "john": null
+        },
+        {
+          "id": "great_commandment",
+          "title": "The Greatest Commandment",
+          "matt": "22:34-40",
+          "mark": "12:28-34",
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "widows_mite",
+          "title": "Widow's Offering",
+          "matt": null,
+          "mark": "12:41-44",
+          "luke": "21:1-4",
+          "john": null
+        },
+        {
+          "id": "eschatological_discourse",
+          "title": "Olivet Discourse (Eschatology)",
+          "matt": "24:1-25:46",
+          "mark": "13:1-37",
+          "luke": "21:5-36",
+          "john": null
+        },
+        {
+          "id": "last_judgment",
+          "title": "Parable of the Sheep and Goats",
+          "matt": "25:31-46",
+          "mark": null,
+          "luke": null,
+          "john": null
+        },
+        {
+          "id": "supper_anointing",
+          "title": "Anointing at Bethany",
+          "matt": "26:6-13",
+          "mark": "14:3-9",
+          "luke": null,
+          "john": "12:1-8"
+        }
+      ]
+    },
+    {
+      "id": "last_supper",
+      "label": "Last Supper",
+      "pericopes": [
+        {
+          "id": "last_supper_institution",
+          "title": "The Last Supper / Institution of the Lord's Supper",
+          "matt": "26:17-30",
+          "mark": "14:12-26",
+          "luke": "22:7-38",
+          "john": "13:1-30"
+        },
+        {
+          "id": "washing_feet",
+          "title": "Jesus Washes the Disciples' Feet",
+          "matt": null,
+          "mark": null,
+          "luke": null,
+          "john": "13:1-17"
+        },
+        {
+          "id": "bread_from_heaven_discourse",
+          "title": "Farewell Discourse & High Priestly Prayer",
+          "matt": null,
+          "mark": null,
+          "luke": null,
+          "john": "13:31-17:26"
+        }
+      ]
+    },
+    {
+      "id": "passion",
+      "label": "Passion Narrative",
+      "pericopes": [
+        {
+          "id": "gethsemane",
+          "title": "Agony in Gethsemane",
+          "matt": "26:36-56",
+          "mark": "14:32-52",
+          "luke": "22:39-53",
+          "john": "18:1-11"
+        },
+        {
+          "id": "trial_jewish",
+          "title": "Jewish Trial (Before Caiaphas)",
+          "matt": "26:57-75",
+          "mark": "14:53-72",
+          "luke": "22:54-65,66-71",
+          "john": "18:12-27"
+        },
+        {
+          "id": "trial_pilate",
+          "title": "Trial Before Pilate",
+          "matt": "27:11-26",
+          "mark": "15:1-15",
+          "luke": "23:1-25",
+          "john": "18:28-19:16"
+        },
+        {
+          "id": "crucifixion",
+          "title": "Crucifixion & Death of Jesus",
+          "matt": "27:32-56",
+          "mark": "15:21-41",
+          "luke": "23:26-49",
+          "john": "19:16-37"
+        },
+        {
+          "id": "burial",
+          "title": "Burial of Jesus",
+          "matt": "27:57-66",
+          "mark": "15:42-47",
+          "luke": "23:50-56",
+          "john": "19:38-42"
+        }
+      ]
+    },
+    {
+      "id": "resurrection",
+      "label": "Resurrection & Appearances",
+      "pericopes": [
+        {
+          "id": "empty_tomb",
+          "title": "Empty Tomb / Resurrection",
+          "matt": "28:1-8",
+          "mark": "16:1-8",
+          "luke": "24:1-12",
+          "john": "20:1-10"
+        },
+        {
+          "id": "resurrection_appearances",
+          "title": "Appearances of Risen Christ",
+          "matt": "28:9-20",
+          "mark": "16:9-20",
+          "luke": "24:13-53",
+          "john": "20:11-21:25"
+        }
+      ]
+    }
+  ]
+}

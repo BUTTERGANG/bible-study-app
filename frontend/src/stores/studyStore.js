@@ -41,6 +41,7 @@ export const useStudyStore = create(
 
       // Compare mode state
       compareMode: false,
+      comparePickerOpen: false,
       compareTranslations: [],
 
       // Commentary source filter preferences
@@ -88,6 +89,7 @@ export const useStudyStore = create(
       setFontSizeIdx: (idx) =>
         set({ fontSizeIdx: Math.max(0, Math.min(FONT_SIZES.length - 1, idx)) }),
       toggleCompareMode: () => set((s) => ({ compareMode: !s.compareMode })),
+      setComparePickerOpen: (open) => set({ comparePickerOpen: open }),
       setCompareTranslations: (translations) => set({ compareTranslations: translations }),
 
       // Visual filters actions
@@ -117,6 +119,7 @@ export const useStudyStore = create(
         darkMode: s.darkMode,
         fontSizeIdx: s.fontSizeIdx,
         compareMode: s.compareMode,
+        comparePickerOpen: s.comparePickerOpen,
         compareTranslations: s.compareTranslations,
         commentarySources: s.commentarySources,
         aiHistory: s.aiHistory,
