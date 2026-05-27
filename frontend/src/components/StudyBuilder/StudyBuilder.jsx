@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, ChevronLeft, Download, HelpCircle, List, PlusCircle, Send, Square, StickyNote, Wand2 } from 'lucide-react'
+import { BookOpen, ChevronLeft, Download, HelpCircle, List, MessageCircleQuestion, PlusCircle, Send, Square, StickyNote, Target, Wand2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -16,10 +16,24 @@ const STUDY_TYPES = [
   { value: 'word', label: 'Word Study' },
 ]
 
+const CONTEXT_TYPES = [
+  { value: 'small_group', label: 'Small Group' },
+  { value: 'sermon_prep', label: 'Sermon Prep' },
+  { value: 'personal', label: 'Personal Study' },
+]
+
+const DIFFICULTY_LEVELS = [
+  { value: 'new_believer', label: 'New Believer' },
+  { value: 'growing', label: 'Growing' },
+  { value: 'mature', label: 'Mature' },
+]
+
 const SECTIONS = [
   { key: 'observations', label: 'Study Notes', icon: List, aiEndpoint: 'study-observations', aiLabel: 'Generate AI Study' },
   { key: 'cross_refs', label: 'Cross-References', icon: BookOpen, aiEndpoint: 'cross-references', aiLabel: 'Find Cross-References' },
+  { key: 'discussion_questions', label: 'Discussion Questions', icon: MessageCircleQuestion, aiEndpoint: 'discussion-questions', aiLabel: 'Generate Discussion Questions' },
   { key: 'application', label: 'Application', icon: Wand2, aiEndpoint: 'applications', aiLabel: 'Generate Applications' },
+  { key: 'application_questions', label: 'Application Questions', icon: Target, aiEndpoint: 'application-questions', aiLabel: 'Generate Application Questions' },
   { key: 'prayer', label: 'Response/Prayer', icon: HelpCircle, aiEndpoint: null, aiLabel: null },
   { key: 'notes', label: 'Personal Notes', icon: StickyNote, aiEndpoint: null, aiLabel: null },
 ]
@@ -161,10 +175,17 @@ function SectionEditor({ project, sectionKey, onBack }) {
   const [preview, setPreview] = useState(false)
   const stopRef = useRef(null)
 
+  // Question generator options
+  const [contextType, setContextType] = useState('small_group')
+  const [difficultyIdx, setDifficultyIdx] = useState(1) // default: growing
+  const [showOptions, setShowOptions] = useState(false)
+
   const saveMutation = useMutation({
     mutationFn: (text) => api.upsertStudySection(project.id, sectionKey, text),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['studies'] }),
   })
+
+  const isQuestionSection = sectionKey === 'discussion_questions' || sectionKey === 'application_questions'
 
   const handleGenerate = useCallback(() => {
     if (!section.aiEndpoint) return
@@ -177,6 +198,20 @@ function SectionEditor({ project, sectionKey, onBack }) {
       ? { reference: project.passage_ref, translation: 'KJV' }
       : sectionKey === 'cross_refs'
       ? { reference: project.passage_ref, verse_text: '' }
+      : sectionKey === 'discussion_questions'
+      ? {
+          passage: project.passage_ref,
+          translation: 'KJV',
+          context: contextType,
+          difficulty: DIFFICULTY_LEVELS[difficultyIdx].value,
+        }
+      : sectionKey === 'application_questions'
+      ? {
+          passage: project.passage_ref,
+          translation: 'KJV',
+          context: contextType,
+          difficulty: DIFFICULTY_LEVELS[difficultyIdx].value,
+        }
       : { passage: project.passage_ref, translation: 'KJV', audience: 'general' }
 
     stopRef.current = streamAI(
@@ -188,7 +223,7 @@ function SectionEditor({ project, sectionKey, onBack }) {
         saveMutation.mutate(accumulated)
       },
     )
-  }, [section, sectionKey, project])
+  }, [section, sectionKey, project, contextType, difficultyIdx])
 
   const handleStop = () => {
     stopRef.current?.()
@@ -240,6 +275,62 @@ function SectionEditor({ project, sectionKey, onBack }) {
           )
         )}
       </div>
+
+      {/* Question generator options panel */}
+      {isQuestionSection && section.aiEndpoint && (
+        <div className="border-b border-gray-100 dark:border-gray-700">
+          <button
+            onClick={() => setShowOptions((v) => !v)}
+            className="w-full px-3 py-1.5 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          >
+            <span>Generation Options</span>
+            <ChevronLeft size={10} className={clsx('transition-transform', showOptions ? '-rotate-90' : 'rotate-180')} />
+          </button>
+          {showOptions && (
+            <div className="px-3 pb-2 space-y-2">
+              {/* Context type */}
+              <div>
+                <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">Context</label>
+                <div className="flex gap-1">
+                  {CONTEXT_TYPES.map((ct) => (
+                    <button
+                      key={ct.value}
+                      onClick={() => setContextType(ct.value)}
+                      className={clsx(
+                        'text-[10px] px-2 py-1 rounded-full border transition-colors',
+                        contextType === ct.value
+                          ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300'
+                      )}
+                    >
+                      {ct.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Difficulty slider */}
+              <div>
+                <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-0.5">
+                  Difficulty: {DIFFICULTY_LEVELS[difficultyIdx].label}
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={DIFFICULTY_LEVELS.length - 1}
+                  value={difficultyIdx}
+                  onChange={(e) => setDifficultyIdx(Number(e.target.value))}
+                  className="w-full h-1 accent-blue-600"
+                />
+                <div className="flex justify-between text-[9px] text-gray-400">
+                  {DIFFICULTY_LEVELS.map((d) => (
+                    <span key={d.value}>{d.label}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 overflow-hidden flex flex-col">
         {preview ? (

@@ -148,7 +148,7 @@ async def upsert_section(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    VALID_TYPES = {"observations", "cross_refs", "application", "prayer", "notes"}
+    VALID_TYPES = {"observations", "cross_refs", "application", "application_questions", "discussion_questions", "prayer", "notes"}
     if section_type not in VALID_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid section_type. Must be one of: {', '.join(VALID_TYPES)}")
 
