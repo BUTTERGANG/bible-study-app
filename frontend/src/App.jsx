@@ -15,7 +15,12 @@ const SearchModal = lazy(() => import('./components/Search/SearchModal'))
 const MorphSearchModal = lazy(() => import('./components/Search/MorphSearchModal'))
 
 export default function App() {
-  const { sidebarOpen, rightPanelOpen, darkMode, book, chapter, translation } = useStudyStore()
+  const sidebarOpen = useStudyStore((s) => s.sidebarOpen)
+  const rightPanelOpen = useStudyStore((s) => s.rightPanelOpen)
+  const darkMode = useStudyStore((s) => s.darkMode)
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const translation = useStudyStore((s) => s.translation)
   const [searchOpen, setSearchOpen] = useState(false)
   const [morphSearchOpen, setMorphSearchOpen] = useState(false)
   const [audioOpen, setAudioOpen] = useState(false)

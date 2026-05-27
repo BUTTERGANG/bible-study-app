@@ -73,7 +73,7 @@ async def search(
     q: str = Query(..., min_length=2),
     scope: str = Query(default="bible"),
     translation: str = Query(default="KJV"),
-    limit: int = Query(default=25, le=100),
+    limit: int = Query(default=25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     results: list = []
@@ -238,7 +238,7 @@ def _expand_query(q: str) -> tuple[list[str], str]:
 async def semantic_search(
     q: str = Query(..., min_length=2),
     translation: str = Query(default="KJV"),
-    limit: int = Query(default=25, le=100),
+    limit: int = Query(default=25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """Theme-expanded full-text search.

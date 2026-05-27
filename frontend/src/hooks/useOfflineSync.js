@@ -4,6 +4,7 @@ import { useOnlineStatus } from './useOnlineStatus'
 const DB_NAME = 'logos-offline-queue'
 const STORE_NAME = 'mutations'
 const DB_VERSION = 1
+const MAX_RETRIES = 3
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -145,8 +146,19 @@ export function useOfflineSync() {
             hadConflict = true
             await removeQueued(entry.id)
             console.warn('[offline-sync] Conflict on', entry.method, entry.path, '- skipped')
+          } else if ((entry.retries || 0) >= MAX_RETRIES) {
+            console.warn('[offline-sync] Max retries exceeded for', entry.method, entry.path, '- dropping')
+            await removeQueued(entry.id)
           } else {
-            console.warn('[offline-sync] Failed to replay', entry.method, entry.path, err)
+            // Increment retry count and stop processing — will retry next flush
+            entry.retries = (entry.retries || 0) + 1
+            const db2 = await openDB()
+            await new Promise((resolve, reject) => {
+              const tx = db2.transaction(STORE_NAME, 'readwrite')
+              tx.objectStore(STORE_NAME).put(entry)
+              tx.oncomplete = () => resolve()
+              tx.onerror = () => reject(tx.error)
+            })
             break
           }
         }

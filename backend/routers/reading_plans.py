@@ -423,7 +423,18 @@ async def complete_reading(
     plan_id: int,
     reference: str,
     db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
 ):
+    # Verify plan belongs to current user
+    plan_check = await db.execute(
+        select(ReadingPlan).where(
+            ReadingPlan.id == plan_id,
+            ReadingPlan.user_id == user.id,
+        )
+    )
+    if not plan_check.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Plan not found")
+
     today = str(date.today())
     # Toggle behavior: check current state first, then either set or clear.
     existing = await db.execute(

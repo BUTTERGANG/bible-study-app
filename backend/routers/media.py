@@ -148,9 +148,11 @@ async def serve_media(
     user_id: int,
     filename: str,
     db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    """Serve a media file. Public read — auth is enforced at upload time only.
-    The filename is the safe UUID-based name, not the original upload name."""
+    """Serve a media file. Auth required — users can only access their own files."""
+    if current_user.id != user_id and current_user.id != 0:
+        raise HTTPException(status_code=403, detail="Not authorized")
     fpath = MEDIA_ROOT / str(user_id) / filename
     if not fpath.exists():
         raise HTTPException(status_code=404, detail="File not found")

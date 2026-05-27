@@ -1,6 +1,6 @@
 """User account management: register, login, token refresh, me."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from ..auth import (
 )
 from ..database import get_db
 from ..models import User
+from ..rate_limit import auth_rate_limit
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -44,7 +45,8 @@ def _token_response(user: User) -> dict:
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    await auth_rate_limit(request)
     email = body.email.lower().strip()
     existing = await db.execute(select(User).where(User.email == email))
     if existing.scalar_one_or_none():
@@ -58,11 +60,16 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login")
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
+    await auth_rate_limit(request)
     email = body.email.lower().strip()
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(body.password, user.password_hash):
+    if not user:
+        # Run dummy hash to prevent timing enumeration
+        hash_password("dummy-timing-mitigation")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account disabled")

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,15 +51,17 @@ def _out(p: PrayerEntry) -> dict:
 @router.get("")
 async def list_prayers(
     status: Optional[str] = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     query = select(PrayerEntry).where(PrayerEntry.user_id == user.id)
     if status:
         query = query.where(PrayerEntry.status == status)
-    query = query.order_by(PrayerEntry.created_at.desc())
+    query = query.order_by(PrayerEntry.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
-    return {"prayers": [_out(p) for p in result.scalars().all()]}
+    return {"prayers": [_out(p) for p in result.scalars().all()], "limit": limit, "offset": offset}
 
 
 @router.post("", status_code=201)

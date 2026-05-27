@@ -7,6 +7,7 @@ so multi-turn conversations don't re-bill the same tokens.
 """
 
 import json
+import logging
 import os
 from typing import List, Optional
 
@@ -21,6 +22,8 @@ from ..auth import require_app_password
 from ..database import get_db
 from ..models import BibleVerse, LibraryBook, LibraryPage, LibrarySummary
 from ..rate_limit import ai_rate_limit
+
+logger = logging.getLogger("bible-study.ai")
 
 router = APIRouter(
     prefix="/api/ai",
@@ -214,8 +217,11 @@ def _stream_response(coro_factory):
         except HTTPException as e:
             yield f"data: {json.dumps({'error': e.detail})}\n\n"
             yield "data: [DONE]\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        except Exception:
+            # Never leak raw exception strings to the client — they may contain
+            # API keys, file paths, or internal details.
+            logger.exception("AI stream error")
+            yield f"data: {json.dumps({'error': 'An internal error occurred. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")

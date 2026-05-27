@@ -47,6 +47,8 @@ export default function NotificationSettings() {
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-600 dark:text-gray-300">Notifications</span>
           <button
+            role="switch"
+            aria-checked={settings.enabled}
             onClick={toggleEnabled}
             className={clsx(
               'relative w-10 h-5 rounded-full transition-colors',
@@ -117,6 +119,8 @@ function NotificationOption({ icon, label, time, enabled, onToggle, onTimeChange
           <span className="text-xs font-medium text-gray-700 dark:text-gray-200">{label}</span>
         </div>
         <button
+          role="switch"
+          aria-checked={enabled}
           onClick={onToggle}
           className={clsx(
             'relative w-8 h-4 rounded-full transition-colors',

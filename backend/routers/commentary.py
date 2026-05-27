@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+MAX_COMMENTARY_ENTRIES = 500
+
 from ..database import get_db
 from ..models import CommentaryEntry
 from ..bible_data import resolve_book_name
@@ -73,6 +75,7 @@ async def get_verse_commentary(
             )
         )
         .order_by(CommentaryEntry.source, CommentaryEntry.verse_start)
+        .limit(MAX_COMMENTARY_ENTRIES)
     )
 
     if sources:
@@ -122,7 +125,7 @@ async def get_chapter_commentary(
             CommentaryEntry.book == canonical,
             CommentaryEntry.chapter == chapter,
             CommentaryEntry.source == source,
-        ).order_by(CommentaryEntry.verse_start)
+        ).order_by(CommentaryEntry.verse_start).limit(MAX_COMMENTARY_ENTRIES)
     )
     entries = result.scalars().all()
 

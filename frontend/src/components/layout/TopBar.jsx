@@ -14,18 +14,22 @@ const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 
 
 export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
   const {
-    book, chapter, translation,
-    setTranslation, setReference,
-    toggleSidebar,
-    rightPanelOpen, toggleRightPanel, rightPanel, setRightPanel,
-    darkMode, toggleDarkMode,
-    fontSizeIdx, setFontSizeIdx,
-    compareMode, toggleCompareMode,
-    compareTranslations, setCompareTranslations,
-    interlinearMode, toggleInterlinear,
-    showLemmas, toggleShowLemmas, lemmaPosition, setLemmaPosition,
-    audioPlaying,
+    book, chapter, translation, rightPanelOpen, rightPanel,
+    darkMode, fontSizeIdx, compareMode, compareTranslations,
+    interlinearMode, showLemmas, lemmaPosition, audioPlaying,
   } = useStudyStore()
+  const setTranslation = useStudyStore((s) => s.setTranslation)
+  const setReference = useStudyStore((s) => s.setReference)
+  const toggleSidebar = useStudyStore((s) => s.toggleSidebar)
+  const toggleRightPanel = useStudyStore((s) => s.toggleRightPanel)
+  const setRightPanel = useStudyStore((s) => s.setRightPanel)
+  const toggleDarkMode = useStudyStore((s) => s.toggleDarkMode)
+  const setFontSizeIdx = useStudyStore((s) => s.setFontSizeIdx)
+  const toggleCompareMode = useStudyStore((s) => s.toggleCompareMode)
+  const setCompareTranslations = useStudyStore((s) => s.setCompareTranslations)
+  const toggleInterlinear = useStudyStore((s) => s.toggleInterlinear)
+  const toggleShowLemmas = useStudyStore((s) => s.toggleShowLemmas)
+  const setLemmaPosition = useStudyStore((s) => s.setLemmaPosition)
   const qc = useQueryClient()
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
   const pickerRef = useRef(null)

@@ -19,7 +19,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_db
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-change-this-in-production-please")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+
+
+def _require_secret() -> str:
+    if not SECRET_KEY:
+        raise RuntimeError("JWT_SECRET_KEY environment variable must be set")
+    return SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -46,7 +52,7 @@ def create_access_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
         {"sub": str(user_id), "type": "access", "exp": expire},
-        SECRET_KEY,
+        _require_secret(),
         algorithm=ALGORITHM,
     )
 
@@ -55,15 +61,15 @@ def create_refresh_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     return jwt.encode(
         {"sub": str(user_id), "type": "refresh", "exp": expire},
-        SECRET_KEY,
+        _require_secret(),
         algorithm=ALGORITHM,
     )
 
 
 def decode_token(token: str, expected_type: str) -> int:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+        payload = jwt.decode(token, _require_secret(), algorithms=[ALGORITHM])
+    except (JWTError, RuntimeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -106,7 +112,8 @@ async def get_current_user(
     app_password = _expected_secret()
 
     # 1. Exact match with APP_PASSWORD → legacy mode
-    if token and app_password and token == app_password:
+    import hmac
+    if token and app_password and hmac.compare_digest(token, app_password):
         return CurrentUser(id=0, email=None, is_legacy=True)
 
     # 2. Try JWT decode (only if token doesn't look like the app password)
@@ -134,8 +141,3 @@ async def get_current_user(
     )
 
 
-async def require_app_password(
-    user: "CurrentUser" = Depends(get_current_user),
-) -> None:
-    """Backward-compatibility shim. Auth enforcement is in get_current_user."""
-    pass

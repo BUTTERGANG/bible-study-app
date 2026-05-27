@@ -25,6 +25,10 @@ def _int_env(name: str, default: int) -> int:
 AI_RATE_LIMIT_PER_MIN = _int_env("AI_RATE_LIMIT_PER_MIN", 15)
 AI_RATE_LIMIT_PER_HOUR = _int_env("AI_RATE_LIMIT_PER_HOUR", 120)
 
+# Auth endpoints — stricter to prevent brute-force.
+AUTH_RATE_LIMIT_PER_MIN = _int_env("AUTH_RATE_LIMIT_PER_MIN", 5)
+AUTH_RATE_LIMIT_PER_HOUR = _int_env("AUTH_RATE_LIMIT_PER_HOUR", 30)
+
 
 class _IPBucket:
     def __init__(self) -> None:
@@ -63,6 +67,29 @@ async def ai_rate_limit(request: Request) -> None:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"AI rate limit: max {AI_RATE_LIMIT_PER_HOUR} requests/hour reached.",
+        )
+
+    bucket.minute.append(now)
+    bucket.hour.append(now)
+
+
+async def auth_rate_limit(request: Request) -> None:
+    """Stricter rate limiter for login/register endpoints to prevent brute-force."""
+    now = time.time()
+    bucket = _buckets[_client_ip(request)]
+    # Use a separate counter space — trim with same windows
+    _trim(bucket.minute, now - 60)
+    _trim(bucket.hour, now - 3600)
+
+    if len(bucket.minute) >= AUTH_RATE_LIMIT_PER_MIN:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many auth attempts. Max {AUTH_RATE_LIMIT_PER_MIN}/minute. Try again shortly.",
+        )
+    if len(bucket.hour) >= AUTH_RATE_LIMIT_PER_HOUR:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many auth attempts. Max {AUTH_RATE_LIMIT_PER_HOUR}/hour reached.",
         )
 
     bucket.minute.append(now)

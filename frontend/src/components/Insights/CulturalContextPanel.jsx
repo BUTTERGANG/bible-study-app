@@ -1,9 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ChevronDown, ChevronRight, Globe, Loader2 } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
+
+/** Sanitize rendered HTML to prevent XSS in AI-generated content. */
+function sanitizeHtml(raw) {
+  return DOMPurify.sanitize(
+    raw
+      .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300">$1</strong>')
+      .replace(/\n/g, '<br/>'),
+    { ALLOWED_TAGS: ['strong', 'br', 'p', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: ['className'] }
+  )
+}
 
 /**
  * CulturalContextPanel — shows AI-generated cultural/historical background notes
@@ -15,7 +26,10 @@ import clsx from 'clsx'
  */
 
 export default function CulturalContextPanel({ embedded = false }) {
-  const { book, chapter, verse, selectedVerse } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const verse = useStudyStore((s) => s.verse)
+  const selectedVerse = useStudyStore((s) => s.selectedVerse)
   const activeVerse = selectedVerse || verse
 
   const enabled = !!book && !!chapter
@@ -61,11 +75,7 @@ export default function CulturalContextPanel({ embedded = false }) {
           <div className="space-y-2">
             {verseNotes.map((n, i) => (
               <div key={i} className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                <div dangerouslySetInnerHTML={{
-                  __html: n.content
-                    .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300">$1</strong>')
-                    .replace(/\n/g, '<br/>')
-                }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.content) }} />
               </div>
             ))}
           </div>
@@ -109,10 +119,7 @@ export default function CulturalContextPanel({ embedded = false }) {
               </p>
               {verseNotes.map((n, i) => (
                 <div key={i} className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                  <div dangerouslySetInnerHTML={{
-                    __html: n.content
-                      .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300">$1</strong>')
-                  }} />
+                  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.content) }} />
                 </div>
               ))}
             </div>
@@ -186,10 +193,7 @@ function VerseNotesList({ book, chapter, notesByVerse, allVerses, activeVerse })
               <div className="px-3 pb-3 space-y-2">
                 {notes.map((n, i) => (
                   <div key={i} className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed pl-5">
-                    <div dangerouslySetInnerHTML={{
-                      __html: n.content
-                        .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300 font-semibold">$1</strong>')
-                    }} />
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.content) }} />
                   </div>
                 ))}
               </div>

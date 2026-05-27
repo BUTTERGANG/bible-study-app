@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Lightbulb, MapPin, User, Tag, ExternalLink, BookOpen, RefreshCw, Globe, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
@@ -41,7 +42,12 @@ function Pill({ children, color = 'gray' }) {
 }
 
 export default function InsightsPanel() {
-  const { book, chapter, verse, translation, setRightPanel, setReference } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const verse = useStudyStore((s) => s.verse)
+  const translation = useStudyStore((s) => s.translation)
+  const setRightPanel = useStudyStore((s) => s.setRightPanel)
+  const setReference = useStudyStore((s) => s.setReference)
   const [insightKey, setInsightKey] = useState(0)
 
   const enabled = !!book && !!chapter && !!verse
@@ -266,7 +272,10 @@ export default function InsightsPanel() {
 
 /** Embedded cultural context shown inside the InsightsPanel for the active verse. */
 function CulturalContextCard() {
-  const { book, chapter, verse, selectedVerse } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const verse = useStudyStore((s) => s.verse)
+  const selectedVerse = useStudyStore((s) => s.selectedVerse)
   const [expanded, setExpanded] = useState(false)
   const activeVerse = selectedVerse || verse
 
@@ -305,9 +314,10 @@ function CulturalContextCard() {
       {!isLoading && expanded && verseNotes.map((n, i) => (
         <div key={i} className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed mt-1">
           <div dangerouslySetInnerHTML={{
-            __html: n.content
-              .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300">$1</strong>')
-          }} />
+            __html: DOMPurify.sanitize(
+              n.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'),
+              { ALLOWED_TAGS: ['strong', 'br', 'p', 'em'], ALLOWED_ATTR: [] }
+          )}} />
         </div>
       ))}
     </div>

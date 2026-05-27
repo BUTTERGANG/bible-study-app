@@ -10,10 +10,10 @@ const CATEGORY_ORDER = [
 ]
 
 export default function VisualFiltersPanel() {
-  const {
-    visualFiltersEnabled, visualFilters,
-    toggleVisualFilters, toggleVisualFilter,
-  } = useStudyStore()
+  const visualFiltersEnabled = useStudyStore((s) => s.visualFiltersEnabled)
+  const visualFilters = useStudyStore((s) => s.visualFilters)
+  const toggleVisualFilters = useStudyStore((s) => s.toggleVisualFilters)
+  const toggleVisualFilter = useStudyStore((s) => s.toggleVisualFilter)
 
   const activeCount = Object.values(visualFilters).filter(Boolean).length
   const totalCount = Object.keys(visualFilters).length

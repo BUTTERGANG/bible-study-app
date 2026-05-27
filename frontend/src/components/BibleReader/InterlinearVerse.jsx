@@ -18,7 +18,8 @@ export default function InterlinearVerse({
   reverseMode = false, onWordClick = null,
 }) {
   const selectVerse = useStudyStore((s) => s.selectVerse)
-  const { visualFiltersEnabled, visualFilters } = useStudyStore()
+  const visualFiltersEnabled = useStudyStore((s) => s.visualFiltersEnabled)
+  const visualFilters = useStudyStore((s) => s.visualFilters)
   const [menuPos, setMenuPos] = useState(null)
   const [showWords, setShowWords] = useState(false)
   const [flashing, setFlashing] = useState(false)

@@ -8,7 +8,7 @@ re-import the FastAPI app.
 import pytest
 from fastapi import HTTPException
 
-from backend.auth import auth_is_enabled, require_app_password
+from backend.auth import auth_is_enabled, get_current_user
 
 
 def test_auth_disabled_when_unset(monkeypatch):
@@ -25,26 +25,29 @@ def test_auth_enabled_when_set(monkeypatch):
 async def test_missing_password_raises(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", "letmein")
     with pytest.raises(HTTPException) as exc:
-        await require_app_password(authorization=None, x_app_password=None)
+        await get_current_user(authorization=None, x_app_password=None, db=None)
     assert exc.value.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_bearer_password_accepted(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", "letmein")
-    # Should not raise.
-    await require_app_password(authorization="Bearer letmein", x_app_password=None)
+    user = await get_current_user(authorization="Bearer letmein", x_app_password=None, db=None)
+    assert user.id == 0
+    assert user.is_legacy is True
 
 
 @pytest.mark.asyncio
 async def test_header_password_accepted(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", "letmein")
-    await require_app_password(authorization=None, x_app_password="letmein")
+    user = await get_current_user(authorization=None, x_app_password="letmein", db=None)
+    assert user.id == 0
+    assert user.is_legacy is True
 
 
 @pytest.mark.asyncio
 async def test_wrong_password_rejected(monkeypatch):
     monkeypatch.setenv("APP_PASSWORD", "letmein")
     with pytest.raises(HTTPException) as exc:
-        await require_app_password(authorization="Bearer nope", x_app_password=None)
+        await get_current_user(authorization="Bearer nope", x_app_password=None, db=None)
     assert exc.value.status_code == 401

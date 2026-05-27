@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ChevronLeft, ChevronRight, Library, Search, Sparkles, X } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import { api } from '../../api/client'
 import { streamSummarize } from '../../api/streamAI'
 import clsx from 'clsx'
@@ -561,7 +562,7 @@ export default function LibraryReader() {
                           <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1">
                             {result.category} · p.{result.page_num}
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-2" dangerouslySetInnerHTML={{ __html: result.snippet }} />
+                          <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-2" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.snippet, { ALLOWED_TAGS: ['strong', 'em', 'br', 'mark'], ALLOWED_ATTR: [] }) }} />
                         </div>
                       </div>
                     </button>

@@ -117,7 +117,7 @@ export default function ReadingPlansPanel() {
 
   const { data: todayData } = useQuery({
     queryKey: ['reading-plans', 'today'],
-    queryFn: api.getTodayReadings,
+    queryFn: api.getTodayPlanReadings,
   })
 
   const { data: builtInData } = useQuery({

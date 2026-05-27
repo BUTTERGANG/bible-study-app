@@ -18,7 +18,8 @@ export default function VerseText({
   lemmaWords, lemmaLanguage,
 }) {
   const selectVerse = useStudyStore((s) => s.selectVerse)
-  const { showLemmas, lemmaPosition } = useStudyStore()
+  const showLemmas = useStudyStore((s) => s.showLemmas)
+  const lemmaPosition = useStudyStore((s) => s.lemmaPosition)
   const [menuPos, setMenuPos] = useState(null)
   const [flashing, setFlashing] = useState(false)
   const ref = useRef(null)
@@ -50,10 +51,13 @@ export default function VerseText({
       <span
         ref={ref}
         id={`v${verse}`}
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
         onContextMenu={handleContextMenu}
         className={clsx(
-          'cursor-pointer rounded px-0.5 transition-colors hover:bg-blue-50',
+          'cursor-pointer rounded px-0.5 transition-colors hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
           isActive && 'verse-selected',
           flashing && 'verse-flash',
           highlightColor && HIGHLIGHT_CLASSES[highlightColor],

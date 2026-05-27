@@ -48,6 +48,10 @@ class CommentaryEntry(Base):
 
 class LexiconEntry(Base):
     __tablename__ = "lexicon_entries"
+    __table_args__ = (
+        UniqueConstraint("source", "strongs_num", name="uq_lexicon_strongs_source"),
+        Index("ix_lexicon_strongs_source", "strongs_num", "source"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source: Mapped[str] = mapped_column(String(30), index=True)
@@ -97,6 +101,9 @@ class HebrewWord(Base):
 
 class DictionaryEntry(Base):
     __tablename__ = "dictionary_entries"
+    __table_args__ = (
+        UniqueConstraint("source", "term", name="uq_dictionary_source_term"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source: Mapped[str] = mapped_column(String(30), index=True)
@@ -108,7 +115,7 @@ class Note(Base):
     __tablename__ = "notes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
     verse: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
@@ -125,7 +132,7 @@ class Highlight(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     translation: Mapped[str] = mapped_column(String(10))
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
@@ -138,7 +145,7 @@ class Bookmark(Base):
     __tablename__ = "bookmarks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
     verse: Mapped[int] = mapped_column(Integer, nullable=True)
@@ -150,7 +157,7 @@ class ReadingPlan(Base):
     __tablename__ = "reading_plans"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(Text, nullable=True)
     start_date: Mapped[str] = mapped_column(String(10), nullable=True)
@@ -174,7 +181,7 @@ class ReadingPlanDay(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id", ondelete="CASCADE"), index=True)
     date: Mapped[str] = mapped_column(String(10), index=True)
     reference: Mapped[str] = mapped_column(String(100))
     day_label: Mapped[str] = mapped_column(String(50), nullable=True)
@@ -191,7 +198,7 @@ class ReadingPlanProgress(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id"), index=True)
+    plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("reading_plans.id", ondelete="CASCADE"), index=True)
     date: Mapped[str] = mapped_column(String(10), index=True)
     reference: Mapped[str] = mapped_column(String(100))
     completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
@@ -219,7 +226,7 @@ class LibraryPage(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id"), index=True)
+    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id", ondelete="CASCADE"), index=True)
     page_num: Mapped[int] = mapped_column(Integer, index=True)
     text: Mapped[str] = mapped_column(Text)
 
@@ -301,7 +308,7 @@ class AiConversation(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     reference: Mapped[str] = mapped_column(String(100), index=True)
     # e.g. "KJV/John/3" — matches the aiHistory key in the frontend store
     translation: Mapped[str] = mapped_column(String(10), default="KJV")
@@ -319,7 +326,7 @@ class SermonProject(Base):
     __tablename__ = "sermon_projects"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     title: Mapped[str] = mapped_column(String(200))
     passage_ref: Mapped[str] = mapped_column(String(100))
     audience: Mapped[str] = mapped_column(String(50), default="general")
@@ -334,7 +341,7 @@ class SermonSection(Base):
     __tablename__ = "sermon_sections"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("sermon_projects.id"), index=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("sermon_projects.id", ondelete="CASCADE"), index=True)
     section_type: Mapped[str] = mapped_column(String(30), index=True)
     # outline | illustrations | questions | applications | full_sermon
     content: Mapped[str] = mapped_column(Text, default="")
@@ -377,7 +384,7 @@ class MemoryVerse(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     translation: Mapped[str] = mapped_column(String(10), default="KJV")
     book: Mapped[str] = mapped_column(String(50), index=True)
     chapter: Mapped[int] = mapped_column(Integer, index=True)
@@ -395,7 +402,7 @@ class PrayerEntry(Base):
     __tablename__ = "prayer_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     title: Mapped[str] = mapped_column(String(200))
     content: Mapped[str] = mapped_column(Text)
     # linked verse (optional)
@@ -414,7 +421,7 @@ class StudyProject(Base):
     __tablename__ = "study_projects"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
     title: Mapped[str] = mapped_column(String(200))
     passage_ref: Mapped[str] = mapped_column(String(100))
     study_type: Mapped[str] = mapped_column(String(30), default="inductive")
@@ -481,8 +488,8 @@ class MediaFile(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
-    note_id: Mapped[int] = mapped_column(Integer, ForeignKey("notes.id"), nullable=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
+    note_id: Mapped[int] = mapped_column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True, index=True)
     filename: Mapped[str] = mapped_column(String(255))
     original_filename: Mapped[str] = mapped_column(String(255))
     mime_type: Mapped[str] = mapped_column(String(100))
@@ -503,7 +510,7 @@ class LibrarySummary(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id"), index=True)
+    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id", ondelete="CASCADE"), index=True)
     chunk_size: Mapped[int] = mapped_column(Integer, default=0)
     tldr: Mapped[str] = mapped_column(Text, default="")
     key_points: Mapped[str] = mapped_column(Text, default="")  # JSON array of strings
