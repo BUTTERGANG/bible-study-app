@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar/Sidebar'
 import BibleReader from './components/BibleReader/BibleReader'
 import RightPanel from './components/layout/RightPanel'
 import TopBar from './components/layout/TopBar'
+import AudioPlayer from './components/AudioPlayer/AudioPlayer'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import AuthGate from './components/common/AuthGate'
 
@@ -13,9 +14,10 @@ const SearchModal = lazy(() => import('./components/Search/SearchModal'))
 const MorphSearchModal = lazy(() => import('./components/Search/MorphSearchModal'))
 
 export default function App() {
-  const { sidebarOpen, rightPanelOpen, darkMode } = useStudyStore()
+  const { sidebarOpen, rightPanelOpen, darkMode, book, chapter, translation } = useStudyStore()
   const [searchOpen, setSearchOpen] = useState(false)
   const [morphSearchOpen, setMorphSearchOpen] = useState(false)
+  const [audioOpen, setAudioOpen] = useState(false)
   const online = useOnlineStatus()
   useUrlSync()
 
@@ -43,7 +45,11 @@ export default function App() {
             Offline — showing cached content
           </div>
         )}
-        <TopBar onSearch={() => setSearchOpen(true)} onMorphSearch={() => setMorphSearchOpen(true)} />
+        <TopBar
+          onSearch={() => setSearchOpen(true)}
+          onMorphSearch={() => setMorphSearchOpen(true)}
+          onToggleAudio={() => setAudioOpen((o) => !o)}
+        />
 
         <div className="flex flex-1 overflow-hidden">
           {sidebarOpen && (
@@ -79,6 +85,13 @@ export default function App() {
           <Suspense fallback={null}>
             <MorphSearchModal onClose={() => setMorphSearchOpen(false)} />
           </Suspense>
+        )}
+
+        {audioOpen && (
+          <AudioPlayer
+            key={`${translation}-${book}-${chapter}`}
+            onClose={() => setAudioOpen(false)}
+          />
         )}
       </div>
     </AuthGate>

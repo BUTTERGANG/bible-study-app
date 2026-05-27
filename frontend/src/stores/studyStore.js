@@ -63,6 +63,7 @@ export const useStudyStore = create(
       audioPlaying: false,
       audioSpeed: 1.0,
       currentVerseIdx: null,
+      currentVerses: [],
 
       // Visual filters state
       visualFiltersEnabled: false,
@@ -113,6 +114,7 @@ export const useStudyStore = create(
       setAudioPlaying: (playing) => set({ audioPlaying: playing }),
       setAudioSpeed: (speed) => set({ audioSpeed: speed }),
       setCurrentVerseIdx: (idx) => set({ currentVerseIdx: idx }),
+      setCurrentVerses: (verses) => set({ currentVerses: verses }),
     }),
     {
       name: 'bible-study-state',

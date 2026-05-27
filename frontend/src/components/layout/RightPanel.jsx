@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Globe, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp } from 'lucide-react'
+import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Globe, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp, Rows3, CalendarDays, Bell } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -28,6 +28,9 @@ const PrayerPanel = lazy(() => import('../Prayer/PrayerPanel'))
 const StudyBuilder = lazy(() => import('../StudyBuilder/StudyBuilder'))
 const DashboardPanel = lazy(() => import('../Dashboard/DashboardPanel'))
 const CulturalContextPanel = lazy(() => import('../Insights/CulturalContextPanel'))
+const GospelHarmony = lazy(() => import('../GospelHarmony/GospelHarmony'))
+const LectionaryPanel = lazy(() => import('../Lectionary/LectionaryPanel'))
+const NotificationSettings = lazy(() => import('./NotificationSettings'))
 
 const TABS = [
   { id: 'home', label: 'Home', icon: BookOpen },
@@ -53,6 +56,9 @@ const TABS = [
   { id: 'prayer', label: 'Prayer', icon: Heart },
   { id: 'study', label: 'Study', icon: GraduationCap },
   { id: 'cultural', label: 'Culture', icon: Globe },
+  { id: 'harmony', label: 'Harmony', icon: Rows3 },
+  { id: 'lectionary', label: 'Lectionary', icon: CalendarDays },
+  { id: 'notifications', label: 'Alerts', icon: Bell },
 ]
 
 function PanelSkeleton() {
@@ -109,6 +115,9 @@ export default function RightPanel() {
           {rightPanel === 'prayer' && <PrayerPanel />}
           {rightPanel === 'study' && <StudyBuilder />}
           {rightPanel === 'cultural' && <CulturalContextPanel />}
+          {rightPanel === 'harmony' && <GospelHarmony />}
+          {rightPanel === 'lectionary' && <LectionaryPanel />}
+          {rightPanel === 'notifications' && <NotificationSettings />}
         </Suspense>
       </div>
     </div>

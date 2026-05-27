@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Layers, Menu, Moon,
-  PanelRightClose, PanelRightOpen, Search, Sun, X, Filter, Languages,
+  PanelRightClose, PanelRightOpen, Search, Sun, X, Filter, Languages, Volume2,
 } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
@@ -11,7 +11,7 @@ import clsx from 'clsx'
 
 const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 'BSB', 'LEB']
 
-export default function TopBar({ onSearch, onMorphSearch }) {
+export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
   const {
     book, chapter, translation,
     setTranslation, setReference,
@@ -23,6 +23,7 @@ export default function TopBar({ onSearch, onMorphSearch }) {
     compareTranslations, setCompareTranslations,
     interlinearMode, toggleInterlinear,
     showLemmas, toggleShowLemmas, lemmaPosition, setLemmaPosition,
+    audioPlaying,
   } = useStudyStore()
   const qc = useQueryClient()
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
@@ -352,6 +353,18 @@ export default function TopBar({ onSearch, onMorphSearch }) {
       >
         <Filter size={13} />
         <span className="hidden sm:block">Morph</span>
+      </button>
+
+      {/* Audio button */}
+      <button
+        onClick={onToggleAudio}
+        className={clsx(
+          'text-slate-300 hover:text-white p-1.5 rounded transition-colors',
+          audioPlaying ? 'text-blue-400' : ''
+        )}
+        title={audioPlaying ? 'Stop audio' : 'Play audio for this chapter'}
+      >
+        <Volume2 size={16} />
       </button>
 
       <button
