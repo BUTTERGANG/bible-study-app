@@ -42,6 +42,7 @@ from .routers import (
     highlights,
     lexicon,
     library,
+    media,
     memorize,
     notes,
     nt_ot,
@@ -160,6 +161,9 @@ app.include_router(nt_ot.router)
 
 # Timeline & Maps — read-only, no auth required.
 app.include_router(timeline_maps.router)
+
+# Media — per-endpoint auth (serve_media is public, rest require auth).
+app.include_router(media.router)
 
 
 # SPA static files. Only mounted when the frontend has been built — keeps

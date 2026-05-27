@@ -447,3 +447,44 @@ class BookIntroduction(Base):
     book_name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     content_json: Mapped[str] = mapped_column(Text)
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class MediaFile(Base):
+    """Uploaded media file (images, attachments) scoped to a user."""
+    __tablename__ = "media_files"
+    __table_args__ = (
+        Index("ix_media_files_user_id", "user_id"),
+        Index("ix_media_files_note_id", "note_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), default=0, index=True)
+    note_id: Mapped[int] = mapped_column(Integer, ForeignKey("notes.id"), nullable=True, index=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    original_filename: Mapped[str] = mapped_column(String(255))
+    mime_type: Mapped[str] = mapped_column(String(100))
+    file_size: Mapped[int] = mapped_column(Integer)
+    storage_path: Mapped[str] = mapped_column(String(500))
+    caption: Mapped[str] = mapped_column(String(500), nullable=True)
+    width: Mapped[int] = mapped_column(Integer, nullable=True)
+    height: Mapped[int] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LibrarySummary(Base):
+    """Cached AI-generated summaries for library books."""
+    __tablename__ = "library_summaries"
+    __table_args__ = (
+        UniqueConstraint("book_id", "chunk_size", name="uq_library_summary"),
+        Index("ix_library_summaries_book_id", "book_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id"), index=True)
+    chunk_size: Mapped[int] = mapped_column(Integer, default=0)
+    tldr: Mapped[str] = mapped_column(Text, default="")
+    key_points: Mapped[str] = mapped_column(Text, default="")  # JSON array of strings
+    outline: Mapped[str] = mapped_column(Text, default="")  # markdown outline
+    page_start: Mapped[int] = mapped_column(Integer, default=0)
+    page_end: Mapped[int] = mapped_column(Integer, default=0)
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
