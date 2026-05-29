@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -88,3 +88,85 @@ async def get_strongs_occurrences(
                 for w in words
             ],
         }
+
+
+@router.get("/strongs/{strongs_num}/range")
+async def get_semantic_range(
+    strongs_num: str,
+    testament: str = Query(default="all", description="all, OT, NT"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return gloss frequency distribution for a Strong's number.
+
+    Aggregates english_gloss from greek_words (NT) or hebrew_words (OT/all) to
+    produce a semantic range chart — how many times each English translation
+    appears in the corpus.
+    """
+    is_greek = strongs_num.upper().startswith("G") or (
+        not strongs_num.upper().startswith("H") and not strongs_num.isdigit()
+    )
+
+    NT_BOOKS = {
+        "Matthew", "Mark", "Luke", "John", "Acts", "Romans",
+        "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians",
+        "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians",
+        "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews",
+        "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John",
+        "Jude", "Revelation",
+    }
+
+    if is_greek or testament == "NT":
+        model = GreekWord
+        word_col = GreekWord.greek
+    else:
+        model = HebrewWord
+        word_col = HebrewWord.hebrew
+
+    stmt = (
+        select(model.english_gloss, func.count().label("count"))
+        .where(model.strongs_num == strongs_num)
+        .where(model.english_gloss.isnot(None))
+        .where(model.english_gloss != "")
+        .group_by(model.english_gloss)
+        .order_by(func.count().desc())
+    )
+
+    if testament == "NT":
+        stmt = stmt.where(model.book.in_(NT_BOOKS))
+    elif testament == "OT":
+        stmt = stmt.where(model.book.notin_(NT_BOOKS))
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    total = sum(r.count for r in rows)
+
+    # Fetch up to 3 example verses per gloss
+    examples = {}
+    for row in rows[:10]:
+        ex_stmt = (
+            select(model.book, model.chapter, model.verse, word_col)
+            .where(model.strongs_num == strongs_num)
+            .where(model.english_gloss == row.english_gloss)
+            .limit(3)
+        )
+        ex_result = await db.execute(ex_stmt)
+        examples[row.english_gloss] = [
+            {"reference": f"{r.book} {r.chapter}:{r.verse}", "word": r[3]}
+            for r in ex_result.all()
+        ]
+
+    return {
+        "strongs_num": strongs_num,
+        "language": "greek" if is_greek else "hebrew",
+        "total": total,
+        "glosses": [
+            {
+                "gloss": r.english_gloss,
+                "count": r.count,
+                "percent": round(r.count / total * 100, 1) if total else 0,
+                "examples": examples.get(r.english_gloss, []),
+            }
+            for r in rows
+        ],
+    }

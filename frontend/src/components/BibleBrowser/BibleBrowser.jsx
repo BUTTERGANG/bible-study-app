@@ -1,9 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Compass, ChevronRight, Eye, Grid3X3, List, Search as SearchIcon, X } from 'lucide-react';
 import { useStudyStore } from '../../stores/studyStore';
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData';
 import { api } from '../../api/client';
+import { resolveBook } from '../../utils/bibleSearch';
 import clsx from 'clsx';
 
 const TESTAMENTS = [
@@ -25,7 +27,7 @@ const BOOK_GROUPS = [
 ];
 
 // ── Book Grid Card ────────────────────────────────────────────────
-function BookCard({ book, view, isRecent, readingProgress, onSelect, isActive }) {
+function BookCard({ book, view, isRecent, readingProgress, onSelect, isActive, isFocused }) {
   const progressPercent = readingProgress != null ? Math.round(readingProgress * 100) : null;
   const isCompact = view === 'list';
 
@@ -37,6 +39,8 @@ function BookCard({ book, view, isRecent, readingProgress, onSelect, isActive })
         isCompact ? 'flex items-center gap-3 px-3 py-2.5' : 'flex flex-col p-3',
         isActive
           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-400'
+          : isFocused
+          ? 'border-purple-400 dark:border-purple-500 ring-1 ring-purple-300 dark:ring-purple-600 bg-purple-50 dark:bg-purple-900/20'
           : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm bg-white dark:bg-gray-800',
       )}
     >
@@ -226,10 +230,12 @@ function ChapterPicker({ book, onClose, onNavigate }) {
 // ── Main Bible Browser ───────────────────────────────────────────
 export default function BibleBrowser() {
   const { setReference, translation } = useStudyStore();
+  const navigate = useNavigate();
   const [testament, setTestament] = useState('all');
   const [view, setView] = useState('grid'); // 'grid' | 'list'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBook, setSelectedBook] = useState(null);
+  const [focusedBookIdx, setFocusedBookIdx] = useState(-1);
   const [recentBooks, setRecentBooks] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('browse-recent') || '[]');
@@ -289,17 +295,54 @@ export default function BibleBrowser() {
     });
   }, []);
 
-  // Navigate to reader
+  // Navigate to reader — sets reference then routes back to main layout
   const navigateToBook = useCallback((book, chapter = 1, verse = null) => {
     trackRecent(book);
     setReference(book.name, chapter, verse);
     setSelectedBook(null);
-  }, [setReference, trackRecent]);
+    navigate('/');
+  }, [setReference, trackRecent, navigate]);
 
-  // Reset selected book when testament changes
+  // Reset selected book and focus when testament changes
   useEffect(() => {
     setSelectedBook(null);
+    setFocusedBookIdx(-1);
   }, [testament]);
+
+  // Keyboard navigation for the book grid
+  const flatBooks = useMemo(() => {
+    if (searchQuery.trim()) return filteredBooks;
+    return groupedBooks.flatMap((g) => g.books);
+  }, [searchQuery, filteredBooks, groupedBooks]);
+
+  useEffect(() => {
+    function handleKey(e) {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) return;
+      if (document.activeElement?.tagName === 'INPUT') return;
+      e.preventDefault();
+      const cols = view === 'list' ? 1 : 4;
+      if (e.key === 'Escape') { setSelectedBook(null); setFocusedBookIdx(-1); return; }
+      if (e.key === 'Enter' && focusedBookIdx >= 0 && flatBooks[focusedBookIdx]) {
+        setSelectedBook((prev) => {
+          const b = flatBooks[focusedBookIdx];
+          return prev?.name === b.name ? null : b;
+        });
+        return;
+      }
+      setFocusedBookIdx((prev) => {
+        const total = flatBooks.length;
+        if (total === 0) return prev;
+        let next = prev;
+        if (e.key === 'ArrowRight') next = Math.min(prev + 1, total - 1);
+        if (e.key === 'ArrowLeft') next = Math.max(prev - 1, 0);
+        if (e.key === 'ArrowDown') next = Math.min(prev + cols, total - 1);
+        if (e.key === 'ArrowUp') next = Math.max(prev - cols, 0);
+        return next < 0 ? 0 : next;
+      });
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [flatBooks, focusedBookIdx, view]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -309,6 +352,9 @@ export default function BibleBrowser() {
           <div className="flex items-center gap-2">
             <Compass size={16} className="text-blue-600 dark:text-blue-400" />
             <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Bible Browser</h1>
+            <span className="hidden sm:inline text-[10px] text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5">
+              ↑↓←→ navigate · Enter select
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -409,30 +455,37 @@ export default function BibleBrowser() {
             view === 'grid' ? 'space-y-4' : 'space-y-3'
           )}>
             {!searchQuery ? (
-              groupedBooks.map((group) => (
-                <div key={group.id}>
-                  <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">
-                    {group.label}
-                  </p>
-                  <div className={clsx(
-                    view === 'grid'
-                      ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2'
-                      : 'space-y-1'
-                  )}>
-                    {group.books.map((book) => (
-                      <BookCard
-                        key={book.name}
-                        book={book}
-                        view={view}
-                        isRecent={recentBooks.includes(book.name)}
-                        readingProgress={null}
-                        onSelect={(b) => setSelectedBook(b.name === selectedBook?.name ? null : b)}
-                        isActive={selectedBook?.name === book.name}
-                      />
-                    ))}
+              (() => {
+                let flatIdx = 0;
+                return groupedBooks.map((group) => (
+                  <div key={group.id}>
+                    <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5">
+                      {group.label}
+                    </p>
+                    <div className={clsx(
+                      view === 'grid'
+                        ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2'
+                        : 'space-y-1'
+                    )}>
+                      {group.books.map((book) => {
+                        const idx = flatIdx++;
+                        return (
+                          <BookCard
+                            key={book.name}
+                            book={book}
+                            view={view}
+                            isRecent={recentBooks.includes(book.name)}
+                            readingProgress={null}
+                            onSelect={(b) => { setSelectedBook(b.name === selectedBook?.name ? null : b); setFocusedBookIdx(idx); }}
+                            isActive={selectedBook?.name === book.name}
+                            isFocused={focusedBookIdx === idx}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))
+                ));
+              })()
             ) : (
               /* Flat search results */
               <div>
@@ -447,15 +500,16 @@ export default function BibleBrowser() {
                       ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2'
                       : 'space-y-1'
                   )}>
-                    {filteredBooks.map((book) => (
+                    {filteredBooks.map((book, idx) => (
                       <BookCard
                         key={book.name}
                         book={book}
                         view={view}
                         isRecent={recentBooks.includes(book.name)}
                         readingProgress={null}
-                        onSelect={(b) => setSelectedBook(b.name === selectedBook?.name ? null : b)}
+                        onSelect={(b) => { setSelectedBook(b.name === selectedBook?.name ? null : b); setFocusedBookIdx(idx); }}
                         isActive={selectedBook?.name === book.name}
+                        isFocused={focusedBookIdx === idx}
                       />
                     ))}
                   </div>

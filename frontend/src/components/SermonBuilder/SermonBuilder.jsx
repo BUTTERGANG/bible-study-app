@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronLeft, Download, HelpCircle, Lightbulb, List,
-  PlusCircle, Send, Square, Trash2, Wand2,
+  BookOpen, ChevronLeft, Download, HelpCircle, Import, Lightbulb, List,
+  PlusCircle, Send, Square, Trash2, Upload, Wand2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -48,6 +48,65 @@ function ProjectList({ onSelect, onNew }) {
   })
 
   const projects = data?.projects ?? []
+  const fileInputRef = useRef(null)
+
+  async function handleImport(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    // Parse markdown: first heading = title, ## headings = sections
+    const lines = text.split('\n')
+    let title = file.name.replace(/\.(md|docx?|txt)$/i, '')
+    const sections = {}
+    let currentSection = null
+    let currentContent = []
+
+    for (const line of lines) {
+      const h1Match = line.match(/^#\s+(.+)/)
+      const h2Match = line.match(/^##\s+(.+)/)
+      if (h1Match && !title.startsWith(file.name)) {
+        // First # heading is title
+        title = h1Match[1]
+      } else if (h2Match) {
+        if (currentSection) {
+          sections[currentSection] = currentContent.join('\n').trim()
+        }
+        const heading = h2Match[1].toLowerCase()
+        if (heading.includes('sermon') || heading.includes('full')) currentSection = 'full_sermon'
+        else if (heading.includes('outline')) currentSection = 'outline'
+        else if (heading.includes('illustration')) currentSection = 'illustrations'
+        else if (heading.includes('question')) currentSection = 'questions'
+        else if (heading.includes('applic')) currentSection = 'applications'
+        else currentSection = null
+        currentContent = []
+      } else if (currentSection) {
+        currentContent.push(line)
+      }
+    }
+    if (currentSection) {
+      sections[currentSection] = currentContent.join('\n').trim()
+    }
+
+    // Create project via API
+    try {
+      const project = await api.createSermon({ title, passage_ref: '', audience: 'general' })
+      // Upsert each parsed section
+      for (const [sectionType, content] of Object.entries(sections)) {
+        if (content) {
+          await api.upsertSermonSection(project.id, sectionType, content)
+        }
+      }
+      // Refresh list
+      const qc = useQueryClient()
+      qc.invalidateQueries({ queryKey: ['sermons'] })
+      onSelect({ ...project, sections: Object.entries(sections).map(([section_type, content]) => ({ section_type, content })) })
+    } catch (err) {
+      console.error('Import failed:', err)
+      alert('Failed to import sermon: ' + (err.message || 'Unknown error'))
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -56,13 +115,30 @@ function ProjectList({ onSelect, onNew }) {
           <BookOpen size={13} />
           Sermon Builder
         </span>
-        <button
-          onClick={onNew}
-          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <PlusCircle size={12} />
-          New
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
+            title="Import from Markdown"
+          >
+            <Import size={12} />
+            Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown,.txt"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <button
+            onClick={onNew}
+            className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <PlusCircle size={12} />
+            New
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -334,18 +410,45 @@ function ProjectDetail({ project, onBack }) {
 
   const hasContent = (key) => project.sections.some((s) => s.section_type === key && s.content)
 
+  function exportSermon() {
+    const lines = [`# ${project.title}`, '', `> ${project.passage_ref} · ${project.audience}`, '']
+    const sectionLabels = { full_sermon: 'Full Sermon', outline: 'Outline', illustrations: 'Illustrations', questions: 'Discussion Questions', applications: 'Applications' }
+    for (const { section_type, content } of project.sections) {
+      if (content) {
+        lines.push(`## ${sectionLabels[section_type] || section_type}`, '', content, '')
+      }
+    }
+    lines.push('---', `*Exported from LOGOS Sermon Builder on ${new Date().toLocaleDateString()}*`)
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${project.title.replace(/[^a-z0-9]/gi, '-')}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="panel-header">
         <button onClick={onBack} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
           <ChevronLeft size={12} /> All Sermons
         </button>
-        <button
-          onClick={() => window.confirm('Delete this sermon project?') && deleteProject()}
-          className="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-        >
-          <Trash2 size={13} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={exportSermon}
+            className="text-gray-400 hover:text-blue-500 dark:hover:text-blue-400"
+            title="Export as Markdown"
+          >
+            <Download size={13} />
+          </button>
+          <button
+            onClick={() => window.confirm('Delete this sermon project?') && deleteProject()}
+            className="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       </div>
 
       <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/40">

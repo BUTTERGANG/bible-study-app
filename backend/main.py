@@ -42,6 +42,7 @@ from .routers import (
     dictionary,
     factbook,
     gospel_harmony,
+    groups,
     health,
     highlights,
     lectionary,
@@ -193,8 +194,14 @@ app.include_router(study_projects.router)
 # Dashboard — user-scoped.
 app.include_router(dashboard.router)
 
+# Groups — collaborative study groups.
+app.include_router(groups.router, dependencies=_protected)
+
 # Factbook router carries its own dependencies (auth + rate limit).
 app.include_router(factbook.router)
+
+# Doctrinal Topic Index — auth + rate limit via router-level dependencies.
+app.include_router(doctrine.router)
 
 # NT Use of OT — read-only, no auth required.
 app.include_router(nt_ot.router)

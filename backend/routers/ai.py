@@ -414,26 +414,103 @@ Make the illustrations relatable, memorable, and theologically grounded."""
     )
 
 
+class DiscussionQuestionsRequest(BaseModel):
+    passage: str
+    translation: str = "KJV"
+    context: str = "small_group"  # small_group | sermon_prep | personal
+    difficulty: str = "growing"   # new_believer | growing | mature
+
+
+_DQ_CONTEXT_DESC = {
+    "small_group": "a small group Bible study",
+    "sermon_prep": "sermon preparation and teaching",
+    "personal": "personal devotional study",
+}
+
+_DQ_DIFFICULTY_DESC = {
+    "new_believer": "new believers who are just starting to explore the Bible — use simple language and avoid assumed theological knowledge",
+    "growing": "Christians who are growing in their faith and have basic Bible familiarity",
+    "mature": "mature believers with theological depth who can engage with nuanced interpretation and application",
+}
+
+
 @router.post("/discussion-questions")
-async def generate_discussion_questions(body: SermonSectionRequest):
-    outline_note = f"\n\nBased on this outline:\n{body.outline}" if body.outline else ""
+async def generate_discussion_questions(body: DiscussionQuestionsRequest):
+    context_desc = _DQ_CONTEXT_DESC.get(body.context, _DQ_CONTEXT_DESC["small_group"])
+    difficulty_desc = _DQ_DIFFICULTY_DESC.get(body.difficulty, _DQ_DIFFICULTY_DESC["growing"])
 
-    prompt = f"""Generate 6 discussion questions for **{body.passage}** ({body.translation}) suitable for small group use after a sermon.{outline_note}
+    prompt = f"""Generate 8 discussion questions for **{body.passage}** ({body.translation}) tailored for {context_desc} with {difficulty_desc}.
 
-Format each as:
-**Q[N]. [Question]**
-*Purpose: [what this question helps the group explore]*
+Organize the questions into four categories, two questions each:
 
-Include a mix of:
-- Observation questions (what does the text say?)
-- Interpretation questions (what does it mean?)
-- Application questions (how do we live this out?)
-- Personal reflection questions
+## Opening Questions
+*(Help the group engage with the text — observation, first impressions)*
 
-Keep questions open-ended and encourage personal engagement with Scripture."""
+**O1. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+**O2. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+## Exploration Questions
+*(Dig into meaning, context, and interpretation)*
+
+**E1. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+**E2. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+## Application Questions
+*(Connect the passage to everyday life and action)*
+
+**A1. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+**A2. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+## Reflection Questions
+*(Personal response, prayer, and ongoing transformation)*
+
+**R1. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+**R2. [Question]**
+*Purpose: [brief note on what this surfaces]*
+
+Keep all questions open-ended. Calibrate depth and vocabulary to the audience described."""
 
     return _stream_response(
-        lambda: _stream_text(system=None, messages=[{"role": "user", "content": prompt}], max_tokens=1000)
+        lambda: _stream_text(system=None, messages=[{"role": "user", "content": prompt}], max_tokens=1400)
+    )
+
+
+@router.post("/application-questions")
+async def generate_application_questions(body: DiscussionQuestionsRequest):
+    context_desc = _DQ_CONTEXT_DESC.get(body.context, _DQ_CONTEXT_DESC["small_group"])
+    difficulty_desc = _DQ_DIFFICULTY_DESC.get(body.difficulty, _DQ_DIFFICULTY_DESC["growing"])
+
+    prompt = f"""Generate 6 application-focused questions for **{body.passage}** ({body.translation}) for {context_desc} with {difficulty_desc}.
+
+These questions should move people from understanding to action. For each question:
+
+**Q[N]. [Question]**
+- **This week:** One concrete step the person can take in the next 7 days
+- *Purpose: [what growth this targets]*
+
+Cover these angles:
+1. A personal conviction or attitude to examine
+2. A relationship or community to invest in
+3. A habit or spiritual discipline to begin or strengthen
+4. A way to serve others based on this passage
+5. A truth to memorize or meditate on
+6. An area of surrender or trust to grow in
+
+Calibrate depth and expectations to the audience described."""
+
+    return _stream_response(
+        lambda: _stream_text(system=None, messages=[{"role": "user", "content": prompt}], max_tokens=1200)
     )
 
 
@@ -704,6 +781,7 @@ draw out the actual arguments and themes of the work."""
 class SummarizeRequest(BaseModel):
     resource_id: int
     chunk_size: int = 0  # 0 = auto (chunk if >100 pages)
+    summary_length: str = "standard"  # "brief" | "standard" | "detailed"
 
 
 _CHUNK_THRESHOLD = 100  # pages — above this, we chunk

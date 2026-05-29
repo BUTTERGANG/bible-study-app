@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   AlertCircle, Bookmark, Copy, Download, Highlighter, Image, Layers, Link,
-  Loader2, MessageSquare, Share2, StickyNote, X,
+  Loader2, MessageSquare, Printer, Share2, StickyNote, X,
 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
-import { getVerseExportData } from '../../utils/export'
+import { getPassageExportData, printPassage } from '../../utils/export'
 import ShareCardModal from './ShareCardModal'
 import clsx from 'clsx'
 
@@ -178,6 +178,22 @@ export default function VerseContextMenu({
       <button onClick={exportPassage} disabled={isExporting} className="menu-item">
         {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
         Export passage
+      </button>
+
+      <button onClick={async () => {
+        setIsExporting(true)
+        try {
+          const data = await getPassageExportData(translation, book, chapter, { includeNotes: true, includeHighlights: true })
+          printPassage(data)
+          onClose()
+        } catch (err) {
+          setError('Failed to prepare print view')
+        } finally {
+          setIsExporting(false)
+        }
+      }} disabled={isExporting} className="menu-item">
+        <Printer size={13} />
+        Print / PDF
       </button>
 
       <div className="border-t border-gray-100 dark:border-gray-700" />

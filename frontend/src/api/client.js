@@ -205,6 +205,23 @@ export const api = {
   generateFactbookEntry: (entityName, entityType = 'person') =>
     post('/factbook/generate', { entity_name: entityName, entity_type: entityType }),
 
+  // Semantic Range Visualization
+  getSemanticRange: (strongsNum, testament = 'all') =>
+    get(`/lexicon/strongs/${encodeURIComponent(strongsNum)}/range?testament=${testament}`),
+
+  // Doctrinal Topic Index
+  listDoctrines: (category, q) => {
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+    if (q) params.set('q', q)
+    const qs = params.toString()
+    return get(`/doctrine${qs ? '?' + qs : ''}`)
+  },
+  getDoctrine: (name, refresh = false) =>
+    get(`/doctrine/${encodeURIComponent(name)}${refresh ? '?refresh=true' : ''}`),
+  generateDoctrine: (name, category) =>
+    post('/doctrine/generate', { name, category }),
+
   // Cultural context notes
   getCulturalNotes: (book, chapter) =>
     get(`/cultural/${encodeURIComponent(book)}/${chapter}`),
@@ -273,6 +290,43 @@ export const api = {
     patch(`/ai/conversations/${encodeURIComponent(reference)}`, data),
   deleteConversation: (reference) =>
     del(`/ai/conversations/${encodeURIComponent(reference)}`),
+
+  // ── Groups ──────────────────────────────────────────────────────────
+  // My groups & invites
+  getMyGroups: () => get('/groups'),
+  getMyInvites: () => get('/groups/my-invites'),
+  createGroup: (data) => post('/groups', data),
+  getGroup: (groupId) => get(`/groups/${groupId}`),
+  updateGroup: (groupId, data) => put(`/groups/${groupId}`, data),
+  deleteGroup: (groupId) => del(`/groups/${groupId}`),
+
+  // Members & invites
+  inviteMember: (groupId, email) => post(`/groups/${groupId}/invites`, { email }),
+  acceptInvite: (groupId) => post(`/groups/${groupId}/invites/accept`),
+  declineInvite: (groupId) => post(`/groups/${groupId}/invites/decline`),
+  removeMember: (groupId, userId) => del(`/groups/${groupId}/members/${userId}`),
+  leaveGroup: (groupId) => post(`/groups/${groupId}/leave`),
+
+  // Group notes
+  getGroupNotes: (groupId, params = {}) => {
+    const p = new URLSearchParams()
+    if (params.book != null) p.set('book', params.book)
+    if (params.chapter != null) p.set('chapter', String(params.chapter))
+    if (params.verse != null) p.set('verse', String(params.verse))
+    if (params.tag != null) p.set('tag', params.tag)
+    return get(`/groups/${groupId}/notes?${p}`)
+  },
+  createGroupNote: (groupId, data) => post(`/groups/${groupId}/notes`, data),
+  updateGroupNote: (groupId, noteId, data) => put(`/groups/${groupId}/notes/${noteId}`, data),
+  deleteGroupNote: (groupId, noteId) => del(`/groups/${groupId}/notes/${noteId}`),
+
+  // Sharing personal items
+  shareToGroup: (groupId, data) => post(`/groups/${groupId}/share`, data),
+  unshareFromGroup: (groupId, sharedItemId) => del(`/groups/${groupId}/share/${sharedItemId}`),
+
+  // Group feed
+  getGroupFeed: (groupId, offset = 0, limit = 50) =>
+    get(`/groups/${groupId}/feed?offset=${offset}&limit=${limit}`),
 }
 
 export { authHeaders }

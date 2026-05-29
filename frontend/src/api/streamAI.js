@@ -75,7 +75,8 @@ export function streamSummarize(body, onStage, onDone) {
                 }
                 try {
                   const parsed = JSON.parse(data)
-                  if (parsed.text) onStage?.({ stage: parsed.stage, text: parsed.text })
+                  // Always call onStage so callers receive done/cached events too
+                  if (parsed.stage) onStage?.({ stage: parsed.stage, text: parsed.text ?? '', cached: parsed.cached })
                   if (parsed.error) serverError = new Error(parsed.error)
                 } catch {}
               }

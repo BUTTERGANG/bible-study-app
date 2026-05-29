@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Compass, Library, MessageSquare, Search as SearchIcon, StickyNote, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Compass, Library, MessageSquare, Search as SearchIcon, StickyNote, Trash2, Users, X } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -101,6 +101,7 @@ export default function Sidebar() {
         </div>
         <QuickAction icon={StickyNote} label="Notes" panel="notes" />
         <QuickAction icon={Library} label="Library" panel="library" />
+        <QuickAction icon={Users} label="Groups" panel="groups" />
         <QuickAction
           icon={Compass}
           label="Browse"

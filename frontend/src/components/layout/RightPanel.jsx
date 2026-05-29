@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { BookOpen, Bookmark, Brain, Calendar, Cross, GraduationCap, Globe, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp, Rows3, CalendarDays, Bell } from 'lucide-react'
+import { BookOpen, BookOpenCheck, Bookmark, Brain, Calendar, Cross, GraduationCap, Globe, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp, Rows3, CalendarDays, Bell, Users } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -31,6 +31,8 @@ const CulturalContextPanel = lazy(() => import('../Insights/CulturalContextPanel
 const GospelHarmony = lazy(() => import('../GospelHarmony/GospelHarmony'))
 const LectionaryPanel = lazy(() => import('../Lectionary/LectionaryPanel'))
 const NotificationSettings = lazy(() => import('./NotificationSettings'))
+const GroupsPanel = lazy(() => import('../Groups/GroupsPanel'))
+const DoctrinePanel = lazy(() => import('../Doctrine/DoctrinePanel'))
 
 const TABS = [
   { id: 'home', label: 'Home', icon: BookOpen },
@@ -59,6 +61,8 @@ const TABS = [
   { id: 'harmony', label: 'Harmony', icon: Rows3 },
   { id: 'lectionary', label: 'Lectionary', icon: CalendarDays },
   { id: 'notifications', label: 'Alerts', icon: Bell },
+  { id: 'groups', label: 'Groups', icon: Users },
+  { id: 'doctrine', label: 'Doctrine', icon: BookOpenCheck },
 ]
 
 function PanelSkeleton() {
@@ -118,6 +122,8 @@ export default function RightPanel() {
           {rightPanel === 'harmony' && <GospelHarmony />}
           {rightPanel === 'lectionary' && <LectionaryPanel />}
           {rightPanel === 'notifications' && <NotificationSettings />}
+          {rightPanel === 'groups' && <GroupsPanel />}
+          {rightPanel === 'doctrine' && <DoctrinePanel />}
         </Suspense>
       </div>
     </div>

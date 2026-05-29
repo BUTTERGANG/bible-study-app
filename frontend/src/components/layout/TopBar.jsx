@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Layers, Menu, Moon,
-  PanelRightClose, PanelRightOpen, Search, Sun, X, Filter, Languages, Volume2,
+  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Layers, LogOut, Menu, Moon,
+  PanelRightClose, PanelRightOpen, Search, Sun, User, X, Filter, Languages, Volume2,
 } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
 import { api } from '../../api/client'
+import { getAccessToken, clearTokens } from '../../api/auth'
 import clsx from 'clsx'
 import SyncStatus from './SyncStatus'
 

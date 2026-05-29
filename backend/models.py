@@ -16,6 +16,102 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+# ── Groups ──────────────────────────────────────────────────────────────
+
+class Group(Base):
+    __tablename__ = "groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=True, default="")
+    owner_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    invite_code: Mapped[str] = mapped_column(String(20), unique=True, index=True, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class GroupMember(Base):
+    __tablename__ = "group_members"
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_member"),
+        Index("ix_group_members_user_id", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(10), default="member")  # "owner" | "member"
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class GroupInvite(Base):
+    __tablename__ = "group_invites"
+    __table_args__ = (
+        UniqueConstraint("group_id", "email", name="uq_group_invite"),
+        Index("ix_group_invites_email", "email"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
+    invited_by: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(10), default="pending")
+    # pending | accepted | declined | cancelled
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    responded_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+
+
+class GroupNote(Base):
+    __tablename__ = "group_notes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    author_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    book: Mapped[str] = mapped_column(String(50), nullable=True, index=True)
+    chapter: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+    verse: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[str] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class GroupSharedItem(Base):
+    """A link from a user's personal note/highlight into a group feed."""
+    __tablename__ = "group_shared_items"
+    __table_args__ = (
+        UniqueConstraint("group_id", "item_type", "item_id", name="uq_group_shared_item"),
+        Index("ix_gsi_group_id", "group_id"),
+        Index("ix_gsi_user_id", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    item_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    shared_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    annotation: Mapped[str] = mapped_column(String(500), nullable=True)
+
+
 class BibleVerse(Base):
     __tablename__ = "bible_verses"
     __table_args__ = (
@@ -499,6 +595,23 @@ class MediaFile(Base):
     width: Mapped[int] = mapped_column(Integer, nullable=True)
     height: Mapped[int] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DoctrineEntry(Base):
+    """AI-generated doctrinal topic index entry."""
+    __tablename__ = "doctrine_entries"
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_doctrine_name"),
+        Index("ix_doctrine_name", "name"),
+        Index("ix_doctrine_category", "category"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    category: Mapped[str] = mapped_column(String(50), index=True)  # see DOCTRINE_CATEGORIES
+    content: Mapped[str] = mapped_column(Text)  # JSON: {definition, key_verses, summary, positions}
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class LibrarySummary(Base):

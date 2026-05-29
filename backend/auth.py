@@ -97,6 +97,27 @@ def auth_is_enabled() -> bool:
     return _expected_secret() is not None
 
 
+async def require_app_password(
+    authorization: Optional[str] = Header(default=None),
+    x_app_password: Optional[str] = Header(default=None),
+) -> None:
+    """Lightweight gate: passes if no APP_PASSWORD is set or if a valid credential is provided."""
+    import hmac
+    app_password = _expected_secret()
+    if not app_password:
+        return
+    token: Optional[str] = x_app_password
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+    if token and hmac.compare_digest(token, app_password):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing app password",
+        headers={"WWW-Authenticate": 'Bearer realm="bible-study"'},
+    )
+
+
 async def get_current_user(
     authorization: Optional[str] = Header(default=None),
     x_app_password: Optional[str] = Header(default=None),
