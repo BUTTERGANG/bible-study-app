@@ -279,6 +279,28 @@ export const api = {
   upsertSermonSection: (id, sectionType, content) =>
     put(`/sermons/${id}/sections/${sectionType}`, { content }),
 
+  // Sermon Series (Preaching Series Planner)
+  listSermonSeries: () => get('/sermons/series'),
+  createSermonSeries: (data) => post('/sermons/series', data),
+  getSermonSeries: (id) => get(`/sermons/series/${id}`),
+  updateSermonSeries: (id, data) => put(`/sermons/series/${id}`, data),
+  deleteSermonSeries: (id) => del(`/sermons/series/${id}`),
+  addSeriesEntry: (seriesId, data) => post(`/sermons/series/${seriesId}/entries`, data),
+  updateSeriesEntry: (seriesId, entryId, data) =>
+    put(`/sermons/series/${seriesId}/entries/${entryId}`, data),
+  deleteSeriesEntry: (seriesId, entryId) =>
+    del(`/sermons/series/${seriesId}/entries/${entryId}`),
+
+  // PreachingSeriesPanel aliases (same endpoints, panel-friendly names)
+  listSeries: () => get('/sermons/series'),
+  getSeries: (id) => get(`/sermons/series/${id}`),
+  createSeries: (data) => post('/sermons/series', data),
+  updateSeries: (id, data) => put(`/sermons/series/${id}`, data),
+  deleteSeries: (id) => del(`/sermons/series/${id}`),
+  addSeriesSlot: (seriesId, data) => post(`/sermons/series/${seriesId}/entries`, data),
+  updateSeriesSlot: (seriesId, slotId, data) => put(`/sermons/series/${seriesId}/entries/${slotId}`, data),
+  deleteSeriesSlot: (seriesId, slotId) => del(`/sermons/series/${seriesId}/entries/${slotId}`),
+
   // AI Conversations
   listConversations: (limit = 50, offset = 0) =>
     get(`/ai/conversations?limit=${limit}&offset=${offset}`),
@@ -290,6 +312,17 @@ export const api = {
     patch(`/ai/conversations/${encodeURIComponent(reference)}`, data),
   deleteConversation: (reference) =>
     del(`/ai/conversations/${encodeURIComponent(reference)}`),
+
+  // ── Vocabulary Drills ───────────────────────────────────────────────
+  getVocabDrill: (language = 'greek', limit = 20, frequencyBand = 'top50', book = null, chapter = null) => {
+    const params = new URLSearchParams({ language, limit: String(limit), frequency_band: frequencyBand })
+    if (book) params.set('book', book)
+    if (chapter != null) params.set('chapter', String(chapter))
+    return get(`/vocab/drill?${params}`)
+  },
+  getVocabMastery: () => get('/vocab/mastery'),
+  recordVocabQuiz: (strongs_num, language, correct) =>
+    post('/vocab/quiz', { strongs_num, language, correct }),
 
   // ── Groups ──────────────────────────────────────────────────────────
   // My groups & invites
@@ -327,6 +360,35 @@ export const api = {
   // Group feed
   getGroupFeed: (groupId, offset = 0, limit = 50) =>
     get(`/groups/${groupId}/feed?offset=${offset}&limit=${limit}`),
+
+  // Inline Annotations (word/phrase-level marginalia)
+  getAnnotations: (book, chapter) =>
+    get(`/annotations/${encodeURIComponent(book)}/${chapter}`),
+  createAnnotation: (data) => post('/annotations', data),
+  updateAnnotation: (id, data) => put(`/annotations/${id}`, data),
+  deleteAnnotation: (id) => del(`/annotations/${id}`),
+
+  // ── Textual Criticism Apparatus ─────────────────────────────────────
+  getTextualVariants: (book, chapter, verse) =>
+    get(`/textual/${encodeURIComponent(book)}/${chapter}/${verse}`),
+
+  // AI-generated textual note summaries (separate from static variants)
+  getTextualNotes: (book, chapter, verse) =>
+    get(`/textual-notes/${encodeURIComponent(book)}/${chapter}/${verse}`),
+  listTextualPassages: () => get('/textual-notes/passages'),
+
+  // Counseling guides
+  listCounselingGuides: (category, q) => {
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+    if (q) params.set('q', q)
+    const qs = params.toString()
+    return get(`/counseling${qs ? '?' + qs : ''}`)
+  },
+  getCounselingGuide: (name, refresh = false) =>
+    get(`/counseling/${encodeURIComponent(name)}${refresh ? '?refresh=true' : ''}`),
+  generateCounselingGuide: (name, category) =>
+    post('/counseling/generate', { name, category }),
 }
 
 export { authHeaders }

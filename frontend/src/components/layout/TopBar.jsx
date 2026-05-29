@@ -34,6 +34,43 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
   const qc = useQueryClient()
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
   const pickerRef = useRef(null)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
+
+  // Fetch current user profile when logged in
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: api.getMe,
+    staleTime: 60_000,
+    enabled: !!getAccessToken(),
+  })
+
+  // Fetch pending group invites for badge
+  const { data: invitesData } = useQuery({
+    queryKey: ['my-invites-badge'],
+    queryFn: api.getMyInvites,
+    staleTime: 30_000,
+    enabled: !!getAccessToken(),
+  })
+  const pendingInviteCount = invitesData?.invites?.length || 0
+
+  function handleLogout() {
+    clearTokens()
+    window.location.reload()
+  }
+
+  // Close user menu on outside click
+  useEffect(() => {
+    function handler(e) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false)
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handler)
+      return () => document.removeEventListener('mousedown', handler)
+    }
+  }, [userMenuOpen])
 
   const { data: transData } = useQuery({
     queryKey: ['translations'],
@@ -183,11 +220,11 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
 
       {/* Lemma toggle */}
       {!compareMode && (
-        <div className="relative">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={toggleShowLemmas}
             className={clsx(
-              'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
+              'flex items-center gap-1 text-xs px-2 py-1 rounded-l border transition-colors',
               showLemmas
                 ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700'
                 : 'text-slate-300 border-slate-600 hover:text-white hover:border-slate-500'
@@ -197,6 +234,15 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
             <Languages size={14} />
             <span className="hidden sm:block">Lemmas</span>
           </button>
+          {showLemmas && (
+            <button
+              onClick={() => setLemmaPosition(lemmaPosition === 'below' ? 'inline' : 'below')}
+              className="flex items-center text-[10px] px-1.5 py-1 rounded-r border border-l-0 border-emerald-500 bg-emerald-700 text-emerald-100 hover:bg-emerald-800 transition-colors"
+              title={lemmaPosition === 'below' ? 'Switch to inline position' : 'Switch to below position'}
+            >
+              {lemmaPosition === 'below' ? '↓' : '↔'}
+            </button>
+          )}
         </div>
       )}
 
@@ -374,6 +420,37 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
       </button>
 
       <SyncStatus />
+
+      {/* User profile */}
+      {userProfile && (
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setUserMenuOpen((o) => !o)}
+            className="flex items-center gap-1.5 text-slate-300 hover:text-white text-xs px-2 py-1 rounded transition-colors hover:bg-slate-700"
+            title={userProfile.email || 'Account'}
+          >
+            <User size={14} />
+            <span className="hidden sm:block max-w-[100px] truncate">
+              {userProfile.email?.split('@')[0] || 'Account'}
+            </span>
+          </button>
+          {userMenuOpen && (
+            <div className="absolute top-full right-0 mt-1 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 py-1">
+              <div className="px-3 py-2 border-b border-slate-700">
+                <p className="text-xs text-slate-400">Signed in as</p>
+                <p className="text-xs text-slate-200 font-medium truncate">{userProfile.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
+              >
+                <LogOut size={12} />
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <button
         onClick={onSearch}

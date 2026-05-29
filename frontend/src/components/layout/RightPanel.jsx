@@ -33,6 +33,8 @@ const LectionaryPanel = lazy(() => import('../Lectionary/LectionaryPanel'))
 const NotificationSettings = lazy(() => import('./NotificationSettings'))
 const GroupsPanel = lazy(() => import('../Groups/GroupsPanel'))
 const DoctrinePanel = lazy(() => import('../Doctrine/DoctrinePanel'))
+const CounselingPanel = lazy(() => import('../Counseling/CounselingPanel'))
+const PreachingSeriesPanel = lazy(() => import('../PreachingSeries/PreachingSeriesPanel'))
 
 const TABS = [
   { id: 'home', label: 'Home', icon: BookOpen },
@@ -63,6 +65,8 @@ const TABS = [
   { id: 'notifications', label: 'Alerts', icon: Bell },
   { id: 'groups', label: 'Groups', icon: Users },
   { id: 'doctrine', label: 'Doctrine', icon: BookOpenCheck },
+  { id: 'counseling', label: 'Counseling', icon: Heart },
+  { id: 'series', label: 'Series', icon: Calendar },
 ]
 
 function PanelSkeleton() {
@@ -124,6 +128,8 @@ export default function RightPanel() {
           {rightPanel === 'notifications' && <NotificationSettings />}
           {rightPanel === 'groups' && <GroupsPanel />}
           {rightPanel === 'doctrine' && <DoctrinePanel />}
+          {rightPanel === 'counseling' && <CounselingPanel />}
+          {rightPanel === 'series' && <PreachingSeriesPanel />}
         </Suspense>
       </div>
     </div>

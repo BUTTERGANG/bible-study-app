@@ -614,6 +614,50 @@ class DoctrineEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class VocabMastery(Base):
+    """Per-user mastery tracking for Greek/Hebrew vocabulary words."""
+    __tablename__ = "vocab_mastery"
+    __table_args__ = (
+        UniqueConstraint("user_id", "strongs_num", "language", name="uq_vocab_mastery"),
+        Index("ix_vocab_mastery_user_id", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
+    strongs_num: Mapped[str] = mapped_column(String(10), index=True)
+    language: Mapped[str] = mapped_column(String(10))  # "greek" | "hebrew"
+    # 0=not started, 1=learning, 2=familiar, 3=mastered
+    mastery_level: Mapped[int] = mapped_column(Integer, default=0)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    correct_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_reviewed: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class InlineAnnotation(Base):
+    """Word/phrase-level annotations anchored within a verse (marginalia style)."""
+    __tablename__ = "inline_annotations"
+    __table_args__ = (
+        Index("ix_inline_annotations_lookup", "user_id", "book", "chapter", "verse"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True
+    )
+    book: Mapped[str] = mapped_column(String(50), index=True)
+    chapter: Mapped[int] = mapped_column(Integer, index=True)
+    verse: Mapped[int] = mapped_column(Integer, index=True)
+    word_start: Mapped[int] = mapped_column(Integer)   # 0-based token index (inclusive)
+    word_end: Mapped[int] = mapped_column(Integer)     # 0-based token index (inclusive)
+    content: Mapped[str] = mapped_column(Text)
+    color: Mapped[str] = mapped_column(String(20), default="yellow")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class LibrarySummary(Base):
     """Cached AI-generated summaries for library books."""
     __tablename__ = "library_summaries"
@@ -631,3 +675,104 @@ class LibrarySummary(Base):
     page_start: Mapped[int] = mapped_column(Integer, default=0)
     page_end: Mapped[int] = mapped_column(Integer, default=0)
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ── Sermon Series ────────────────────────────────────────────────
+
+class SermonSeries(Base):
+    """A multi-sermon preaching series spanning a date range."""
+    __tablename__ = "sermon_series"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    theme: Mapped[str] = mapped_column(String(500), nullable=True)
+    start_date: Mapped[str] = mapped_column(String(10), nullable=False)   # ISO date e.g. "2026-09-07"
+    end_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    entries: Mapped[list["SermonSeriesEntry"]] = relationship(
+        back_populates="series", cascade="all, delete-orphan", order_by="SermonSeriesEntry.scheduled_date"
+    )
+
+
+class SermonSeriesEntry(Base):
+    """One slot in a sermon series: a date + optional assigned sermon + status."""
+    __tablename__ = "sermon_series_entries"
+    __table_args__ = (
+        Index("ix_series_entries_series_id", "series_id"),
+        Index("ix_series_entries_sermon_id", "sermon_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    series_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("sermon_series.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sermon_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("sermon_projects.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    scheduled_date: Mapped[str] = mapped_column(String(10), nullable=False)  # ISO date
+    # planned | drafted | preached
+    status: Mapped[str] = mapped_column(String(20), default="planned", nullable=False)
+    notes: Mapped[str] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    series: Mapped["SermonSeries"] = relationship(back_populates="entries")
+    sermon: Mapped["SermonProject"] = relationship()
+
+
+# ── Textual Criticism ────────────────────────────────────────────────────
+
+class TextualVariant(Base):
+    """A textual variant or disputed passage in the NT/OT manuscript tradition."""
+    __tablename__ = "textual_variants"
+    __table_args__ = (
+        Index("ix_tv_lookup", "book", "chapter_start", "verse_start"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    book: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    chapter_start: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    verse_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    chapter_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    verse_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    short_title: Mapped[str] = mapped_column(String(200), nullable=False)
+    manuscript_support: Mapped[str] = mapped_column(Text, nullable=False)
+    # critical | high | medium
+    significance: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    external_ref: Mapped[str] = mapped_column(String(300), nullable=True)
+
+
+class TextualNote(Base):
+    """Cached AI-generated textual criticism summaries for disputed biblical passages."""
+    __tablename__ = "textual_notes"
+    __table_args__ = (
+        Index("ix_textual_notes_passage_key", "passage_key", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    passage_key: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)  # JSON blob
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CounselingGuide(Base):
+    """AI-generated pastoral counseling guides organized by life issue."""
+    __tablename__ = "counseling_guides"
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_counseling_name"),
+        Index("ix_counseling_name", "name"),
+        Index("ix_counseling_category", "category"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    category: Mapped[str] = mapped_column(String(50), index=True)
+    content: Mapped[str] = mapped_column(Text)  # JSON blob
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -33,13 +33,16 @@ from .routers import (
     ai,
     ai_conversations,
     ai_reading_plans,
+    annotations,
     bible,
     book_intros,
     bookmarks,
     commentary,
+    counseling,
     cultural_notes,
     dashboard,
     dictionary,
+    doctrine,
     factbook,
     gospel_harmony,
     groups,
@@ -55,8 +58,11 @@ from .routers import (
     prayer,
     reading_plans,
     search,
+    sermon_series,
     sermons,
     study_projects,
+    textual,
+    textual_notes,
     timeline_maps,
     users,
     word_study,
@@ -182,6 +188,9 @@ app.include_router(ai_reading_plans.router)
 # Sermon Builder — projects and sections.
 app.include_router(sermons.router)
 
+# Sermon Series — multi-sermon preaching series.
+app.include_router(sermon_series.router)
+
 # Verse Memorization — user-scoped.
 app.include_router(memorize.router)
 
@@ -199,15 +208,21 @@ app.include_router(groups.router, dependencies=_protected)
 
 # Factbook router carries its own dependencies (auth + rate limit).
 app.include_router(factbook.router)
-
-# Doctrinal Topic Index — auth + rate limit via router-level dependencies.
 app.include_router(doctrine.router)
+app.include_router(counseling.router)
 
 # NT Use of OT — read-only, no auth required.
 app.include_router(nt_ot.router)
 
+# Textual Criticism Apparatus — read-only, no auth required.
+app.include_router(textual.router)
+app.include_router(textual_notes.router)
+
 # Timeline & Maps — read-only, no auth required.
 app.include_router(timeline_maps.router)
+
+# Inline Annotations — word/phrase-level marginalia, user-scoped.
+app.include_router(annotations.router, dependencies=_protected)
 
 # Media — per-endpoint auth (serve_media is public, rest require auth).
 app.include_router(media.router)
