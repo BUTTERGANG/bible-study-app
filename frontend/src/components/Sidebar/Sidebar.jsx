@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Library, MessageSquare, Search as SearchIcon, StickyNote, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Compass, Library, MessageSquare, Search as SearchIcon, StickyNote, Trash2, X } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -17,6 +18,8 @@ function useConversations() {
 
 export default function Sidebar() {
   const { book: activeBook, chapter: activeChapter, translation, setReference, setRightPanel } = useStudyStore()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [expanded, setExpanded] = useState({ OT: true, NT: true, APO: false, conversations: false })
   const [selectedBook, setSelectedBook] = useState(activeBook)
   const convQuery = useConversations()
@@ -71,14 +74,19 @@ export default function Sidebar() {
 
   const conversations = convQuery.data?.conversations?.filter((c) => c.message_count > 0) || []
 
-  function QuickAction({ icon: Icon, label, panel, onClick }) {
+  function QuickAction({ icon: Icon, label, panel, onClick, active }) {
     const handleClick = onClick || (() => setRightPanel(panel))
     return (
       <button
         onClick={handleClick}
-        className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2.5 text-gray-700 dark:text-gray-300 transition-colors"
+        className={clsx(
+          'w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors',
+          active
+            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+            : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300'
+        )}
       >
-        <Icon size={14} className="text-gray-400 dark:text-gray-500" />
+        <Icon size={14} className={active ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} />
         <span className="font-medium">{label}</span>
       </button>
     )
@@ -93,6 +101,12 @@ export default function Sidebar() {
         </div>
         <QuickAction icon={StickyNote} label="Notes" panel="notes" />
         <QuickAction icon={Library} label="Library" panel="library" />
+        <QuickAction
+          icon={Compass}
+          label="Browse"
+          onClick={() => navigate('/browse')}
+          active={location.pathname.startsWith('/browse')}
+        />
       </div>
       <div className="h-px bg-gray-200 dark:bg-gray-700 mx-2" />
 

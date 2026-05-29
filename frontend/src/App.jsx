@@ -1,10 +1,12 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { useStudyStore } from './stores/studyStore'
 import { useUrlSync } from './hooks/useUrlSync'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import Sidebar from './components/Sidebar/Sidebar'
 import BibleReader from './components/BibleReader/BibleReader'
+import BibleBrowser from './components/BibleBrowser/BibleBrowser'
 import RightPanel from './components/layout/RightPanel'
 import TopBar from './components/layout/TopBar'
 import AudioPlayer from './components/AudioPlayer/AudioPlayer'
@@ -43,6 +45,9 @@ export default function App() {
     return () => document.removeEventListener('keydown', handleKey)
   }, [])
 
+  const location = useLocation()
+  const isBrowse = location.pathname.startsWith('/browse')
+
   return (
     <AuthGate>
       <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
@@ -62,35 +67,48 @@ export default function App() {
             Sync conflicts resolved — some changes were skipped
           </div>
         )}
-        <TopBar
-          onSearch={() => setSearchOpen(true)}
-          onMorphSearch={() => setMorphSearchOpen(true)}
-          onToggleAudio={() => setAudioOpen((o) => !o)}
-        />
 
-        <div className="flex flex-1 overflow-hidden">
-          {sidebarOpen && (
-            <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
-              <ErrorBoundary fallback="Sidebar failed to render.">
-                <Sidebar />
-              </ErrorBoundary>
-            </div>
-          )}
-
-          <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-            <ErrorBoundary fallback="Bible reader failed to render.">
-              <BibleReader />
+        {isBrowse ? (
+          /* ── Full-screen Bible Browser ── */
+          <div className="flex-1 overflow-hidden">
+            <ErrorBoundary fallback="Bible browser failed to render.">
+              <BibleBrowser />
             </ErrorBoundary>
           </div>
+        ) : (
+          /* ── Standard Reader Layout ── */
+          <>
+            <TopBar
+              onSearch={() => setSearchOpen(true)}
+              onMorphSearch={() => setMorphSearchOpen(true)}
+              onToggleAudio={() => setAudioOpen((o) => !o)}
+            />
 
-          {rightPanelOpen && (
-            <div className="w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
-              <ErrorBoundary fallback="Right panel failed to render.">
-                <RightPanel />
-              </ErrorBoundary>
+            <div className="flex flex-1 overflow-hidden">
+              {sidebarOpen && (
+                <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+                  <ErrorBoundary fallback="Sidebar failed to render.">
+                    <Sidebar />
+                  </ErrorBoundary>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+                <ErrorBoundary fallback="Bible reader failed to render.">
+                  <BibleReader />
+                </ErrorBoundary>
+              </div>
+
+              {rightPanelOpen && (
+                <div className="w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
+                  <ErrorBoundary fallback="Right panel failed to render.">
+                    <RightPanel />
+                  </ErrorBoundary>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         {searchOpen && (
           <Suspense fallback={null}>
@@ -104,7 +122,7 @@ export default function App() {
           </Suspense>
         )}
 
-        {audioOpen && (
+        {audioOpen && !isBrowse && (
           <AudioPlayer
             key={`${translation}-${book}-${chapter}`}
             onClose={() => setAudioOpen(false)}
