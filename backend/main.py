@@ -129,7 +129,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
+        # X-Frame-Options intentionally omitted — Replit preview embeds the app in an iframe.
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
@@ -257,5 +257,7 @@ if FRONTEND_BUILD.exists():
                 return FileResponse(str(candidate))
             raise HTTPException(status_code=404, detail="Not found")
         # No extension → SPA route, always serve index.html.
+        # no-store prevents service workers / CDNs from caching the shell so
+        # updated CSP headers are always picked up on the next page load.
         index = FRONTEND_BUILD / "index.html"
-        return FileResponse(str(index))
+        return FileResponse(str(index), headers={"Cache-Control": "no-store"})
