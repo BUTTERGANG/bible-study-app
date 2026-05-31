@@ -179,7 +179,7 @@ export default function LectionaryPanel() {
 
       {/* Footer */}
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 text-[10px] text-gray-400 dark:text-gray-500 text-center">
-        Revised Common Lectionary (RCL) — Year A
+        Revised Common Lectionary (RCL) — Year {data?.year_cycle || 'A'}
       </div>
     </div>
   )

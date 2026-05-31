@@ -10,9 +10,9 @@ import clsx from 'clsx'
 function sanitizeHtml(raw) {
   return DOMPurify.sanitize(
     raw
-      .replace(/\*\*(.*?)\*\*/g, '<strong className="text-amber-800 dark:text-amber-300">$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight:600">$1</strong>')
       .replace(/\n/g, '<br/>'),
-    { ALLOWED_TAGS: ['strong', 'br', 'p', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: ['className'] }
+    { ALLOWED_TAGS: ['strong', 'br', 'p', 'em', 'ul', 'ol', 'li'], ALLOWED_ATTR: ['style'] }
   )
 }
 

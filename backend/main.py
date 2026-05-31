@@ -238,10 +238,24 @@ if FRONTEND_BUILD.exists():
         name="assets",
     )
 
+    # Serve other root-level static files (service worker, manifest, icons, etc.)
+    _icons_dir = FRONTEND_BUILD / "icons"
+    if _icons_dir.exists():
+        app.mount("/icons", StaticFiles(directory=str(_icons_dir)), name="icons")
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         # An unknown API path must 404 as JSON — never silently serve index.html.
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404, detail="Not found")
+        # If the path looks like a static file (has an extension), try to serve it
+        # directly from the dist root. Return 404 if it doesn't exist — never serve
+        # index.html for missing assets or the browser gets "Unexpected token '<'".
+        candidate = FRONTEND_BUILD / full_path
+        if "." in Path(full_path).name:
+            if candidate.exists():
+                return FileResponse(str(candidate))
+            raise HTTPException(status_code=404, detail="Not found")
+        # No extension → SPA route, always serve index.html.
         index = FRONTEND_BUILD / "index.html"
         return FileResponse(str(index))

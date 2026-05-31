@@ -9,7 +9,7 @@ from alembic import op
 
 # revision identifiers
 revision = "0005"
-down_revision = "0004_media_files"
+down_revision = "0004"
 branch_labels = None
 depends_on = None
 

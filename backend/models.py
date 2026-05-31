@@ -667,7 +667,7 @@ class LibrarySummary(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id", ondelete="CASCADE"), index=True)
+    book_id: Mapped[int] = mapped_column(Integer, ForeignKey("library_books.id", ondelete="CASCADE"))
     chunk_size: Mapped[int] = mapped_column(Integer, default=0)
     tldr: Mapped[str] = mapped_column(Text, default="")
     key_points: Mapped[str] = mapped_column(Text, default="")  # JSON array of strings
@@ -756,7 +756,7 @@ class TextualNote(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    passage_key: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
+    passage_key: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)  # JSON blob
     generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

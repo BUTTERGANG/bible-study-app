@@ -91,7 +91,7 @@ export default function ShareToGroupButton({ itemType, itemId, onShared }) {
       <button
         ref={buttonRef}
         onClick={handleToggle}
-        disabled={shareMutation.isLoading}
+        disabled={shareMutation.isPending}
         title={`Share ${itemType} to a group`}
         className={clsx(
           'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium',
@@ -101,10 +101,10 @@ export default function ShareToGroupButton({ itemType, itemId, onShared }) {
             ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/40 dark:border-blue-600 dark:text-blue-300'
             : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50',
           'dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700',
-          shareMutation.isLoading && 'opacity-60 cursor-wait'
+          shareMutation.isPending && 'opacity-60 cursor-wait'
         )}
       >
-        {shareMutation.isLoading ? (
+        {shareMutation.isPending ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : (
           <Share2 className="w-3.5 h-3.5" />
@@ -187,7 +187,7 @@ export default function ShareToGroupButton({ itemType, itemId, onShared }) {
                     ) : (
                       <button
                         onClick={() => handleShare(group.id)}
-                        disabled={shareMutation.isLoading}
+                        disabled={shareMutation.isPending}
                         className={clsx(
                           'shrink-0 px-2.5 py-1 rounded text-xs font-medium',
                           'bg-blue-600 text-white hover:bg-blue-700',

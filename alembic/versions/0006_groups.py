@@ -19,7 +19,7 @@ from alembic import op
 from sqlalchemy import inspect as sa_inspect
 
 revision: str = "0006"
-down_revision: Union[str, None] = "0005_library_pages_fts_and_fk_cascades"
+down_revision: Union[str, None] = "0005"
 branch_labels = None
 depends_on = None
 
@@ -49,11 +49,11 @@ def upgrade() -> None:
             "group_members",
             sa.Column("id", sa.Integer, primary_key=True, index=True),
             sa.Column("group_id", sa.Integer, sa.ForeignKey("groups.id"), nullable=False, index=True),
-            sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False, index=True),
+            sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
             sa.Column("role", sa.String(10), server_default="member"),
             sa.Column("joined_at", sa.DateTime, nullable=True),
+            sa.UniqueConstraint("group_id", "user_id", name="uq_group_member"),
         )
-        op.create_unique_constraint("uq_group_member", "group_members", ["group_id", "user_id"])
         op.create_index("ix_group_members_user_id", "group_members", ["user_id"])
 
     # ── group_invites ────────────────────────────────────────────────────
@@ -62,13 +62,13 @@ def upgrade() -> None:
             "group_invites",
             sa.Column("id", sa.Integer, primary_key=True, index=True),
             sa.Column("group_id", sa.Integer, sa.ForeignKey("groups.id"), nullable=False, index=True),
-            sa.Column("email", sa.String(254), nullable=False, index=True),
+            sa.Column("email", sa.String(254), nullable=False),
             sa.Column("invited_by", sa.Integer, sa.ForeignKey("users.id"), nullable=False),
             sa.Column("status", sa.String(10), server_default="pending"),
             sa.Column("created_at", sa.DateTime, nullable=True),
             sa.Column("responded_at", sa.DateTime, nullable=True),
+            sa.UniqueConstraint("group_id", "email", name="uq_group_invite"),
         )
-        op.create_unique_constraint("uq_group_invite", "group_invites", ["group_id", "email"])
         op.create_index("ix_group_invites_email", "group_invites", ["email"])
 
     # ── group_notes ──────────────────────────────────────────────────────
@@ -98,8 +98,8 @@ def upgrade() -> None:
             sa.Column("item_id", sa.Integer, nullable=False),
             sa.Column("shared_at", sa.DateTime, nullable=True),
             sa.Column("annotation", sa.String(500), nullable=True),
+            sa.UniqueConstraint("group_id", "item_type", "item_id", name="uq_group_shared_item"),
         )
-        op.create_unique_constraint("uq_group_shared_item", "group_shared_items", ["group_id", "item_type", "item_id"])
         op.create_index("ix_gsi_group_id", "group_shared_items", ["group_id"])
         op.create_index("ix_gsi_user_id", "group_shared_items", ["user_id"])
 

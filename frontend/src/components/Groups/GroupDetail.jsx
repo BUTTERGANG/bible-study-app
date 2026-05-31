@@ -303,10 +303,16 @@ function FeedTab({ group }) {
 
 // ── Tab: Notes ───────────────────────────────────────────────────────────────
 function NotesTab({ group }) {
+  const qc = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['group-notes', group.id],
     queryFn: () => api.getGroupNotes(group.id),
     enabled: !!group.id,
+  })
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId) => api.deleteGroupNote(group.id, noteId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['group-notes', group.id] }),
   })
 
   const notes = data?.notes || data || []
@@ -336,7 +342,7 @@ function NotesTab({ group }) {
             : ''
 
           const canModify =
-            group.current_user_id && note.author_id === group.current_user_id || isOwner
+            (group.current_user_id && note.author_id === group.current_user_id) || isOwner
 
           return (
             <div
@@ -362,11 +368,15 @@ function NotesTab({ group }) {
                 </div>
                 {canModify && (
                   <div className="flex gap-1">
-                    <button className="p-1 text-gray-400 hover:text-blue-500" title="Edit">
-                      <Edit2 size={12} />
-                    </button>
-                    <button className="p-1 text-gray-400 hover:text-red-500" title="Delete">
-                      <Trash2 size={12} />
+                    <button
+                      onClick={() => deleteNoteMutation.mutate(note.id)}
+                      disabled={deleteNoteMutation.isPending}
+                      className="p-1 text-gray-400 hover:text-red-500 disabled:opacity-50"
+                      title="Delete note"
+                    >
+                      {deleteNoteMutation.isPending && deleteNoteMutation.variables === note.id
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <Trash2 size={12} />}
                     </button>
                   </div>
                 )}
