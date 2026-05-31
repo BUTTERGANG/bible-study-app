@@ -243,7 +243,7 @@ if FRONTEND_BUILD.exists():
     if _icons_dir.exists():
         app.mount("/icons", StaticFiles(directory=str(_icons_dir)), name="icons")
 
-    @app.get("/{full_path:path}")
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
     async def serve_spa(full_path: str):
         # An unknown API path must 404 as JSON — never silently serve index.html.
         if full_path.startswith("api/"):

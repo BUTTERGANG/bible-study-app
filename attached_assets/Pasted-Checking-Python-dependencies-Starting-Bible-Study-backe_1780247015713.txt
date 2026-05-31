@@ -1,0 +1,38 @@
+Checking Python dependencies...
+Starting Bible Study backend...
+INFO:     Started server process [4923]
+INFO:     Waiting for application startup.
+2026-05-31 17:02:33,911 INFO bible-study — DB ready: 394338 verses, FTS bible=True commentary=True
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56126 - "GET /api/auth/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56154 - "GET /api/ai/conversations?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56172 - "GET /api/highlights/John/3?translation=KJV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56172 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56158 - "GET /api/bible/KJV/John/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56126 - "GET /api/bible/translations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56142 - "GET /api/bible/translations/KJV/books HTTP/1.1" 200 OK
+INFO:     10.56.175.221:0 - "GET /api/auth/status HTTP/1.1" 200 OK
+INFO:     10.56.3.25:0 - "GET /api/bible/translations HTTP/1.1" 200 OK
+INFO:     10.56.25.160:0 - "GET /api/bible/translations/KJV/books HTTP/1.1" 200 OK
+INFO:     10.56.3.25:0 - "GET /api/ai/conversations?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     10.56.217.91:0 - "GET /api/highlights/John/3?translation=KJV HTTP/1.1" 200 OK
+INFO:     10.56.217.91:0 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     10.56.3.25:0 - "GET /api/bible/KJV/John/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56142 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39426 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39426 - "GET /darkmode-init.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39442 - "GET /assets/index-DeiNMpaF.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:39446 - "GET /assets/index-tiINBD-p.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:39458 - "GET /registerSW.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39458 - "GET /api/auth/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39458 - "GET /assets/DashboardPanel-Bu2G6aSp.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:39446 - "GET /assets/sparkles-D0tGXdK-.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:39462 - "GET /api/ai/conversations?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39458 - "GET /api/highlights/John/3?translation=KJV HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39476 - "GET /api/bible/KJV/John/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39458 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39442 - "GET /api/bible/translations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39426 - "GET /api/bible/translations/KJV/books HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39426 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39486 - "HEAD / HTTP/1.1" 405 Method Not Allowed
