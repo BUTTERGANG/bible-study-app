@@ -8,10 +8,13 @@ Notes are AI-generated on first request and cached in the DB.
 """
 
 import json
+import logging
 import os
 from typing import Optional
 
 import anthropic
+
+logger = logging.getLogger("bible-study.cultural-notes")
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -30,18 +33,20 @@ MODEL = "claude-sonnet-4-6"
 _C_CACHE = {"type": "ephemeral"}
 
 _async_client: Optional[anthropic.AsyncAnthropic] = None
+_cached_key: Optional[str] = None
 
 
 def _client() -> anthropic.AsyncAnthropic:
-    global _async_client
+    global _async_client, _cached_key
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="ANTHROPIC_API_KEY is not set. Add it in Replit Secrets to enable AI features.",
+            detail="AI features require ANTHROPIC_API_KEY. In Replit: Tools → Secrets → Add ANTHROPIC_API_KEY.",
         )
-    if _async_client is None:
+    if _async_client is None or api_key != _cached_key:
         _async_client = anthropic.AsyncAnthropic(api_key=api_key)
+        _cached_key = api_key
     return _async_client
 
 
@@ -157,8 +162,8 @@ async def get_chapter_cultural_notes(
                 )
                 db.add(cultural_note)
                 newly_generated.append((v.verse, cultural_note))
-        except Exception:
-            pass  # Skip failed generation, return what we have
+        except Exception as exc:
+            logger.warning("Cultural note generation failed for %s %d:%d — %s", book, chapter, v.verse, exc)
 
     if newly_generated:
         await db.commit()

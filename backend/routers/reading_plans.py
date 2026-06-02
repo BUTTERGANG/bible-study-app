@@ -11,8 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import and_, delete, or_, select, tuple_
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy import delete, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, get_current_user
@@ -141,23 +140,112 @@ BUILTIN_PLAN_TEMPLATES = [
     {"id": "zephaniah-malachi-3", "name": "Zephaniah & Malachi in 3 Days", "description": "Day of the Lord and final OT prophetic voice", "category": "prophets", "duration": 3},
 ]
 
-BUILT_IN_PLANS = {
-    "mccheyne": {
-        "name": "M'Cheyne Bible Reading Plan",
-        "description": "Read the Bible in a year with 4 portions daily (NT, Psalms, OT x2)",
-    },
-    "nt-90": {
-        "name": "New Testament in 90 Days",
-        "description": "Complete the New Testament in 3 months",
-    },
-    "psalms-proverbs": {
-        "name": "Psalms & Proverbs Monthly",
-        "description": "Read through Psalms and Proverbs each month",
-    },
-    "chronological": {
-        "name": "Chronological Bible",
-        "description": "Read the Bible in chronological order over 1 year",
-    },
+BUILT_IN_PLANS = {p["id"]: {"name": p["name"], "description": p["description"], "duration": p["duration"]} for p in BUILTIN_PLAN_TEMPLATES}
+
+# Book lists for each plan category / specific plan
+_PLAN_BOOKS: dict[str, list[str]] = {
+    "bible-365": [b["name"] for b in BOOKS],
+    "bible-180": [b["name"] for b in BOOKS],
+    "bible-90":  [b["name"] for b in BOOKS],
+    "bible-30":  [b["name"] for b in BOOKS],
+    "chronological": [b["name"] for b in BOOKS],
+    "mccheyne": [b["name"] for b in BOOKS],
+    "nt-ot-parallel-365": [b["name"] for b in BOOKS],
+    "nt-90":  [b["name"] for b in BOOKS if b["testament"] == "NT"],
+    "nt-60":  [b["name"] for b in BOOKS if b["testament"] == "NT"],
+    "nt-30":  [b["name"] for b in BOOKS if b["testament"] == "NT"],
+    "nt-21":  [b["name"] for b in BOOKS if b["testament"] == "NT"],
+    "gospels-30":  ["Matthew", "Mark", "Luke", "John"],
+    "gospels-14":  ["Matthew", "Mark", "Luke", "John"],
+    "gospels-daily-365": ["Matthew", "Mark", "Luke", "John"],
+    "matthew-15": ["Matthew"],
+    "mark-7":   ["Mark"],
+    "luke-12":  ["Luke"],
+    "john-10":  ["John"],
+    "ot-180": [b["name"] for b in BOOKS if b["testament"] == "OT"],
+    "ot-90":  [b["name"] for b in BOOKS if b["testament"] == "OT"],
+    "ot-60":  [b["name"] for b in BOOKS if b["testament"] == "OT"],
+    "pentateuch-30":  ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    "pentateuch-15":  ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    "law-15":  ["Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    "genesis-10": ["Genesis"],
+    "genesis-25": ["Genesis"],
+    "exodus-8": ["Exodus"],
+    "deuteronomy-7": ["Deuteronomy"],
+    "psalms-30": ["Psalms"],
+    "psalms-15": ["Psalms"],
+    "psalms-7":  ["Psalms"],
+    "psalms-twice-60": ["Psalms"],
+    "psalms-praise-7": ["Psalms"],
+    "psalms-lament-7": ["Psalms"],
+    "psalms-proverbs": ["Psalms", "Proverbs"],
+    "proverbs-31": ["Proverbs"],
+    "proverbs-15": ["Proverbs"],
+    "proverbs-daily-31": ["Proverbs"],
+    "ecclesiastes-6": ["Ecclesiastes"],
+    "song-4": ["Song of Solomon"],
+    "job-7": ["Job"],
+    "wisdom-30": ["Job", "Psalms", "Proverbs", "Ecclesiastes", "Song of Solomon"],
+    "major-prophets-30": ["Isaiah", "Jeremiah", "Lamentations", "Ezekiel", "Daniel"],
+    "minor-prophets-14": ["Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi"],
+    "minor-prophets-7":  ["Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi"],
+    "isaiah-16": ["Isaiah"],
+    "jeremiah-13": ["Jeremiah"],
+    "ezekiel-12": ["Ezekiel"],
+    "daniel-6": ["Daniel"],
+    "revelation-7": ["Revelation"],
+    "apocalyptic-10": ["Daniel", "Ezekiel", "Zechariah", "Revelation"],
+    "history-30": ["Joshua", "Judges", "Ruth", "1 Samuel", "2 Samuel", "1 Kings", "2 Kings", "1 Chronicles", "2 Chronicles", "Ezra", "Nehemiah", "Esther"],
+    "joshua-6": ["Joshua"],
+    "judges-5": ["Judges"],
+    "samuel-8": ["1 Samuel", "2 Samuel"],
+    "kings-9": ["1 Kings", "2 Kings"],
+    "chronicles-9": ["1 Chronicles", "2 Chronicles"],
+    "acts-14": ["Acts"],
+    "ezra-nehemiah-5": ["Ezra", "Nehemiah"],
+    "ruth-esther-3": ["Ruth", "Esther"],
+    "lamentations-1": ["Lamentations"],
+    "jonah-obadiah-1": ["Jonah", "Obadiah"],
+    "haggai-zechariah-5": ["Haggai", "Zechariah"],
+    "hosea-joel-amos-4": ["Hosea", "Joel", "Amos"],
+    "micah-nahum-habakkuk-3": ["Micah", "Nahum", "Habakkuk"],
+    "zephaniah-malachi-3": ["Zephaniah", "Malachi"],
+    "paul-14": ["Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon"],
+    "paul-7":  ["Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon"],
+    "romans-4": ["Romans"],
+    "corinthians-4": ["1 Corinthians", "2 Corinthians"],
+    "galatians-ephesians-3": ["Galatians", "Ephesians"],
+    "hebrews-4": ["Hebrews"],
+    "general-epistles-5": ["James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude"],
+    "james-1": ["James"],
+    "peter-2": ["1 Peter", "2 Peter"],
+    "john-epistles-2": ["1 John", "2 John", "3 John"],
+    "philippians-colossians-2": ["Philippians", "Colossians"],
+    "thessalonians-2": ["1 Thessalonians", "2 Thessalonians"],
+    "timothy-titus-3": ["1 Timothy", "2 Timothy", "Titus"],
+    "jude-1": ["Jude"],
+    # Thematic plans — use representative passages
+    "christ-ot-21":  ["Isaiah", "Psalms", "Genesis"],
+    "prayers-14":    ["Psalms", "Matthew", "John"],
+    "miracles-10":   ["Matthew", "Mark", "Luke", "John"],
+    "parables-7":    ["Matthew", "Mark", "Luke"],
+    "promises-30":   ["Romans", "Psalms", "Isaiah", "John"],
+    "creation-7":    ["Genesis", "Revelation"],
+    "david-14":      ["1 Samuel", "2 Samuel", "Psalms"],
+    "paul-21":       ["Acts", "Galatians", "Philippians"],
+    "exodus-story-10": ["Exodus"],
+    "armor-3":       ["Ephesians"],
+    "beatitudes-3":  ["Matthew"],
+    "fruit-3":       ["Galatians"],
+    "love-7":        ["1 Corinthians"],
+    "comfort-14":    ["Psalms", "John", "Romans"],
+    "hope-10":       ["Romans", "Psalms"],
+    "faith-7":       ["Hebrews"],
+    "resurrection-7":["Matthew", "Mark", "Luke", "John", "1 Corinthians"],
+    "messianic-14":  ["Isaiah", "Psalms", "Matthew"],
+    "covenant-7":    ["Genesis", "Exodus", "Hebrews"],
+    "kings-14":      ["1 Kings", "2 Kings"],
+    "tabernacle-5":  ["Exodus"],
 }
 
 
@@ -298,6 +386,54 @@ async def start_ai_plan(
 # Detailed plan view
 # ──────────────────────────────────────────────────────────────────
 
+@router.get("/today")
+async def get_today(
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    today = str(date.today())
+
+    # All entries for today across every plan belonging to this user, in one query.
+    days_rows = await db.execute(
+        select(ReadingPlanDay, ReadingPlan.name)
+        .join(ReadingPlan, ReadingPlanDay.plan_id == ReadingPlan.id)
+        .where(ReadingPlanDay.date == today, ReadingPlan.user_id == user.id)
+    )
+    days = days_rows.all()
+    if not days:
+        return {"date": today, "readings": []}
+
+    # One IN-tuple lookup for matching progress rows.
+    keys = [(d.plan_id, d.date, d.reference) for d, _ in days]
+    progress_rows = await db.execute(
+        select(ReadingPlanProgress).where(
+            tuple_(
+                ReadingPlanProgress.plan_id,
+                ReadingPlanProgress.date,
+                ReadingPlanProgress.reference,
+            ).in_(keys)
+        )
+    )
+    progress_by_key = {
+        (p.plan_id, p.date, p.reference): p
+        for p in progress_rows.scalars().all()
+    }
+
+    readings = []
+    for d, plan_name in days:
+        key = (d.plan_id, d.date, d.reference)
+        prog = progress_by_key.get(key)
+        readings.append({
+            "plan_id": d.plan_id,
+            "plan_name": plan_name,
+            "reference": d.reference,
+            "completed": prog is not None and prog.completed_at is not None,
+            "progress_id": prog.id if prog else None,
+        })
+
+    return {"date": today, "readings": readings}
+
+
 @router.get("/{plan_id}")
 async def get_plan_detail(
     plan_id: int,
@@ -368,63 +504,18 @@ async def get_plan_detail(
         },
         "days": [days_by_date[k] for k in sorted(days_by_date.keys())],
     }
-
-
-@router.get("/today")
-async def get_today(
-    db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(get_current_user),
-):
-    today = str(date.today())
-
-    # All entries for today across every plan belonging to this user, in one query.
-    days_rows = await db.execute(
-        select(ReadingPlanDay, ReadingPlan.name)
-        .join(ReadingPlan, ReadingPlanDay.plan_id == ReadingPlan.id)
-        .where(ReadingPlanDay.date == today, ReadingPlan.user_id == user.id)
-    )
-    days = days_rows.all()
-    if not days:
-        return {"date": today, "readings": []}
-
-    # One IN-tuple lookup for matching progress rows.
-    keys = [(d.plan_id, d.date, d.reference) for d, _ in days]
-    progress_rows = await db.execute(
-        select(ReadingPlanProgress).where(
-            tuple_(
-                ReadingPlanProgress.plan_id,
-                ReadingPlanProgress.date,
-                ReadingPlanProgress.reference,
-            ).in_(keys)
-        )
-    )
-    progress_by_key = {
-        (p.plan_id, p.date, p.reference): p
-        for p in progress_rows.scalars().all()
-    }
-
-    readings = []
-    for d, plan_name in days:
-        key = (d.plan_id, d.date, d.reference)
-        prog = progress_by_key.get(key)
-        readings.append({
-            "plan_id": d.plan_id,
-            "plan_name": plan_name,
-            "reference": d.reference,
-            "completed": prog is not None and prog.completed_at is not None,
-            "progress_id": prog.id if prog else None,
-        })
-
-    return {"date": today, "readings": readings}
+class CompleteRequest(BaseModel):
+    reference: str
 
 
 @router.post("/{plan_id}/complete")
 async def complete_reading(
     plan_id: int,
-    reference: str,
+    body: CompleteRequest,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
+    reference = body.reference
     # Verify plan belongs to current user
     plan_check = await db.execute(
         select(ReadingPlan).where(
@@ -450,7 +541,7 @@ async def complete_reading(
         # Not yet recorded — mark complete.
         db.add(ReadingPlanProgress(
             plan_id=plan_id, date=today, reference=reference,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(timezone.utc),
         ))
         completed = True
     elif row.completed_at is not None:
@@ -459,7 +550,7 @@ async def complete_reading(
         completed = False
     else:
         # Recorded but not completed → mark complete.
-        row.completed_at = datetime.utcnow()
+        row.completed_at = datetime.now(timezone.utc)
         completed = True
 
     await db.commit()
@@ -469,48 +560,56 @@ async def complete_reading(
 def _generate_schedule(plan_type: str, start_date: str):
     """Yield (date_str, reference) tuples for the given plan."""
     start = date.fromisoformat(start_date)
+    plan_def = BUILT_IN_PLANS.get(plan_type, {})
+    duration = plan_def.get("duration", 365)
 
-    if plan_type == "psalms-proverbs":
-        for day in range(31):
+    if plan_type == "psalms-proverbs" or plan_type == "proverbs-daily-31":
+        limit = min(duration, 31)
+        for day in range(limit):
             d = str(start + timedelta(days=day))
-            yield d, f"Psalms {day + 1}"
+            if plan_type == "psalms-proverbs":
+                yield d, f"Psalms {day + 1}"
             yield d, f"Proverbs {day + 1}"
         return
 
-    if plan_type == "nt-90":
-        nt_chapters = [
-            f"{b['name']} {ch}"
-            for b in BOOKS if b["testament"] == "NT"
-            for ch in range(1, b["chapters"] + 1)
-        ]
-        for i in range(90):
-            d = str(start + timedelta(days=i))
-            for ref in nt_chapters[i * 3:i * 3 + 3]:
-                yield d, ref
-        return
-
-    if plan_type == "chronological":
-        all_chapters = [
-            f"{b['name']} {ch}"
-            for b in BOOKS
-            for ch in range(1, b["chapters"] + 1)
-        ]
-        total = len(all_chapters)
-        per_day = total / 365
+    # mccheyne — 4 portions per day.
+    if plan_type == "mccheyne":
+        all_chapters = [f"{b['name']} {ch}" for b in BOOKS for ch in range(1, b["chapters"] + 1)]
         for i in range(365):
             d = str(start + timedelta(days=i))
-            for ref in all_chapters[int(i * per_day):int((i + 1) * per_day)]:
+            for ref in all_chapters[i * 4:i * 4 + 4]:
                 yield d, ref
         return
 
-    # mccheyne — simplified: 4 portions per day, sequential.
-    all_chapters = [
-        f"{b['name']} {ch}"
-        for b in BOOKS
-        for ch in range(1, b["chapters"] + 1)
-    ]
-    for i in range(365):
+    # Generic: build chapter list from _PLAN_BOOKS, spread evenly across duration.
+    book_names = _PLAN_BOOKS.get(plan_type)
+    if book_names:
+        book_map = {b["name"]: b for b in BOOKS}
+        chapters = [
+            f"{name} {ch}"
+            for name in book_names
+            if name in book_map
+            for ch in range(1, book_map[name]["chapters"] + 1)
+        ]
+        total = len(chapters)
+        if total == 0:
+            return
+        per_day = total / duration
+        for i in range(duration):
+            d = str(start + timedelta(days=i))
+            start_idx = int(i * per_day)
+            end_idx = int((i + 1) * per_day)
+            if start_idx == end_idx:
+                end_idx = start_idx + 1
+            for ref in chapters[start_idx:min(end_idx, total)]:
+                yield d, ref
+        return
+
+    # Fallback: full Bible over duration.
+    all_chapters = [f"{b['name']} {ch}" for b in BOOKS for ch in range(1, b["chapters"] + 1)]
+    total = len(all_chapters)
+    per_day = total / duration
+    for i in range(duration):
         d = str(start + timedelta(days=i))
-        idx = i * 4
-        for ref in all_chapters[idx:idx + 4]:
+        for ref in all_chapters[int(i * per_day):int((i + 1) * per_day)]:
             yield d, ref

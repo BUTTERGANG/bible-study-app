@@ -30,8 +30,9 @@ function SeasonBadge({ season }) {
 }
 
 export default function LectionaryPanel() {
-  const { setBook, setChapter, setVerse } = useStudyStore()
+  const { setReference } = useStudyStore()
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
+
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['lectionary', selectedDate],
@@ -39,38 +40,34 @@ export default function LectionaryPanel() {
     staleTime: 30 * 60 * 1000,
   })
 
-  function handlePrevDay() {
-    const d = new Date(selectedDate)
-    d.setDate(d.getDate() - 1)
-    setSelectedDate(d.toISOString().split('T')[0])
+  function handlePrev() {
+    if (data?.prev_date) setSelectedDate(data.prev_date)
   }
 
-  function handleNextDay() {
-    const d = new Date(selectedDate)
-    d.setDate(d.getDate() + 1)
-    setSelectedDate(d.toISOString().split('T')[0])
+  function handleNext() {
+    if (data?.next_date) setSelectedDate(data.next_date)
   }
 
-  function handleToday() {
-    setSelectedDate(new Date().toISOString().split('T')[0])
+  function handlePickDate(e) {
+    const val = e.target.value
+    if (val) setSelectedDate(val)
   }
 
   function handleNavigate(citation) {
-    // citation is like "Isaiah 2:1-5"
-    const parts = citation.split(' ')
-    const chapter_verses = parts[parts.length - 1]
-    const chapter = parseInt(chapter_verses.split(':')[0])
-    const book = parts.slice(0, parts.length - 1).join(' ')
-    if (book && chapter) {
-      setBook(book)
-      setChapter(chapter)
-    }
+    // citation formats: "Isaiah 2:1-5", "Psalm 122", "1 Corinthians 15:20-28"
+    const colonIdx = citation.lastIndexOf(':')
+    const spaceBeforeChapter = citation.lastIndexOf(' ', colonIdx === -1 ? undefined : colonIdx)
+    if (spaceBeforeChapter === -1) return
+    const book = citation.slice(0, spaceBeforeChapter).trim()
+    const chapterStr = citation.slice(spaceBeforeChapter + 1).split(':')[0].split('-')[0].trim()
+    const chapter = parseInt(chapterStr, 10)
+    if (book && chapter) setReference(book, chapter)
   }
 
-  const formattedDate = useMemo(() => {
-    const d = new Date(selectedDate + 'T00:00:00')
-    return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  }, [selectedDate])
+  const displayDate = useMemo(() => {
+    const d = new Date((data?.matched_date || selectedDate) + 'T00:00:00')
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+  }, [data?.matched_date, selectedDate])
 
   return (
     <div className="h-full flex flex-col">
@@ -84,32 +81,41 @@ export default function LectionaryPanel() {
         {/* Date navigation */}
         <div className="flex items-center gap-1">
           <button
-            onClick={handlePrevDay}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-            title="Previous day"
+            onClick={handlePrev}
+            disabled={!data?.prev_date}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
+            title={data?.prev_date ?? 'No earlier readings in dataset'}
           >
             <ChevronLeft size={14} />
           </button>
+
+          <span className="flex-1 text-center text-xs font-medium text-gray-600 dark:text-gray-300 truncate px-1">
+            {displayDate}
+          </span>
+
           <button
-            onClick={handleToday}
-            className="flex-1 text-center text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded py-1 truncate px-1"
-          >
-            {formattedDate}
-          </button>
-          <button
-            onClick={handleNextDay}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-            title="Next day"
+            onClick={handleNext}
+            disabled={!data?.next_date}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
+            title={data?.next_date ?? 'No later readings in dataset'}
           >
             <ChevronRight size={14} />
           </button>
-          <button
-            onClick={handleToday}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-            title="Today"
+
+          {/* Calendar picker — wraps a native date input */}
+          <label
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-pointer relative"
+            title="Pick a date"
           >
             <Calendar size={14} />
-          </button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={handlePickDate}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              tabIndex={-1}
+            />
+          </label>
         </div>
 
         {/* Season & Sunday name */}
@@ -128,7 +134,7 @@ export default function LectionaryPanel() {
             )}
             {data.matched_date && data.matched_date !== selectedDate && (
               <p className="text-[10px] text-gray-400 dark:text-gray-500 italic">
-                Showing nearest reading: {data.matched_date}
+                Nearest reading in lectionary data
               </p>
             )}
           </div>

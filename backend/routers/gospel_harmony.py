@@ -113,7 +113,9 @@ async def get_harmony_pericope(pericope_id: str, translation: str = "KJV", db: A
             })
             continue
 
-        parsed = _parse_ref(ref_str)
+        # JSON stores refs as "ch:vv-vv" without the book name — prepend it.
+        full_ref_str = f"{gospel_names[gospel_key]} {ref_str}"
+        parsed = _parse_ref(full_ref_str)
         if not parsed:
             columns.append({
                 "gospel": gospel_key,

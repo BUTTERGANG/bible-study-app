@@ -7,7 +7,7 @@ GET /api/factbook           — list/search entries
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
 import anthropic
@@ -31,18 +31,23 @@ MODEL = "claude-sonnet-4-6"
 _CACHE = {"type": "ephemeral"}
 
 _async_client: Optional[anthropic.AsyncAnthropic] = None
+_cached_key: Optional[str] = None
 
 # Cache TTL — entries older than this are regenerated
 CACHE_TTL_DAYS = 30
 
 
 def _client() -> anthropic.AsyncAnthropic:
-    global _async_client
+    global _async_client, _cached_key
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not set.")
-    if _async_client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI features require ANTHROPIC_API_KEY. In Replit: Tools → Secrets → Add ANTHROPIC_API_KEY.",
+        )
+    if _async_client is None or api_key != _cached_key:
         _async_client = anthropic.AsyncAnthropic(api_key=api_key)
+        _cached_key = api_key
     return _async_client
 
 
@@ -238,7 +243,11 @@ async def get_factbook_entry(
 
     # Return cached entry if fresh and not forcing refresh
     if entry and not refresh:
-        age = datetime.utcnow() - entry.generated_at
+        # SQLite returns naive datetimes; make comparison timezone-safe
+        gen_at = entry.generated_at
+        if gen_at.tzinfo is None:
+            gen_at = gen_at.replace(tzinfo=timezone.utc)
+        age = datetime.now(timezone.utc) - gen_at
         if age < timedelta(days=CACHE_TTL_DAYS):
             return {
                 "entity_name": entry.entity_name,
@@ -262,7 +271,7 @@ async def get_factbook_entry(
     # Upsert into DB
     if entry:
         entry.content = content
-        entry.generated_at = datetime.utcnow()
+        entry.generated_at = datetime.now(timezone.utc)
         entry.entity_type = resolved_type
     else:
         entry = FactbookEntry(
@@ -298,7 +307,7 @@ async def force_generate(request: GenerateRequest, db: AsyncSession = Depends(ge
 
     if entry:
         entry.content = content
-        entry.generated_at = datetime.utcnow()
+        entry.generated_at = datetime.now(timezone.utc)
     else:
         entry = FactbookEntry(
             entity_name=request.entity_name,
@@ -318,7 +327,7 @@ async def force_generate(request: GenerateRequest, db: AsyncSession = Depends(ge
     }
 
 
-@router.get("/")
+@router.get("")
 async def list_entries(
     entity_type: Optional[str] = Query(default=None),
     search: Optional[str] = Query(default=None),
