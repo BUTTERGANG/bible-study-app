@@ -1,119 +1,197 @@
 # Current State of Development
 
-Last updated: 2026-05-16
+Last updated: 2026-06-02
 
 ## What Works
 
-### Database (data/bible.db — 2.24 GB)
+### Database (data/bible.db)
 - **Bible text**: 394,338 verses across 13 translations (KJV, ASV, YLT, BSB, Darby, LEB, NETfree, NHEB, OEB, Rotherham, Webster, Wycliffe, KJVA)
-- **Full-text search**: FTS5 indexes on bible_verses and commentary_entries — fast full-text search works
+- **Full-text search**: FTS5 indexes on `bible_verses`, `commentary_entries`, and `library_pages`
 - **Commentary**: 539,318 entries from 15 sources (TSK, Clarke, Luther, KD, MHCC, Wesley, JFB, MHC, Geneva, Barnes, RWP, Burkitt, PNT, Lightfoot, TDavid)
-- **Lexicon**: 726 clean Dodson Greek entries (rebuilt 2026-05-16 — see "Known Gaps" below)
-- **Greek interlinear**: 137,442 words — full NT (STEPBible TAGNT, loaded 2026-05-16)
-- **Hebrew interlinear**: 264,529 words — full OT (STEPBible TAHOT, loaded 2026-05-16)
-- **Library catalog**: 246 books catalogued
+- **TSK cross-references**: 28,892 entries — properly re-ingested from SWORD ThML `<scripRef>` tags (see `ingest/reingest_tsk.py`); previous data was corrupted keyword fragments
+- **Dictionary**: 85,664 entries across 5 sources — Easton (3,963), ISBE (9,349), Smith (4,639), Nave (5,322), Webster 1828 (62,391); re-ingested 2026-06-02 (see `ingest/reingest_dictionaries.py`)
+- **Factbook**: 119 pre-seeded entries (43 people, 27 places, 30 themes, 19 events) sourced from Easton/ISBE; additional entries AI-generated on demand (see `ingest/seed_factbook.py`)
+- **Lexicon**: 726 clean Dodson Greek entries (re-ingest needed for full Strong's — see Known Gaps)
+- **Greek interlinear**: 137,442 words — full NT (STEPBible TAGNT)
+- **Hebrew interlinear**: 264,529 words — full OT (STEPBible TAHOT)
+- **Library catalog**: 246 books catalogued; `library_pages` FTS5 table ready (pages must be extracted per DATA.md)
+- **User accounts**: Full multi-user auth with JWT (`users` table via migration 0002)
+- **AI conversations**: Persisted per-reference (`ai_conversations` table via migration 0003)
+- **Media files**: Image upload + serving (`media_files` table via migration 0004)
+- **Groups**: Collaborative study groups (`groups`, `group_members`, `group_invites`, `group_notes`, `group_shared_items` via migration 0006)
+- **Doctrine entries**: Doctrine/systematic theology table (migration 0007)
+- **Reading plans**: Extended with type, goal, day labels, and descriptions (migrations 0008–0009)
 
-### Backend — 40 API routes, proper Python package
+### Backend — 35+ API routers, proper Python package
 Located in `backend/`, importable as `backend.main:app`. Launch with
-`python -m uvicorn backend.main:app` (the old `cd backend` hack is gone).
+`python -m uvicorn backend.main:app`.
 
-Routers (one resource per file):
-- `routers/health.py` — `/api/health`, `/api/auth/status` (DB-readiness aware)
-- `routers/bible.py` — chapter/verse retrieval, translation list, compare
-- `routers/commentary.py` — verse + chapter commentary, multi-source
-- `routers/search.py` — FTS5 across Bible + commentary (FTS availability detected at startup, not via try/except)
-- `routers/notes.py` — verse/chapter notes (queried by `book` + `chapter` + optional `verse`)
-- `routers/highlights.py` — atomic UPSERT via SQLite ON CONFLICT (no race)
-- `routers/bookmarks.py`
-- `routers/reading_plans.py` — built-in plans, today's readings (single-query, no N+1), completion
-- `routers/word_study.py` — Greek/Hebrew per-verse word lookup
-- `routers/lexicon.py` — Strong's entries, occurrences
-- `routers/library.py` — book catalog + page fetch (prefers pre-extracted `library_pages` table, falls back to live PyMuPDF)
-- `routers/dictionary.py` — dictionary lookup
-- `routers/ai.py` — Claude streaming endpoints (auth + rate-limited at the router level)
+Routers:
+- `health.py` — `/api/health`, `/api/auth/status`
+- `users.py` — register, login, profile (JWT auth)
+- `bible.py` — chapter/verse retrieval, translation list, compare
+- `commentary.py` — verse + chapter commentary, multi-source
+- `search.py` — FTS5 across Bible + commentary + library (detected at startup)
+- `notes.py` — verse/chapter notes (CRUD, per-user)
+- `highlights.py` — atomic UPSERT via SQLite ON CONFLICT
+- `bookmarks.py` — bookmark CRUD
+- `reading_plans.py` — 101 built-in plan templates all startable, generic chapter scheduler, custom plans, today's readings, completion tracking, AI-generated plans
+- `ai_reading_plans.py` — AI-generated personalized reading plans
+- `word_study.py` — Greek/Hebrew per-verse word lookup
+- `lexicon.py` — Strong's entries, occurrences
+- `library.py` — book catalog + page fetch (prefers `library_pages`, falls back to PyMuPDF)
+- `dictionary.py` — dictionary lookup (table populated after re-ingest)
+- `ai.py` — Claude streaming endpoints: study, explain, outline, cross-refs, word study, topic, sermon, discussion questions
+- `ai_conversations.py` — persisted AI chat history per reference
+- `book_intros.py` — AI-generated book introductions
+- `cultural_notes.py` — AI-generated cultural context notes
+- `factbook.py` — factbook (people, places, themes)
+- `doctrine.py` — doctrine/systematic theology entries
+- `lectionary.py` — Revised Common Lectionary readings by date with prev/next navigation
+- `lectionary.py` — RCL entries with `prev_date`/`next_date` navigation + nearest-date fallback
+- `gospel_harmony.py` — parallel Gospel passages
+- `nt_ot.py` — NT quotations of OT passages
+- `timeline_maps.py` — biblical timeline events + geographic places (Leaflet)
+- `memorize.py` — memorization session tracking
+- `prayer.py` — prayer journal entries
+- `sermons.py` — AI sermon generation (audience-targeted)
+- `sermon_series.py` — multi-sermon series management
+- `study_projects.py` — study projects/outlines
+- `groups.py` — groups CRUD, invitations, group notes, item sharing, activity feed (17 endpoints)
+- `media.py` — file upload + serving (IDOR-protected)
+- `annotations.py` — passage annotations
+- `textual.py` / `textual_notes.py` — textual criticism notes
+- `counseling.py` — pastoral counseling resources
+- `dashboard.py` — aggregated dashboard data
 
 Cross-cutting:
-- `backend/auth.py` — optional shared-secret middleware. When `APP_PASSWORD` is set, write endpoints and AI endpoints require `Authorization: Bearer <pw>` or `X-App-Password`.
-- `backend/rate_limit.py` — in-memory per-IP token bucket on `/api/ai/*` (defaults: 15/min, 120/hr).
-- `backend/database.py` — async engine + `db_status()` helper for the health endpoint and the startup banner.
+- `backend/auth.py` — JWT auth (`users` table) + optional shared-secret (`APP_PASSWORD`). Write + AI endpoints require auth. Timing-safe password comparison via `hmac.compare_digest`. Auth rate limiter (5/min, 30/hr) on register/login.
+- `backend/rate_limit.py` — per-IP token bucket on `/api/ai/*` (defaults: 15/min, 120/hr)
+- `backend/database.py` — async engine + `db_status()` helper
+- `SecurityHeadersMiddleware` — CSP, X-Frame-Options, and other security headers on all responses
+- `GZipMiddleware` — compression for responses ≥ 500 bytes
 
 ### Frontend (pre-built in frontend/dist/)
-- Bible reader with chapter/verse navigation
-- **URL is canonical** (`/{translation}/{book}/{chapter}/{verse?}` via React Router) — refresh, share, browser-back all work
-- Right panel with Commentary, AI Study, Notes, Word Study tabs — code-split so the AI bundle (164 KB) loads only when opened
-- Left sidebar for book/chapter selection
-- Translation selector (auto-loads from API, single shared cache entry)
-- Verse context menu (right-click for options)
-- Full-text search modal (Cmd/Ctrl+K, lazy-loaded)
-- Highlight colors per verse (server enforces uniqueness)
-- Auth gate component that prompts for password when `APP_PASSWORD` is configured
-- Zustand persists UI preferences only (theme, font size, open panel) — navigation lives in the URL
+
+#### Navigation & Layout
+- **URL-canonical navigation** — `/{translation}/{book}/{chapter}/{verse?}` via React Router; refresh/share/back all work
+- **Full-screen Bible Browser** at `/browse` — testament tabs (All/OT/NT), book groups, grid/list toggle, search filter, recently visited strip, chapter picker, jump-to-verse
+- **Sidebar** — quick-action buttons with active state (Browse, Groups, Study, etc.)
+- **TopBar** — user profile display, sign-out dropdown, pending group invitations badge, sync status indicator
+
+#### Right Panel — 5 Category Tabs, 25+ Panels (all code-split / lazy-loaded)
+
+**Scripture category:**
+- Commentary (15 sources, 539K entries)
+- Insights (AI-generated passage insights)
+- Passage Guide (unified commentary + word study + cross-refs in one view)
+- Cross-Reference panel
+- NT/OT connections panel
+- Compare (side-by-side translation comparison with sync scroll + word diff)
+- Cultural Context (AI-generated cultural notes)
+- Gospel Harmony
+- Doctrine panel
+
+**Reference category:**
+- Word Study (Greek/Hebrew interlinear words per verse, Strong's, morphology, gloss)
+- Dictionary panel
+- Factbook (people, places, themes)
+- Library reader (book catalog, page reader, AI summarizer)
+- Topical Search
+- Lectionary (RCL readings by date, season/cycle badge, prev/next navigation)
+
+**Visual category:**
+- Timeline panel
+- Maps panel (Leaflet)
+- Dashboard (home/overview)
+
+**Study category:**
+- Notes (CRUD, inline media upload, markdown rendering, lightbox)
+- Bookmarks (view + manage)
+- Reading Plans (frontend panel — 101 built-in templates + custom + AI-generated + progress tracking)
+- Memorize (memorization sessions)
+- Prayer journal
+- Study Builder (outlines, discussion questions generator)
+- Counseling resources
+
+**Ministry category:**
+- AI Assistant (streaming, prompt caching, conversation history persisted per reference)
+- Sermon Builder (audience-targeted AI sermon generation)
+- Preaching Series (multi-sermon series management)
+- Groups & Collaboration (group list, invites badge, group notes, item sharing, activity feed)
+- Notifications settings
+
+#### PWA & Offline
+- Service worker registered at `/sw.js` (checks for updates on every page load)
+- **Offline mutation queue** — `useOfflineSync` hook manages IndexedDB queue (`logos-offline-queue`), auto-flushes on reconnect
+- **SyncStatus** indicator in TopBar — shows online/offline/syncing/conflict state with pending-item badge
+- Offline banner in app chrome with queue count and conflict notice
+
+#### Other Frontend Features
+- **Print / PDF export** — styled print window preserving verse text, highlights, and notes; `@media print` CSS hides UI chrome
+- **Verse context menu** (right-click) — highlights, notes, bookmarks, share to group, print/PDF
+- **DOMPurify** sanitizes all `dangerouslySetInnerHTML` sites (XSS protection)
+- Full-text search modal (Cmd/Ctrl+K, lazy-loaded) with fuzzy Bible reference parsing + did-you-mean
+- Lemma inline display — toggle, popup, per-verse lazy loading
+- Dark mode with flash prevention; complete dark variants across all panels
+- Translation selector (auto-loads from API)
+- Auth gate (prompts for JWT login; stashes token in localStorage)
+- Zustand persists UI preferences only (theme, font size, open panel)
 
 ### AI Assistant
-- Streaming responses via Claude `claude-sonnet-4-6`
-- **Prompt caching** (`cache_control`) on the system prompt and chapter-text block — multi-turn conversations don't re-bill the same tokens
-- Auto-includes the currently visible chapter from the React Query cache
-- Per-IP rate limiting, optional shared-secret auth
-- Modes: ask a question, explain passage, word study, topic study, outline, cross-references
-- Requires `ANTHROPIC_API_KEY` (see ENVIRONMENT.md)
+- Streaming responses via `claude-sonnet-4-6`
+- **Prompt caching** (`cache_control`) on system prompt + chapter-text block
+- Auto-includes current chapter from React Query cache
+- Per-IP rate limiting + JWT auth
+- Modes: ask, explain, outline, cross-references, word study, topic study, sermon, discussion questions
+- **Conversation history persisted** per reference (book/chapter) in `ai_conversations` table
+- AI-generated reading plans, book introductions, cultural notes, passage insights
 
-### Tests, lint, migrations
-- `make test` — 26 pytest tests covering Bible read paths, search FTS + snippet centering, notes/highlights upsert, book-name resolution, auth gate, and the SPA-swallows-API regression
-- `make lint` — ruff (`pyproject.toml`)
-- `make frontend-lint` — ESLint flat config (`frontend/eslint.config.js`)
-- `make migrate` — alembic. One baseline migration (`alembic/versions/0001_initial_schema.py`) brings existing DBs up to current schema; idempotent
+### Security (from 2026-05-27 audit)
+- DOMPurify on all `dangerouslySetInnerHTML` (XSS)
+- Auth + ownership checks on reading-plan completion and media file serving (IDOR)
+- `JWT_SECRET_KEY` required at startup
+- Timing-safe `APP_PASSWORD` comparison
+- Auth rate limiter (5/min, 30/hr)
+- SSE error messages sanitized (no raw exception leaks)
+- `SecurityHeadersMiddleware` (CSP, X-Frame-Options, etc.)
+- `GZipMiddleware` with 500-byte minimum
 
-## Known Gaps / Broken
+### Migrations (alembic/)
+| # | File | Contents |
+|---|------|----------|
+| 0001 | `initial_schema.py` | Core tables: verses, commentary, notes, highlights, bookmarks, reading plans, lexicon, library |
+| 0002 | `user_accounts.py` | `users` table + JWT auth |
+| 0003 | `ai_conversations.py` | Persisted AI chat history |
+| 0004 | `media_files.py` | Image upload storage |
+| 0005 | `library_pages_fts_and_fk_cascades.py` | FTS5 on `library_pages`, CASCADE on 14+ FK columns |
+| 0006 | `groups.py` | Groups, members, invites, group notes, shared items |
+| 0007 | `doctrine_entries.py` | Doctrine/systematic theology table |
+| 0008 | `reading_plan_type_goal.py` | Reading plan type + goal columns |
+| 0009 | `reading_plan_day_label_desc.py` | Day label + description columns (untracked) |
+
+### Tests, lint, startup
+- `make test` — pytest (backend/tests)
+- `make lint` — ruff
+- `make frontend-lint` — ESLint flat config
+- `make migrate` — alembic upgrade head
+- `start.sh` — Python deps check, frontend build (skipped if up-to-date), port cleanup, uvicorn launch. `LD_LIBRARY_PATH` selects gcc-13+ lib (GLIBCXX ≥ 3.4.32 for Node.js 20)
+
+## Known Gaps / Still Broken
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Greek/Hebrew interlinear | **Working** | 137K Greek + 264K Hebrew words loaded from STEPBible (2026-05-16). Word Study tab shows original language words per verse with Strong's, morphology, transliteration |
-| Dictionary entries | Empty | `dictionary_entries` table is 0 rows. Re-run `ingest/ingest_sword.py` against the SWORD source data — the routing bug is now fixed (2026-05-16) so dictionary modules (Easton, ISBE, Nave, Smith, Webster1828) will populate this table |
-| Lexicon coverage | Reduced | Down from 94K corrupted rows to 726 clean Dodson entries. The earlier ingest used a broken zLD parser that produced binary garbage in `definition` and put dictionary headwords in `strongs_num`. Both bugs are now fixed in `ingest/ingest_sword.py`. Re-run the ingest against SWORD source data to restore full Strong's coverage (Greek + Hebrew) |
-| Library PDF reading | Partially works | PDFs are not on this server. Production should run `python -m ingest.extract_pdf_pages` once to populate `library_pages`; after that, the API serves without PyMuPDF |
-| PyMuPDF runtime | Brittle on Nix | `libstdc++.so.6` mismatch handled by `start.sh` via `LD_LIBRARY_PATH`. Pre-extracted pages avoid the dependency entirely |
-| Word study panel | **Working** | Full Greek/Hebrew word data now loaded. Click any verse, open Word Study tab to see original language words with Strong's, morphology, transliteration, gloss |
-| Compare-translations UI | Not wired | API endpoint exists (`/api/bible/compare-translations/...`); no UI surface yet |
-| Reading-plan UI | Not wired | All 3 backend endpoints work (built-in, start, today, complete); needs a frontend tab |
+| Lexicon full coverage | Reduced | 726 clean Dodson entries. Re-run `ingest/ingest_sword.py` with `StrongsGreek`/`StrongsHebrew` modules to restore full Strong's |
+| Library PDF pages | Not extracted | Run `python -m ingest.extract_pdf_pages` to populate `library_pages`; reader then works without PyMuPDF |
+| Audio player | UI exists | `AudioPlayer` component present; backend audio serving not confirmed |
+| AI features | Need API key | All `/api/ai/*` endpoints require `ANTHROPIC_API_KEY` in Replit Secrets. Factbook/cultural notes/book intros/doctrine also AI-generated |
 
-## Data Ingestion Gap
+## Ingest Scripts
 
-The `ingest/` folder has these scripts:
-- `ingest_sword.py` — loads SWORD module ZIPs (Bible translations, commentaries, lexica, dictionaries). Bible + commentary loaded ✅; lexicon/dictionary needs re-ingest after 2026-05-16 parser + routing fix
-- `ingest_stepbible.py` — loads STEPBible TSV files (Greek/Hebrew tagged text) ✅ done — parser fixed and 401K words loaded
-- `ingest_pdfs.py` — indexes PDF books into `library_books` table ❌ not done (needs PDF files)
-- `extract_pdf_pages.py` — pre-extracts PDF page text into `library_pages` so the production app doesn't need PyMuPDF at runtime
-
-### 2026-05-16 ingest fixes (re-run required for lexicon/dictionary)
-
-`ingest/ingest_sword.py` had two latent bugs:
-
-1. **Wrong zLD parser.** `_read_zld_module` used a heuristic block-to-key alignment (`entries_per_block = len(keys) // num_blocks`) that doesn't match SWORD's actual format. Each `.idx` record pointed to a `.dat` header containing the real `<block_num>:<entry_idx>` pointer — that path is now used. The previous parser produced binary garbage in ~50% of `definition` fields.
-2. **Wrong table routing.** All lexicon/dictionary modules were dumped into `lexicon_entries` regardless of whether they were Strong's-keyed or term-keyed. `Easton`, `ISBE`, `Nave`, `Smith`, `Webster1828` now go to `dictionary_entries`; `StrongsGreek`, `StrongsHebrew`, `AbbottSmith`, `Dodson` stay in `lexicon_entries`.
-
-The corrupted rows have already been deleted from `data/bible.db` (94,063 → 726 clean entries). To restore full coverage, re-run on a host with the SWORD library:
-
-```bash
-LIBRARY_PATH=/path/to/library python3 -m ingest.ingest_sword
-```
-
-Greek/Hebrew word study is now live. If the DB is ever wiped and needs to be rebuilt, re-download the STEPBible TSV files and run:
-```bash
-LIBRARY_PATH=/home/runner/workspace/data \
-  DATA_PATH=/home/runner/workspace/data \
-  python3 ingest/ingest_stepbible.py
-```
-The 6 TSV files (TAGNT Mat-Jhn, TAGNT Act-Rev, TAHOT Gen-Deu, TAHOT Jos-Est, TAHOT Job-Sng, TAHOT Isa-Mal) are downloaded from the STEPBible GitHub repo at no cost (CC BY 4.0) — see `THE-VISION/DATA.md` for the download commands.
-
-To make library books readable in production:
-```bash
-PYTHONPATH=.venv/lib/python3.11/site-packages \
-  python3 -m ingest.extract_pdf_pages [--book-id N] [--force]
-```
-
-## Environment Issues
-
-- Python packages installed to `.venv/lib/python3.11/site-packages/` (Nix prevents system-wide installs)
-- `start.sh` sets `PYTHONPATH` automatically and skips reinstall when packages are already importable
-- `ANTHROPIC_API_KEY` must be set in Replit Secrets (Tools → Secrets)
-- Optional: `APP_PASSWORD`, `CORS_ORIGINS`, `AI_RATE_LIMIT_PER_MIN`, `AI_RATE_LIMIT_PER_HOUR` — see ENVIRONMENT.md
+| Script | Purpose | When to run |
+|--------|---------|-------------|
+| `ingest/reingest_tsk.py` | Re-ingest TSK cross-references from SWORD ThML | After DB reset; downloads TSK.zip from CrossWire automatically |
+| `ingest/reingest_dictionaries.py` | Re-ingest Easton/ISBE/Smith/Nave/Webster1828 from SWORD zLD | After DB reset; downloads all 5 modules from CrossWire automatically |
+| `ingest/seed_factbook.py` | Pre-seed factbook from dictionary data | After reingest_dictionaries; run once |
+| `ingest/ingest_sword.py` | Full SWORD ingest (Bibles, commentaries, lexicons) | Fresh install with SWORD zips in `library/sword/` |
+| `ingest/ingest_stepbible.py` | Greek/Hebrew interlinear words | Fresh install with STEPBible TSV files |

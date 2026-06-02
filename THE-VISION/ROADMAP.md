@@ -1,128 +1,117 @@
 # Roadmap
 
-Last updated: 2026-05-21
+Last updated: 2026-06-02
 
-> **See also**: `FEATURE-GAPS.md` for a full Logos Bible Software comparison and prioritized gap analysis with 18 backlog items across 6 categories.
+> **See also**: `FEATURE-GAPS.md` for a Logos Bible Software comparison and gap analysis.
 
-## Recently Shipped (2026-05-16 — part 2)
+---
 
-- **Greek/Hebrew interlinear live** — 137,442 NT Greek + 264,529 OT Hebrew words ingested from STEPBible (CC BY 4.0). Word Study tab now shows original language words with Strong's number, morphology, transliteration, and English gloss for every verse
-- **Fixed `ingest_stepbible.py` parser** — rewrote column mapping and ref parsing to match the actual Translators Amalgamated TSV format (previous version was written for an older format); added `parse_strongs_greek` and `parse_strongs_hebrew` helpers to cleanly extract Strong's codes from compound fields like `H9003/{H7225G}`
+## Recently Shipped
 
-## Recently Shipped (2026-05-16 — part 1)
+### 2026-06-02 — Data Reingest, Bug Fixes & Cross-Reference UI
 
-- **Ingest: fixed zLD parser** — `_read_zld_module` in `ingest/ingest_sword.py` now uses the `.dat` entry header (`KEY\n<block_num>:<entry_idx>\n`) to locate text, eliminating binary garbage that corrupted ~50% of `lexicon_entries` definitions
-- **Ingest: fixed lexicon/dictionary routing** — dictionary modules (Easton, ISBE, Nave, Smith, Webster1828) now route to `dictionary_entries`; Strong's lexica (StrongsGreek, StrongsHebrew, AbbottSmith, Dodson) stay in `lexicon_entries`
-- **DB cleanup** — removed 93,337 corrupted `lexicon_entries` rows; normalized `strongs_num` field; 726 clean Dodson entries remain (full coverage restored after re-ingest against SWORD source data)
-- **Frontend empty states** — CommentaryPanel and WordStudyPanel no longer show internal ingest script paths to end users; copy is now user-facing
-- **`.gitignore` cleaned** — `frontend/dist/` added (was previously tracked); stale built assets untracked; `backend/*.db*` patterns added
+#### Data
+- **TSK cross-references re-ingested** (`ingest/reingest_tsk.py`) — previous data was corrupted keyword fragments ("God.gave.that whosoever."); now properly parses SWORD ThML `<scripRef>` tags and stores real verse citations ("Luke 2:14; Romans 5:8; Genesis 22:12; …") — 28,892 entries across all 66 books
+- **Dictionary populated** (`ingest/reingest_dictionaries.py`) — 85,664 entries from 5 SWORD modules: Easton (3,963), ISBE (9,349), Smith (4,639), Nave (5,322), Webster 1828 (62,391); fixed two parser bugs (8-byte zdx records, CRLF key termination)
+- **Factbook seeded** (`ingest/seed_factbook.py`) — 119 pre-cached entries (43 people, 27 places, 30 themes, 19 events) sourced from Easton/ISBE so the panel works without an AI key
+- **Reading plans expanded** — `BUILT_IN_PLANS` now covers all 101 templates (was 4); generic chapter scheduler auto-distributes any book list across any duration
 
-## Recently Shipped (2026-05-15 refactor)
+#### Bug Fixes
+- **Lectionary date picker stuck** — removed `useEffect` that snapped `selectedDate` back to `matched_date` on every calendar pick; picker now holds the user's chosen date
+- **Cross-reference numbered books** — regex updated to capture `1 Cor`, `2 Ki`, `1 Sam` etc. (was anchored to `[A-Z]`, missing digit-prefixed books in graph and list links)
+- **Gospel Harmony 0 verses** — refs in `gospel_harmony.json` are stored as `"1:26-38"` (no book); fix prepends the gospel name before parsing so verses load correctly
+- **Cultural notes 500 error** — missing `logger` import caused crash on every request; added `logging` import + logger instance
+- **Factbook 500 on cached entries** — SQLite returns naive datetimes; `datetime.now(timezone.utc) - entry.generated_at` raised `TypeError`; fix makes comparison timezone-safe
 
-- Backend is now a real Python package; `sys.path` hacks removed across all routers
-- Notes / highlights / bookmarks / library / dictionary / word-study / lexicon routers split into single-resource files
-- Optional shared-secret auth (`APP_PASSWORD`) + per-IP AI rate limit
-- Anthropic prompt caching (`cache_control`) on system prompt + chapter-text block
-- AI Assistant auto-includes chapter text from React Query cache
-- URL routing — passages are shareable at `/{translation}/{book}/{chapter}/{verse?}`
-- `react-markdown` replaces the custom 138-line renderer; code-split right-panel tabs
-- Schema: `Highlight` UNIQUE constraint, normalized `reading_plan_days` and `library_pages` tables, dropped denormalized `reference` columns and unused `Study` table
-- Alembic configured with baseline migration; 26 pytest tests; ruff + ESLint configs; Makefile
+#### Cross-Reference Panel Redesign
+- **OT/NT pill chips** — replaced accordion + text-blob list with flat colored chip groups (blue = NT, violet = OT); all refs visible immediately with no expand clicks
+- **Verse peek panel** — hover any chip to see the verse text inline without navigating; fetches via `api.getVerse` with React Query caching; includes "Open" button to navigate
+- **Polished graph view** — two-line node labels (book name + ch:v for readability), hover highlights matching testament color, cleaner integrated legend with actual counts
+- **View toggle always visible** — toggle no longer hidden until data loads (was causing layout shift)
 
-## Priority 1 — Complete Core Study Features
+### 2026-06-02 — Earlier
+- **Lectionary `dateInputRef` fix** — removed stray ref that crashed the Lectionary panel render
+- **Node.js / GLIBCXX fix** — `start.sh` now selects gcc-13+ lib (GLIBCXX ≥ 3.4.32) so the frontend build succeeds under Node.js 20
 
-### 1.1 Greek/Hebrew Interlinear ✅ DONE
-- 137K Greek words (full NT) + 264K Hebrew words (full OT) loaded from STEPBible
-- Word Study tab live — click any verse to see original language breakdown
-- Next step: clicking a word should deep-link to Strong's lexicon entry and show all occurrences across the Bible (backend `/api/lexicon/strongs/{num}` + `/api/lexicon/occurrences/{num}` already exist; the UI shows the data but could be richer)
+### 2026-05-29 — Sprint 7 + Polish
+- **Bible Browser** (`/browse` full-screen route) — testament tabs, book groups, grid/list toggle, search filter, recently visited strip, chapter picker, jump-to-verse
+- **Print / PDF export** — styled print window with verse text, highlights, and notes; `@media print` CSS; "Print / PDF" in verse context menu
+- **HEAD request support** — preview / link-unfurling tools can probe the server without fetching a full response
+- **Embedding-friendly headers** — removed `X-Frame-Options: DENY` and aggressive cache-control headers for embed/preview use cases
+- **Service worker crash fix** — SW no longer crashes when it receives an HTML response it can't parse as JSON
 
-### 1.2 Biblical Dictionary
-- `dictionary_entries` table is empty but routing is now correct (2026-05-16 fix)
-- Re-run `ingest/ingest_sword.py` against SWORD source data — Easton, ISBE, Nave, Smith, Webster1828 will populate this table
-- UI hookup (`api.searchDictionary`, `api.getDictionaryEntry`) already exists in `api/client.js`; needs a frontend panel to surface it
+### 2026-05-29 — Groups & Collaboration
+- **Full-stack Groups system** — 5 new DB models (Group, GroupMember, GroupInvite, GroupNote, GroupSharedItem), migration 0006, 17 new API endpoints
+- **GroupsPanel** — right-panel tab: group list, pending invites, activity feed
+- **CreateGroupModal** + **GroupDetail** (Feed/Notes/Members/Settings tabs)
+- **GroupNoteEditor** + **InviteManager** (email-based invitations with auto-add if user exists)
+- **ShareToGroupButton** — share personal highlights/notes into groups
+- **TopBar** user profile display + sign-out dropdown + pending invitations badge
 
-### 1.3 Reading Plan UI
-- Backend fully implemented (4 built-in plans + custom + today + complete + delete)
-- No dedicated frontend panel exists yet — add a new tab in `RightPanel` or a top-level route
-- Today's readings already available at `/api/reading-plans/today`
+### 2026-05-27 — Security Audit + Offline Sync
+- **Security hardening** — DOMPurify on all `dangerouslySetInnerHTML`, auth + ownership checks on reading plan + media endpoints (IDOR), `JWT_SECRET_KEY` required at startup, timing-safe APP_PASSWORD comparison, auth rate limiter (5/min 30/hr), sanitized SSE error messages, `SecurityHeadersMiddleware`, `GZipMiddleware`
+- **Migration 0005** — FTS5 on `library_pages` + CASCADE on 14+ FK columns
+- **Offline mutation queue** — `useOfflineSync` hook, IndexedDB queue auto-flushes on reconnect
+- **SyncStatus** component in TopBar — online/offline/syncing/conflict indicator with badge count
 
-## Priority 2 — Frontend UX Improvements
+### 2026-05-26 — Sprint 5–7 Features
+- **Cultural Context Notes** — AI-generated cultural notes panel + `/api/cultural-notes` endpoint
+- **Passage Comparison View** — side-by-side translation compare with sync scroll and word diff
+- **Study button** in TopBar + Quick Actions in Sidebar for discoverability
+- **Lemma inline display** — toggle, popup, per-verse lazy loading in BibleReader
+- **AI resource summarizer** — "Summarize" button in LibraryReader
+- **Inline media in notes** — image upload, markdown rendering, lightbox
+- **Fuzzy Bible search** — client-side reference parsing with did-you-mean suggestions
+- **Discussion questions generator** — in StudyBuilder
 
-### 2.1 Translation compare view
-- `/api/bible/compare-translations/{book}/{chapter}/{verse}` already works
-- Add a UI toggle to show multiple translations side-by-side for the current verse
-- Could live as a new RightPanel tab or as an inline expansion on verse-select
+### 2026-05-21 — Dark Mode + Polish
+- Dark mode flash prevention, MapPanel dark-mode variants, print styles
+- RightPanel: NotificationSettings panel, TopBar audio controls
 
-### 2.2 Commentary source picker
-- User should be able to select which commentary source(s) to show
-- Currently defaults to all sources — can get verbose for popular verses
-- Backend accepts `?sources=` already; surface it in `CommentaryPanel.jsx`
+### 2026-05-16 — Sprint 4 (Insights, Study Builder, etc.)
+- Insights sidebar (AI passage insights), Study Builder (outlines, discussion questions), Memorization panel, Prayer Journal, Dashboard, Sharing cards, Book introductions
+- Sermon Builder (audience-targeted AI), Cross-reference graph, Library AI context, Reverse interlinear
 
-### 2.3 Verse sharing / export
-- URL-routing already makes references shareable. Add a "Copy link" action to `VerseContextMenu`
-- Export a passage + notes as formatted text/markdown
+### 2026-05-15 — Sprint 2–3 + Foundation
+- Topical Search panel, Library reader + AI summarizer, PWA service worker, offline support
+- AI conversation history persisted per reference (book/chapter)
+- Passage Guide unified view (commentary + word study + cross-refs)
+- AI outline generation saved to notes
+- Backend refactored to Python package; URL-canonical navigation; Alembic migrations; JWT auth; prompt caching
 
-### 2.4 Bookmarks panel
-- Bookmark mutation is wired in the verse context menu, but there's no UI to view/manage bookmarks
-- Add a fifth RightPanel tab, or a top-bar dropdown
+---
 
-## Priority 3 — Enhanced AI
+## Remaining Gaps
 
-### 3.1 AI-generated study outlines saved to notes
-- The `/api/ai/outline` endpoint returns structured outlines
-- Allow saving these directly as new notes (use the existing notes API)
+### P0 — Unlock AI Features
 
-### 3.2 Cross-reference map
-- Visualize cross-references as a graph (verse → related verses)
-- `/api/ai/cross-references` already returns them as text
+**Add ANTHROPIC_API_KEY to Replit Secrets**
+- Zero effort — Replit → Tools → Secrets → Add `ANTHROPIC_API_KEY`
+- Unlocks: AI assistant, explain/outline/insights, cultural notes, book intros, doctrine, factbook generation, sermon builder, study builder, AI reading plans, dashboard reflection
 
-### 3.3 Conversation history persistence
-- Currently AI chat state is in-memory per-component and resets on chapter change
-- Optional: persist conversation snapshots tied to a reference
+### P1 — Data
 
-## Priority 4 — Library & PDF
+**Re-ingest full Strong's lexicon**
+- `lexicon_entries` has 726 Dodson entries; `StrongsGreek` + `StrongsHebrew` SWORD modules needed
+- Fix: run `ingest/ingest_sword.py` targeting those modules (CrossWire download available)
+- Unlocks: full Strong's definitions in Word Study panel
 
-### 4.1 Production library readability
-- `ingest/extract_pdf_pages.py` exists. Run it (one-time) wherever PDFs live, then ship the resulting `library_pages` rows
-- Production then serves library content without PyMuPDF at runtime
-- For the in-app reader UI, see 4.2
+**Extract library PDF pages**
+- 246 books catalogued; `library_pages` FTS5 table ready but empty
+- Fix: run `python -m ingest.extract_pdf_pages` on a host with the PDFs
+- Unlocks: in-app library reader + FTS library search
 
-### 4.2 In-app library reader
-- With pages pre-extracted, build a simple paginated reader component
-- Link commentary/library cross-references to jump to relevant book sections
-- Add FTS5 over `library_pages.text` for searchable library content
+### P2 — Audio
 
-## Priority 5 — Infrastructure
+**Audio backend for AudioPlayer**
+- `AudioPlayer` component exists in the frontend
+- Need: audio file serving endpoint + Bible audio source
 
-### 5.1 Real multi-user auth
-- `APP_PASSWORD` is shared-secret only. For multi-user with separate notes, swap in proper user accounts
-- Would require user IDs on `notes`/`highlights`/`bookmarks`/`reading_plans` — meaningful migration
+### P3 — Infrastructure
 
-### 5.2 Offline / PWA
-- Frontend can be made a PWA with service worker
-- Cache current chapter + commentary for offline use
-- React Query already de-dupes — relatively cheap to add
+**Automated test coverage**
+- Tests cover core Bible paths; Groups, AI conversations, media, doctrine, and lectionary routers lack coverage
 
-### 5.3 Postgres for user-mutable tables
-- Bible/commentary/lexicon stay in SQLite (read-only, bulk content)
-- User-mutable tables move to Postgres for multi-instance scale
-- Not urgent until 5.1 lands or traffic actually requires it
-
-## Priority 6 — Logos-Gap Features (from 2026-05-21 analysis)
-
-### 6.1 Passage Guide (unified view)
-- Logos' marquee feature: commentary + word study + cross-refs in one view
-- All pieces exist in our app but are scattered across separate tabs
-- Build a unified "Passage Guide" view triggered from any verse/chapter
-- See backlog: `passage_guide_unified_view`
-
-### 6.2 Advanced topical search
-- Logos: "See what the Bible says about anything"
-- We have AI topic study mode but no dedicated topical index UI
-- Build topical search browser with AI-generated verse lists + Factbook integration
-- See backlog: `advanced_topical_search_browser`
-
-### 6.3 Offline / PWA
-- Logos has mobile apps with offline access
-- Add service worker + cache strategy for chapter + commentary
-- See backlog: `offline_pwa_support`
+**Postgres for user-mutable tables** (not urgent)
+- Bible/commentary/lexicon stay in SQLite; user-mutable tables move to Postgres for multi-instance scale
+- Not urgent until real multi-user traffic requires it
