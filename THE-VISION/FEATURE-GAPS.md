@@ -1,6 +1,6 @@
 # Feature Gap Analysis vs. Logos Bible Software
 
-**Date**: 2026-06-02 (session 2 update)
+**Date**: 2026-06-04 (session 3 update)
 **Comparison target**: Logos Bible Software (logos.com) feature set
 **Purpose**: Track which Logos features we have, which remain gaps
 
@@ -33,7 +33,7 @@
 | Collaborative study groups | Groups system: notes, sharing, invites, activity feed | ✅ Done |
 | Offline / PWA | Service worker + IndexedDB mutation queue + sync status | ✅ Done |
 | Print / PDF export | Styled print window from verse context menu | ✅ Done |
-| Mobile-friendly | PWA installable, offline-capable | ✅ Done |
+| Mobile-friendly | PWA installable, offline-capable; responsive layout (drawer + bottom sheet below 768px) | ✅ Done |
 | AI conversation history | Persisted per reference (book/chapter) | ✅ Done |
 | Bible browser | Full-screen book/chapter browser at `/browse` | ✅ Done |
 | Verse sharing | URL-canonical references, shareable links | ✅ Done |
@@ -78,8 +78,8 @@
 ### Gap 3 — Infrastructure
 
 #### 3A. Automated Test Coverage
-- **Our state**: pytest covers core Bible paths; Groups, AI conversations, media, doctrine, lectionary routers uncovered
-- **Effort**: Medium
+- **Our state**: pytest covers auth flow, Bible, notes, sermon, search, groups ACL, highlights isolation, media upload validation (13 test files as of 2026-06-04). Still uncovered: AI conversations, doctrine, lectionary, reading plans, annotations.
+- **Effort**: Medium (incremental)
 
 #### 3B. Postgres for User Tables
 - **Our state**: Everything in SQLite
@@ -92,8 +92,11 @@
 | Priority | Item | Effort | Value |
 |----------|------|--------|-------|
 | P0 | Add ANTHROPIC_API_KEY to Replit Secrets | Zero | Critical — unlocks ~30% of features |
-| P0 | Re-ingest full Strong's lexicon | Low | High — unlocks dictionary deep-links |
+| P0 | Set JWT_SECRET_KEY (≥32 chars) for multi-user deployments | Zero | Required for user accounts |
+| P1 | Re-ingest full Strong's lexicon | Low | High — unlocks dictionary deep-links |
 | P1 | Extract library PDF pages | Medium | High — unlocks library reader + search |
 | P2 | Audio backend for AudioPlayer | Medium | Medium |
-| P3 | Automated test coverage for new routers | Medium | Medium |
+| P2 | Modal focus trapping (keyboard accessibility) | Low | Medium — ARIA roles done; Tab cycling missing |
+| P3 | Expand test coverage (AI conversations, doctrine, lectionary) | Medium | Medium |
+| P4 | `python-jose` → `PyJWT` migration | Low | Low (patched to 3.5.0) |
 | P4 | Postgres for user-mutable tables | Medium-High | Low (only at scale) |

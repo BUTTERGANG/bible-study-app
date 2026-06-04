@@ -1,6 +1,6 @@
 # Environment & Setup
 
-Last updated: 2026-05-16
+Last updated: 2026-06-04
 
 ## Replit Configuration
 
@@ -18,12 +18,21 @@ Last updated: 2026-05-16
 |----------|---------|
 | `ANTHROPIC_API_KEY` | Powers all AI study features (Claude `claude-sonnet-4-6`) |
 
+## Required for Multi-User Deployments
+
+| Variable | Purpose |
+|----------|---------|
+| `JWT_SECRET_KEY` | Signs user JWT tokens. **Must be ≥ 32 characters.** Generate with: `python -c "import secrets; print(secrets.token_hex(32))"`. Without this, JWT auth raises `RuntimeError` at login time. |
+
+> **Open mode warning**: If both `APP_PASSWORD` and `JWT_SECRET_KEY` are unset, the app runs in "open mode" — all visitors share the same `user_id=0` data store. Suitable only for strictly single-user personal deployments.
+
 ## Optional Secrets
 
 | Variable | Purpose |
 |----------|---------|
-| `APP_PASSWORD` | Shared-secret auth. When set, all write endpoints + AI require `Authorization: Bearer <pw>` or `X-App-Password` header. Frontend prompts once and stores in localStorage. Leave unset for open dev mode |
-| `CORS_ORIGINS` | Comma-separated allowed CORS origins. Default: `http://localhost:5173,http://127.0.0.1:5173`. Set to empty string when frontend is same-origin |
+| `APP_PASSWORD` | Shared-secret auth. When set, all write endpoints + AI require `Authorization: Bearer <pw>` or `X-App-Password` header. Frontend prompts once and stores in localStorage. Leave unset for open dev mode (see warning above) |
+| `DEPLOYMENT_ENV` | Set to `production` to enable HSTS (`Strict-Transport-Security`) header |
+| `CORS_ORIGINS` | Comma-separated allowed CORS origins. Default: `http://localhost:5173,http://127.0.0.1:5173`. Set to empty string when frontend is same-origin. **Remove the default in production** |
 | `AI_RATE_LIMIT_PER_MIN` | AI requests per IP per minute (default 15) |
 | `AI_RATE_LIMIT_PER_HOUR` | AI requests per IP per hour (default 120) |
 | `DATA_PATH` | Override database directory. Defaults to `./data` relative to the repo root |
@@ -106,13 +115,16 @@ make frontend-lint   # eslint src
 | Problem | Fix |
 |---------|-----|
 | `ModuleNotFoundError` on startup | Run `pip3 install -r requirements.txt --target .venv/lib/python3.11/site-packages/ --break-system-packages` |
+| `RuntimeError: JWT_SECRET_KEY must be set` | Set `JWT_SECRET_KEY` to a 32+ character random string in Replit Secrets (see Required for Multi-User Deployments above) |
 | AI returns 503 with "ANTHROPIC_API_KEY is not set" | Set the secret in Replit Secrets |
 | AI returns 429 | Per-IP rate limit. Raise via `AI_RATE_LIMIT_PER_MIN` / `AI_RATE_LIMIT_PER_HOUR`, or wait |
 | Frontend shows "App password required" | `APP_PASSWORD` is set on the backend. Enter the same value in the prompt, or unset the env var for dev |
 | `/api/health` reports `database.ok: false` | `data/bible.db` is missing or has zero verses. Re-download per the Database section above |
 | Bible text shows "Chapter not available" | The translation doesn't cover that book. Try KJV/ASV/BSB for full coverage |
-| PDF reading returns 503 | PyMuPDF unavailable and no pre-extracted pages. Run `python -m ingest.extract_pdf_pages` against an environment with the PDFs |
+| PDF reading returns 503 | pypdf unavailable and no pre-extracted pages. Run `python -m ingest.extract_pdf_pages` against an environment with the PDFs |
 | Frontend shows blank/errors | Rebuild: `make frontend-build`. Check browser console for the underlying error |
 | Search is slow | FTS indexes may be missing (`/api/health` shows `fts_bible: false`). They're built by `ingest_sword.py` |
 | Lexicon returns nothing / Word Study empty | `lexicon_entries` has only 726 rows (corrupted data was purged 2026-05-16). Re-run `ingest/ingest_sword.py` against SWORD source data to restore coverage |
 | Dictionary search returns no results | `dictionary_entries` is empty. The ingest routing bug is fixed — re-run `ingest/ingest_sword.py` to populate |
+| Library search misses newly ingested books | FTS5 sync triggers added in migration 0009 — run `alembic upgrade head` then re-ingest |
+| User deletion fails with FK constraint error | Run `alembic upgrade head` to apply migration 0010 (rebuilds tables with correct CASCADE DDL) |
