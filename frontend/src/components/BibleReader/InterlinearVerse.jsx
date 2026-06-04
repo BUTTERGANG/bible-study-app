@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { memo, useState, useRef, useMemo, useEffect } from 'react'
 import clsx from 'clsx'
 import { useStudyStore } from '../../stores/studyStore'
 import { getHighlightClass, DEFAULT_COLORS } from '../../utils/morphology'
@@ -12,7 +12,7 @@ const HIGHLIGHT_CLASSES = {
   orange: 'highlight-orange',
 }
 
-export default function InterlinearVerse({
+const InterlinearVerse = memo(function InterlinearVerse({
   verse, text, book, chapter, translation,
   isActive, highlightColor, highlightId, words, language = 'greek',
   reverseMode = false, onWordClick = null,
@@ -169,7 +169,9 @@ export default function InterlinearVerse({
       )}
     </div>
   )
-}
+})
+
+export default InterlinearVerse
 
 /** Get the background color for a word based on active visual filters. */
 function getFilterColor(code, language, activeFilters) {

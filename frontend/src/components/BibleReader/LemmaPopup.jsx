@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
+import { useClickOutside } from '../../hooks/useClickOutside'
 import { X } from 'lucide-react'
 
 /**
@@ -17,16 +18,8 @@ export default function LemmaPopup({ word, position, onClose }) {
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  // Close on outside click
-  useEffect(() => {
-    function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose?.()
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [onClose])
+  const handleClose = useCallback(() => onClose?.(), [onClose])
+  useClickOutside(ref, handleClose)
 
   if (!word) return null
 

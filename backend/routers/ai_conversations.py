@@ -6,11 +6,11 @@ message structure (role, content, metadata) without schema churn.
 """
 
 import json
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,30 +27,47 @@ class ConversationSave(BaseModel):
     book: str
     chapter: int
     messages: list[dict]
-    title: Optional[str] = None
+    title: str | None = None
 
 
 class ConversationUpdate(BaseModel):
     messages: list[dict]
-    title: Optional[str] = None
+    title: str | None = None
 
 
-def _conv_dict(c: AiConversation) -> dict:
-    return {
-        "id": c.id,
-        "reference": c.reference,
-        "translation": c.translation,
-        "book": c.book,
-        "chapter": c.chapter,
-        "messages": json.loads(c.messages) if c.messages else [],
-        "message_count": c.message_count,
-        "title": c.title,
-        "created_at": c.created_at.isoformat() if c.created_at else None,
-        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
-    }
+class AiConversationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reference: str
+    translation: str
+    book: str
+    chapter: int
+    # messages is stored as a JSON string in the DB; deserialize it here
+    messages: list[dict[str, Any]]
+    message_count: int
+    title: str | None
+    created_at: datetime | None
+    updated_at: datetime | None
+
+    @field_validator("messages", mode="before")
+    @classmethod
+    def deserialize_messages(cls, v: Any) -> list[dict[str, Any]]:
+        """Accept either a pre-parsed list or a raw JSON string from the DB column."""
+        if isinstance(v, str):
+            return json.loads(v)
+        if v is None:
+            return []
+        return v
 
 
-@router.get("")
+class AiConversationListOut(BaseModel):
+    conversations: list[AiConversationOut]
+    offset: int
+    limit: int
+
+
+@router.get("", response_model=AiConversationListOut)
 async def list_conversations(
     limit: int = 50,
     offset: int = 0,
@@ -66,11 +83,14 @@ async def list_conversations(
         .limit(limit)
     )
     result = await db.execute(query)
-    items = [_conv_dict(c) for c in result.scalars().all()]
-    return {"conversations": items, "offset": offset, "limit": limit}
+    return AiConversationListOut(
+        conversations=result.scalars().all(),
+        offset=offset,
+        limit=limit,
+    )
 
 
-@router.get("/{reference:path}")
+@router.get("/{reference:path}", response_model=AiConversationOut)
 async def get_conversation(
     reference: str,
     db: AsyncSession = Depends(get_db),
@@ -86,10 +106,10 @@ async def get_conversation(
     conv = result.scalar_one_or_none()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return _conv_dict(conv)
+    return conv
 
 
-@router.put("/{reference:path}")
+@router.put("/{reference:path}", response_model=AiConversationOut)
 async def save_conversation(
     reference: str,
     body: ConversationSave,
@@ -114,7 +134,7 @@ async def save_conversation(
         conv.translation = body.translation
         if body.title:
             conv.title = body.title
-        conv.updated_at = datetime.utcnow()
+        conv.updated_at = datetime.now(UTC)
     else:
         conv = AiConversation(
             user_id=user.id,
@@ -130,10 +150,10 @@ async def save_conversation(
 
     await db.commit()
     await db.refresh(conv)
-    return _conv_dict(conv)
+    return conv
 
 
-@router.patch("/{reference:path}")
+@router.patch("/{reference:path}", response_model=AiConversationOut)
 async def update_conversation(
     reference: str,
     body: ConversationUpdate,
@@ -155,10 +175,10 @@ async def update_conversation(
     conv.message_count = len(body.messages)
     if body.title is not None:
         conv.title = body.title
-    conv.updated_at = datetime.utcnow()
+    conv.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(conv)
-    return _conv_dict(conv)
+    return conv
 
 
 @router.delete("/{reference:path}")

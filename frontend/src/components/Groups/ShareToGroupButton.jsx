@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
+import { useClickOutside } from '../../hooks/useClickOutside'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Share2, Check, Loader2 } from 'lucide-react'
 import clsx from 'clsx'
@@ -59,20 +60,11 @@ export default function ShareToGroupButton({ itemType, itemId, onShared }) {
     },
   })
 
-  // Close popover when clicking outside
-  useEffect(() => {
-    if (!open) return
-    function handleClickOutside(e) {
-      if (
-        popoverRef.current && !popoverRef.current.contains(e.target) &&
-        buttonRef.current && !buttonRef.current.contains(e.target)
-      ) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
+  const handleOutsideClick = useCallback((e) => {
+    if (buttonRef.current && buttonRef.current.contains(e.target)) return
+    setOpen(false)
+  }, [])
+  useClickOutside(popoverRef, handleOutsideClick, open)
 
   function handleToggle() {
     setOpen((prev) => !prev)

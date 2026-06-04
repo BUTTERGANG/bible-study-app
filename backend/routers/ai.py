@@ -14,7 +14,7 @@ from typing import List, Optional
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,11 +35,36 @@ MODEL = "claude-sonnet-4-6"
 _CACHE = {"type": "ephemeral"}
 
 _async_client: Optional[anthropic.AsyncAnthropic] = None
+_client_lock: Optional[object] = None  # asyncio.Lock, created lazily to avoid import-time event loop
+
+
+def _get_lock():
+    import asyncio
+    global _client_lock
+    if _client_lock is None:
+        _client_lock = asyncio.Lock()
+    return _client_lock
+
+
+async def _get_client() -> anthropic.AsyncAnthropic:
+    """Return the async Anthropic client, raising 503 if no key is configured.
+    Protected by an asyncio.Lock to prevent race on first initialization."""
+    global _async_client
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY is not set. Add it in Replit Secrets to enable AI features.",
+        )
+    if _async_client is None:
+        async with _get_lock():
+            if _async_client is None:
+                _async_client = anthropic.AsyncAnthropic(api_key=api_key)
+    return _async_client
 
 
 def _client() -> anthropic.AsyncAnthropic:
-    """Return the async Anthropic client, raising 503 if no key is configured.
-    Lazy-initialized so a missing key only fails the AI endpoints, not startup."""
+    """Sync accessor — returns existing client or raises if not yet initialized."""
     global _async_client
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -75,7 +100,7 @@ class AskRequest(BaseModel):
     translation: Optional[str] = "KJV"
     verse_text: Optional[str] = None
     chapter_text: Optional[str] = None
-    conversation_history: Optional[List[dict]] = None
+    conversation_history: Optional[List[dict]] = Field(default=None, max_length=50)
     include_library_context: bool = True
 
 
@@ -363,6 +388,8 @@ Make it suitable for personal Bible study or small group teaching."""
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
+    if not response.content:
+        raise HTTPException(status_code=502, detail="AI returned no content")
     return {"outline": response.content[0].text, "reference": body.reference}
 
 
@@ -383,6 +410,8 @@ Format as a clean list."""
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
+    if not response.content:
+        raise HTTPException(status_code=502, detail="AI returned no content")
     return {"cross_references": response.content[0].text, "reference": body.reference}
 
 
@@ -1020,8 +1049,8 @@ Provide a structured outline of the content using ## headings and - sub-points. 
 
         except HTTPException:
             raise
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        except Exception:
+            yield f"data: {json.dumps({'error': 'An error occurred. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")

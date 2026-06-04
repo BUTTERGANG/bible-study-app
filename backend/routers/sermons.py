@@ -1,6 +1,6 @@
 """Sermon Builder — CRUD for sermon projects and their sections."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -121,7 +121,7 @@ async def update_project(
         project.passage_ref = body.passage_ref
     if body.audience is not None:
         project.audience = body.audience
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(project)
     return _project_out(project)
@@ -171,11 +171,11 @@ async def upsert_section(
     section = existing.scalar_one_or_none()
     if section:
         section.content = body.content
-        section.updated_at = datetime.utcnow()
+        section.updated_at = datetime.now(timezone.utc)
     else:
         section = SermonSection(project_id=project_id, section_type=section_type, content=body.content)
         db.add(section)
 
-    proj.updated_at = datetime.utcnow()
+    proj.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return {"section_type": section_type, "content": body.content}

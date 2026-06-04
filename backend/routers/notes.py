@@ -1,8 +1,7 @@
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,33 +16,54 @@ router = APIRouter(prefix="/api/notes", tags=["notes"])
 class NoteCreate(BaseModel):
     book: str
     chapter: int
-    verse: Optional[int] = None
+    verse: int | None = None
     content: str
-    tags: Optional[str] = None
+    tags: str | None = None
 
 
 class NoteUpdate(BaseModel):
-    content: Optional[str] = None
-    tags: Optional[str] = None
+    content: str | None = None
+    tags: str | None = None
 
 
-def _note_dict(n: Note) -> dict:
-    return {
-        "id": n.id,
-        "book": n.book,
-        "chapter": n.chapter,
-        "verse": n.verse,
-        "reference": (
+class NoteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    book: str
+    chapter: int
+    verse: int | None
+    # Computed reference string — populated by the endpoint before returning
+    reference: str
+    content: str
+    tags: str | None
+    created_at: datetime | None
+    updated_at: datetime | None
+
+
+class NoteListOut(BaseModel):
+    notes: list[NoteOut]
+    offset: int
+    limit: int
+
+
+def _note_out(n: Note) -> NoteOut:
+    return NoteOut(
+        id=n.id,
+        book=n.book,
+        chapter=n.chapter,
+        verse=n.verse,
+        reference=(
             f"{n.book} {n.chapter}:{n.verse}" if n.verse else f"{n.book} {n.chapter}"
         ),
-        "content": n.content,
-        "tags": n.tags,
-        "created_at": n.created_at.isoformat() if n.created_at else None,
-        "updated_at": n.updated_at.isoformat() if n.updated_at else None,
-    }
+        content=n.content,
+        tags=n.tags,
+        created_at=n.created_at,
+        updated_at=n.updated_at,
+    )
 
 
-@router.post("")
+@router.post("", response_model=NoteOut)
 async def create_note(
     body: NoteCreate,
     db: AsyncSession = Depends(get_db),
@@ -63,15 +83,15 @@ async def create_note(
     db.add(note)
     await db.commit()
     await db.refresh(note)
-    return _note_dict(note)
+    return _note_out(note)
 
 
-@router.get("")
+@router.get("", response_model=NoteListOut)
 async def list_notes(
-    book: Optional[str] = None,
-    chapter: Optional[int] = None,
-    verse: Optional[int] = None,
-    tag: Optional[str] = None,
+    book: str | None = None,
+    chapter: int | None = None,
+    verse: int | None = None,
+    tag: str | None = None,
     offset: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
@@ -91,10 +111,14 @@ async def list_notes(
         query = query.where(Note.tags.ilike(f"%{tag}%"))
     query = query.order_by(Note.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
-    return {"notes": [_note_dict(n) for n in result.scalars().all()], "offset": offset, "limit": limit}
+    return NoteListOut(
+        notes=[_note_out(n) for n in result.scalars().all()],
+        offset=offset,
+        limit=limit,
+    )
 
 
-@router.put("/{note_id}")
+@router.put("/{note_id}", response_model=NoteOut)
 async def update_note(
     note_id: int,
     body: NoteUpdate,
@@ -109,9 +133,9 @@ async def update_note(
         note.content = body.content
     if body.tags is not None:
         note.tags = body.tags
-    note.updated_at = datetime.utcnow()
+    note.updated_at = datetime.now(UTC)
     await db.commit()
-    return _note_dict(note)
+    return _note_out(note)
 
 
 @router.delete("/{note_id}")

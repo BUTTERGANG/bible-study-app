@@ -9,7 +9,17 @@ import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 import BookIntroCard from './BookIntroCard'
 
 export default function BibleReader() {
-  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, showLemmas, openWordStudy, setCurrentVerses } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const translation = useStudyStore((s) => s.translation)
+  const activeVerse = useStudyStore((s) => s.verse)
+  const fontSizeIdx = useStudyStore((s) => s.fontSizeIdx)
+  const compareMode = useStudyStore((s) => s.compareMode)
+  const interlinearMode = useStudyStore((s) => s.interlinearMode)
+  const reverseInterlinear = useStudyStore((s) => s.reverseInterlinear)
+  const showLemmas = useStudyStore((s) => s.showLemmas)
+  const openWordStudy = useStudyStore((s) => s.openWordStudy)
+  const setCurrentVerses = useStudyStore((s) => s.setCurrentVerses)
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['chapter', translation, book, chapter],
@@ -22,6 +32,8 @@ export default function BibleReader() {
     queryKey: ['highlights', translation, book, chapter],
     queryFn: () => api.getHighlights(book, chapter, translation),
     enabled: !!book && !!chapter && !compareMode,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   // Fetch interlinear data for the whole chapter when interlinear mode is on

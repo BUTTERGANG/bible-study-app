@@ -7,7 +7,7 @@ POST /api/doctrine/generate     — force-regenerate a doctrine entry
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import anthropic
@@ -212,7 +212,7 @@ async def list_doctrines(
 async def force_generate(req: GenerateRequest, db: AsyncSession = Depends(get_db)):
     """Force-regenerate a doctrine entry (ignores cache)."""
     content = await _generate_doctrine(req.name, req.category)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     result = await db.execute(
         select(DoctrineEntry).where(DoctrineEntry.name == req.name)
@@ -249,7 +249,7 @@ async def get_doctrine(
     )
     entry = result.scalar_one_or_none()
 
-    stale = entry and (datetime.utcnow() - entry.generated_at) > timedelta(days=CACHE_TTL_DAYS)
+    stale = entry and (datetime.now(timezone.utc) - entry.generated_at) > timedelta(days=CACHE_TTL_DAYS)
 
     if entry and not refresh and not stale:
         return {"name": entry.name, "category": entry.category, "content": json.loads(entry.content)}
@@ -260,7 +260,7 @@ async def get_doctrine(
         category = entry.category
 
     content = await _generate_doctrine(name, category)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if entry:
         entry.content = content

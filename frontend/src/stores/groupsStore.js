@@ -89,4 +89,5 @@ const useGroupsStore = create((set, get) => ({
     set({ activeGroup: null, feed: [], feedOffset: 0, feedHasMore: true }),
 }))
 
+export { useGroupsStore }
 export default useGroupsStore

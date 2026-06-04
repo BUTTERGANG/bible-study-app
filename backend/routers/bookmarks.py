@@ -1,7 +1,7 @@
-from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from ..auth import CurrentUser, get_current_user
 from ..bible_data import resolve_book_name
 from ..database import get_db
-from ..models import Bookmark, BibleVerse
+from ..models import BibleVerse, Bookmark
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 
@@ -17,26 +17,46 @@ router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
 class BookmarkCreate(BaseModel):
     book: str
     chapter: int
-    verse: Optional[int] = None
-    note: Optional[str] = None
+    verse: int | None = None
+    note: str | None = None
 
 
-def _bookmark_dict(b: Bookmark, preview_text: Optional[str] = None) -> dict:
-    return {
-        "id": b.id,
-        "book": b.book,
-        "chapter": b.chapter,
-        "verse": b.verse,
-        "reference": (
+class BookmarkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    book: str
+    chapter: int
+    verse: int | None
+    # Computed reference string — populated by the endpoint before returning
+    reference: str
+    note: str | None
+    created_at: datetime | None
+    preview_text: str | None = None
+
+
+class BookmarkListOut(BaseModel):
+    bookmarks: list[BookmarkOut]
+    offset: int
+    limit: int
+
+
+def _bookmark_out(b: Bookmark, preview_text: str | None = None) -> BookmarkOut:
+    return BookmarkOut(
+        id=b.id,
+        book=b.book,
+        chapter=b.chapter,
+        verse=b.verse,
+        reference=(
             f"{b.book} {b.chapter}:{b.verse}" if b.verse else f"{b.book} {b.chapter}"
         ),
-        "note": b.note,
-        "created_at": b.created_at.isoformat() if b.created_at else None,
-        "preview_text": preview_text,
-    }
+        note=b.note,
+        created_at=b.created_at,
+        preview_text=preview_text,
+    )
 
 
-@router.post("")
+@router.post("", response_model=BookmarkOut)
 async def create_bookmark(
     body: BookmarkCreate,
     db: AsyncSession = Depends(get_db),
@@ -55,10 +75,10 @@ async def create_bookmark(
     db.add(bm)
     await db.commit()
     await db.refresh(bm)
-    return _bookmark_dict(bm)
+    return _bookmark_out(bm)
 
 
-@router.get("")
+@router.get("", response_model=BookmarkListOut)
 async def list_bookmarks(
     offset: int = 0,
     limit: int = 100,
@@ -81,15 +101,15 @@ async def list_bookmarks(
         .offset(offset)
         .limit(limit)
     )
-    
+
     result = await db.execute(stmt)
     rows = result.all()
-    
-    return {
-        "bookmarks": [_bookmark_dict(b, text) for b, text in rows],
-        "offset": offset,
-        "limit": limit
-    }
+
+    return BookmarkListOut(
+        bookmarks=[_bookmark_out(b, text) for b, text in rows],
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.delete("/{bookmark_id}")

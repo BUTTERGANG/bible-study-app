@@ -1,10 +1,9 @@
 """Bible Study Builder — CRUD for personal study projects and sections."""
 
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -23,31 +22,45 @@ class StudyCreate(BaseModel):
 
 
 class StudyUpdate(BaseModel):
-    title: Optional[str] = None
-    passage_ref: Optional[str] = None
-    study_type: Optional[str] = None
+    title: str | None = None
+    passage_ref: str | None = None
+    study_type: str | None = None
 
 
 class SectionUpsert(BaseModel):
     content: str
 
 
-def _project_out(p: StudyProject) -> dict:
-    return {
-        "id": p.id,
-        "title": p.title,
-        "passage_ref": p.passage_ref,
-        "study_type": p.study_type,
-        "created_at": p.created_at.isoformat(),
-        "updated_at": p.updated_at.isoformat(),
-        "sections": [
-            {"section_type": s.section_type, "content": s.content, "updated_at": s.updated_at.isoformat()}
-            for s in (p.sections or [])
-        ],
-    }
+class StudySectionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    section_type: str
+    content: str
+    updated_at: datetime
 
 
-@router.get("")
+class StudyProjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    passage_ref: str
+    study_type: str
+    created_at: datetime
+    updated_at: datetime
+    sections: list[StudySectionOut]
+
+
+class StudyProjectListOut(BaseModel):
+    studies: list[StudyProjectOut]
+
+
+class SectionOut(BaseModel):
+    section_type: str
+    content: str
+
+
+@router.get("", response_model=StudyProjectListOut)
 async def list_studies(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
@@ -58,10 +71,10 @@ async def list_studies(
         .where(StudyProject.user_id == user.id)
         .order_by(StudyProject.updated_at.desc())
     )
-    return {"studies": [_project_out(p) for p in result.scalars().all()]}
+    return StudyProjectListOut(studies=result.scalars().all())
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=StudyProjectOut)
 async def create_study(
     body: StudyCreate,
     db: AsyncSession = Depends(get_db),
@@ -77,10 +90,10 @@ async def create_study(
     await db.commit()
     await db.refresh(project)
     project.sections = []
-    return _project_out(project)
+    return project
 
 
-@router.get("/{project_id}")
+@router.get("/{project_id}", response_model=StudyProjectOut)
 async def get_study(
     project_id: int,
     db: AsyncSession = Depends(get_db),
@@ -94,10 +107,10 @@ async def get_study(
     p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Study not found")
-    return _project_out(p)
+    return p
 
 
-@router.patch("/{project_id}")
+@router.patch("/{project_id}", response_model=StudyProjectOut)
 async def update_study(
     project_id: int,
     body: StudyUpdate,
@@ -118,10 +131,10 @@ async def update_study(
         p.passage_ref = body.passage_ref
     if body.study_type is not None:
         p.study_type = body.study_type
-    p.updated_at = datetime.utcnow()
+    p.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(p)
-    return _project_out(p)
+    return p
 
 
 @router.delete("/{project_id}", status_code=204)
@@ -140,7 +153,7 @@ async def delete_study(
     await db.commit()
 
 
-@router.put("/{project_id}/sections/{section_type}")
+@router.put("/{project_id}/sections/{section_type}", response_model=SectionOut)
 async def upsert_section(
     project_id: int,
     section_type: str,
@@ -168,11 +181,11 @@ async def upsert_section(
     section = existing.scalar_one_or_none()
     if section:
         section.content = body.content
-        section.updated_at = datetime.utcnow()
+        section.updated_at = datetime.now(UTC)
     else:
         section = StudySection(project_id=project_id, section_type=section_type, content=body.content)
         db.add(section)
 
-    proj.updated_at = datetime.utcnow()
+    proj.updated_at = datetime.now(UTC)
     await db.commit()
-    return {"section_type": section_type, "content": body.content}
+    return SectionOut(section_type=section_type, content=body.content)

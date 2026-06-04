@@ -10,45 +10,52 @@ import { streamAI } from '../api/streamAI'
 export function useStreamingAI(endpoint, bodyFor, messages, setMessages) {
   const [streaming, setStreaming] = useState(false)
   const stopRef = useRef(null)
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
 
-  // Abort any active stream on unmount.
-  useEffect(() => () => stopRef.current?.(), [])
+  // Abort any active stream on unmount and reset streaming state.
+  useEffect(() => () => {
+    stopRef.current?.()
+    setStreaming(false)
+  }, [])
 
   const send = useCallback(
     (text) => {
       if (!text.trim() || streaming) return
-      const userMsg = { role: 'user', content: text }
-      const aiMsg = { role: 'assistant', content: '', error: null }
-      setMessages((prev) => {
-        // Build history from the previous state (always fresh) before appending
-        const history = prev
-          .filter((m) => !m.error)
-          .map((m) => ({ role: m.role, content: m.content }))
 
-        // Kick off the stream with the correct history
-        stopRef.current = streamAI(
-          endpoint,
-          bodyFor(text, history),
-          (chunk) => {
-            setMessages((p) => {
-              const last = p[p.length - 1]
-              return [...p.slice(0, -1), { ...last, content: last.content + chunk }]
-            })
-          },
-          (err) => {
-            if (err) {
-              setMessages((p) => {
-                const last = p[p.length - 1]
-                return [...p.slice(0, -1), { ...last, error: err.message || String(err) }]
-              })
-            }
-            setStreaming(false)
-          }
-        )
+      // Build history snapshot outside of any state updater to avoid side
+      // effects inside React's reconciliation loop (double-invoke in StrictMode).
+      const prev = messagesRef.current
+      const history = prev
+        .filter((m) => !m.error)
+        .map((m) => ({ role: m.role, content: m.content }))
 
-        return [...prev, userMsg, aiMsg]
-      })
+      const userMsg = { id: crypto.randomUUID(), role: 'user', content: text }
+      const aiMsg = { id: crypto.randomUUID(), role: 'assistant', content: '', error: null }
+      setMessages([...prev, userMsg, aiMsg])
       setStreaming(true)
+
+      stopRef.current = streamAI(
+        endpoint,
+        bodyFor(text, history),
+        (chunk) => {
+          setMessages((p) => {
+            if (!p.length) return p
+            const last = p[p.length - 1]
+            return [...p.slice(0, -1), { ...last, content: last.content + chunk }]
+          })
+        },
+        (err) => {
+          if (err) {
+            setMessages((p) => {
+              if (!p.length) return p
+              const last = p[p.length - 1]
+              return [...p.slice(0, -1), { ...last, error: err.message || String(err) }]
+            })
+          }
+          setStreaming(false)
+        }
+      )
     },
     [endpoint, bodyFor, streaming, setMessages]
   )

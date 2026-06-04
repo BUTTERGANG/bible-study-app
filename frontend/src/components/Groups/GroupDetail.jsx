@@ -392,6 +392,7 @@ function NotesTab({ group }) {
 // ── Tab: Members ─────────────────────────────────────────────────────────────
 function MembersTab({ group }) {
   const qc = useQueryClient()
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
 
   const members = group.members || []
   const isOwner = group.current_user_role === 'owner'
@@ -399,6 +400,7 @@ function MembersTab({ group }) {
   const removeMutation = useMutation({
     mutationFn: (userId) => api.removeMember(group.id, userId),
     onSuccess: () => {
+      setConfirmRemoveId(null)
       qc.invalidateQueries({ queryKey: ['group', group.id] })
     },
   })
@@ -444,18 +446,27 @@ function MembersTab({ group }) {
                   </div>
                 </div>
                 {isOwner && member.role !== 'owner' && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Remove ${member.email} from this group?`)) {
-                        removeMutation.mutate(member.user_id)
-                      }
-                    }}
-                    disabled={removeMutation.isPending}
-                    className="p-1 text-gray-400 hover:text-red-500 flex-shrink-0 ml-2"
-                    title="Remove member"
-                  >
-                    <X size={14} />
-                  </button>
+                  confirmRemoveId === member.user_id ? (
+                    <div className="flex items-center gap-1 ml-2">
+                      <button
+                        onClick={() => removeMutation.mutate(member.user_id)}
+                        disabled={removeMutation.isPending}
+                        className="text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded hover:bg-red-700"
+                      >Remove</button>
+                      <button
+                        onClick={() => setConfirmRemoveId(null)}
+                        className="text-[10px] px-1.5 py-0.5 text-gray-500 hover:text-gray-700"
+                      >Cancel</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRemoveId(member.user_id)}
+                      className="p-1 text-gray-400 hover:text-red-500 flex-shrink-0 ml-2"
+                      title="Remove member"
+                    >
+                      <X size={14} />
+                    </button>
+                  )
                 )}
               </div>
             ))}

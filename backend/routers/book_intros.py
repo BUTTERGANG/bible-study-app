@@ -86,8 +86,8 @@ async def get_book_introduction(
     existing = result.scalar_one_or_none()
     if existing:
         existing.content_json = content_json
-        from datetime import datetime
-        existing.generated_at = datetime.utcnow()
+        from datetime import datetime, timezone
+        existing.generated_at = datetime.now(timezone.utc)
     else:
         intro = BookIntroduction(book_name=book_name, content_json=content_json)
         db.add(intro)

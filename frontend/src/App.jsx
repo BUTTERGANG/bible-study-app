@@ -19,6 +19,8 @@ const MorphSearchModal = lazy(() => import('./components/Search/MorphSearchModal
 export default function App() {
   const sidebarOpen = useStudyStore((s) => s.sidebarOpen)
   const rightPanelOpen = useStudyStore((s) => s.rightPanelOpen)
+  const toggleSidebar = useStudyStore((s) => s.toggleSidebar)
+  const toggleRightPanel = useStudyStore((s) => s.toggleRightPanel)
   const darkMode = useStudyStore((s) => s.darkMode)
   const book = useStudyStore((s) => s.book)
   const chapter = useStudyStore((s) => s.chapter)
@@ -85,26 +87,65 @@ export default function App() {
             />
 
             <div className="flex flex-1 overflow-hidden">
+              {/* ── Sidebar — mobile: slide-in drawer overlay ── */}
               {sidebarOpen && (
-                <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+                <>
+                  {/* Backdrop: only visible on mobile, closes drawer on click */}
+                  <div
+                    className="fixed inset-0 z-40 bg-black/40 md:hidden"
+                    onClick={toggleSidebar}
+                    aria-hidden="true"
+                  />
+                  {/* Drawer panel */}
+                  <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-xl overflow-y-auto md:hidden">
+                    <ErrorBoundary fallback="Sidebar failed to render.">
+                      <Sidebar />
+                    </ErrorBoundary>
+                  </div>
+                </>
+              )}
+
+              {/* ── Sidebar — desktop: inline column ── */}
+              {sidebarOpen && (
+                <div className="hidden md:block md:w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
                   <ErrorBoundary fallback="Sidebar failed to render.">
                     <Sidebar />
                   </ErrorBoundary>
                 </div>
               )}
 
+              {/* ── Main reader — always full-width on mobile ── */}
               <div className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <ErrorBoundary fallback="Bible reader failed to render.">
                   <BibleReader />
                 </ErrorBoundary>
               </div>
 
+              {/* ── Right panel — desktop: inline column ── */}
               {rightPanelOpen && (
-                <div className="w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
+                <div className="hidden md:flex md:w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex-col">
                   <ErrorBoundary fallback="Right panel failed to render.">
                     <RightPanel />
                   </ErrorBoundary>
                 </div>
+              )}
+
+              {/* ── Right panel — mobile: slide-up bottom sheet ── */}
+              {rightPanelOpen && (
+                <>
+                  {/* Backdrop: only visible on mobile, closes sheet on click */}
+                  <div
+                    className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                    onClick={toggleRightPanel}
+                    aria-hidden="true"
+                  />
+                  {/* Bottom sheet panel */}
+                  <div className="fixed bottom-0 left-0 right-0 z-40 h-[80vh] bg-white dark:bg-gray-800 rounded-t-xl shadow-xl overflow-hidden flex flex-col md:hidden">
+                    <ErrorBoundary fallback="Right panel failed to render.">
+                      <RightPanel />
+                    </ErrorBoundary>
+                  </div>
+                </>
               )}
             </div>
           </>

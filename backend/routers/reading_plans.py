@@ -6,12 +6,13 @@ blob and deserialized it per request, which scaled poorly for chronological
 plans (~365 entries) and made the `/today` endpoint do N+1 queries.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete, select, tuple_
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, get_current_user
@@ -363,19 +364,21 @@ async def start_ai_plan(
     await db.flush()
 
     start = date.fromisoformat(start_date)
+    day_rows = []
     for day_entry in body.days:
         day_num = day_entry.get("day", 1)
         day_date = str(start + timedelta(days=day_num - 1))
         day_label = day_entry.get("day_label", f"Day {day_num}")
         desc = day_entry.get("description", "")
         for ref in day_entry.get("passages", []):
-            db.add(ReadingPlanDay(
+            day_rows.append(ReadingPlanDay(
                 plan_id=plan.id,
                 date=day_date,
                 reference=ref,
                 day_label=day_label,
                 description=desc,
             ))
+    db.add_all(day_rows)
 
     await db.commit()
     await db.refresh(plan)
@@ -527,7 +530,7 @@ async def complete_reading(
         raise HTTPException(status_code=404, detail="Plan not found")
 
     today = str(date.today())
-    # Toggle behavior: check current state first, then either set or clear.
+    # Fetch current state.
     existing = await db.execute(
         select(ReadingPlanProgress).where(
             ReadingPlanProgress.plan_id == plan_id,
@@ -538,11 +541,17 @@ async def complete_reading(
     row = existing.scalar_one_or_none()
 
     if row is None:
-        # Not yet recorded — mark complete.
-        db.add(ReadingPlanProgress(
-            plan_id=plan_id, date=today, reference=reference,
-            completed_at=datetime.now(timezone.utc),
-        ))
+        # Upsert to avoid TOCTOU race between concurrent toggle requests.
+        stmt = (
+            sqlite_insert(ReadingPlanProgress)
+            .values(plan_id=plan_id, date=today, reference=reference,
+                    completed_at=datetime.now(timezone.utc))
+            .on_conflict_do_update(
+                index_elements=["plan_id", "date", "reference"],
+                set_={"completed_at": datetime.now(timezone.utc)},
+            )
+        )
+        await db.execute(stmt)
         completed = True
     elif row.completed_at is not None:
         # Already completed → toggle back to incomplete.

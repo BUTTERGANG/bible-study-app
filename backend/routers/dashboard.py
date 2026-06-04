@@ -159,7 +159,8 @@ async def get_dashboard(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    votd, plan = await _get_votd(db), await _get_active_plan(db, user.id)
+    import asyncio
+    votd, plan = await asyncio.gather(_get_votd(db), _get_active_plan(db, user.id))
 
     reflection = None
     if votd:

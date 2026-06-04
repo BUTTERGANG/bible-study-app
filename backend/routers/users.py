@@ -77,7 +77,8 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
 
 
 @router.post("/refresh")
-async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+async def refresh_token(request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    await auth_rate_limit(request)
     user_id = decode_token(body.refresh_token, "refresh")
     result = await db.execute(
         select(User).where(User.id == user_id, User.is_active == True)
@@ -87,6 +88,7 @@ async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=401, detail="User not found or inactive")
     return {
         "access_token": create_access_token(user.id),
+        "refresh_token": create_refresh_token(user.id),
         "token_type": "bearer",
     }
 

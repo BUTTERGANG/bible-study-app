@@ -1,10 +1,9 @@
 """Verse Memorization — add verses to a memory queue and track quiz progress."""
 
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,23 +26,27 @@ class QuizResultRequest(BaseModel):
     correct: bool
 
 
-def _verse_out(v: MemoryVerse) -> dict:
-    return {
-        "id": v.id,
-        "translation": v.translation,
-        "book": v.book,
-        "chapter": v.chapter,
-        "verse": v.verse,
-        "verse_text": v.verse_text,
-        "mastery_level": v.mastery_level,
-        "attempts": v.attempts,
-        "correct_count": v.correct_count,
-        "last_reviewed": v.last_reviewed.isoformat() if v.last_reviewed else None,
-        "added_at": v.added_at.isoformat(),
-    }
+class MemoryVerseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    translation: str
+    book: str
+    chapter: int
+    verse: int
+    verse_text: str
+    mastery_level: int
+    attempts: int
+    correct_count: int
+    last_reviewed: datetime | None
+    added_at: datetime
 
 
-@router.get("")
+class MemoryVerseListOut(BaseModel):
+    verses: list[MemoryVerseOut]
+
+
+@router.get("", response_model=MemoryVerseListOut)
 async def list_verses(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
@@ -54,10 +57,10 @@ async def list_verses(
         .order_by(MemoryVerse.mastery_level, MemoryVerse.added_at)
     )
     verses = result.scalars().all()
-    return {"verses": [_verse_out(v) for v in verses]}
+    return MemoryVerseListOut(verses=verses)
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=MemoryVerseOut)
 async def add_verse(
     body: AddVerseRequest,
     db: AsyncSession = Depends(get_db),
@@ -86,7 +89,7 @@ async def add_verse(
     db.add(mv)
     await db.commit()
     await db.refresh(mv)
-    return _verse_out(mv)
+    return mv
 
 
 @router.delete("/{verse_id}", status_code=204)
@@ -105,7 +108,7 @@ async def remove_verse(
     await db.commit()
 
 
-@router.post("/{verse_id}/quiz")
+@router.post("/{verse_id}/quiz", response_model=MemoryVerseOut)
 async def record_quiz_result(
     verse_id: int,
     body: QuizResultRequest,
@@ -120,7 +123,7 @@ async def record_quiz_result(
         raise HTTPException(status_code=404, detail="Memory verse not found")
 
     mv.attempts += 1
-    mv.last_reviewed = datetime.utcnow()
+    mv.last_reviewed = datetime.now(UTC)
     if body.correct:
         mv.correct_count += 1
 
@@ -135,4 +138,4 @@ async def record_quiz_result(
             mv.mastery_level = 1  # learning
 
     await db.commit()
-    return _verse_out(mv)
+    return mv

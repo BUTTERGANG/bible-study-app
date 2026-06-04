@@ -11,7 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, get_current_user
@@ -157,7 +157,7 @@ async def create_group(
     db.add(GroupMember(group_id=group.id, user_id=user.id, role="owner"))
     await db.commit()
     await db.refresh(group)
-    return _group_summary(g, member_count=1)
+    return _group_summary(group, member_count=1)
 
 
 @router.get("")
@@ -309,7 +309,10 @@ async def update_group(
         group.description = body.description.strip()
     group.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    return _group_summary(g=group, member_count=0)
+    count_result = await db.execute(
+        select(func.count()).select_from(GroupMember).where(GroupMember.group_id == group.id)
+    )
+    return _group_summary(g=group, member_count=count_result.scalar_one())
 
 
 @router.delete("/{group_id}")
@@ -811,6 +814,20 @@ async def get_group_feed(
             "sort_key": gn.created_at.isoformat() if gn.created_at else "",
         })
 
+    # Batch-fetch all referenced notes and highlights to avoid N+1 queries.
+    note_ids = [gsi.item_id for gsi, _ in gsi_rows if gsi.item_type == "note"]
+    hl_ids = [gsi.item_id for gsi, _ in gsi_rows if gsi.item_type == "highlight"]
+
+    notes_map: dict[int, Note] = {}
+    if note_ids:
+        r = await db.execute(select(Note).where(Note.id.in_(note_ids)))
+        notes_map = {n.id: n for n in r.scalars().all()}
+
+    hl_map: dict[int, Highlight] = {}
+    if hl_ids:
+        r = await db.execute(select(Highlight).where(Highlight.id.in_(hl_ids)))
+        hl_map = {h.id: h for h in r.scalars().all()}
+
     for gsi, sharer_email in gsi_rows:
         entry = {
             "feed_type": f"shared_{gsi.item_type}",
@@ -823,10 +840,8 @@ async def get_group_feed(
             "annotation": gsi.annotation,
             "sort_key": gsi.shared_at.isoformat() if gsi.shared_at else "",
         }
-        # Attach original item content if it still exists
         if gsi.item_type == "note":
-            orig = await db.execute(select(Note).where(Note.id == gsi.item_id))
-            orig = orig.scalar_one_or_none()
+            orig = notes_map.get(gsi.item_id)
             if orig:
                 ref_parts = [orig.book, str(orig.chapter)]
                 if orig.verse:
@@ -838,8 +853,7 @@ async def get_group_feed(
                 entry["verse"] = orig.verse
                 entry["tags"] = orig.tags
         elif gsi.item_type == "highlight":
-            orig = await db.execute(select(Highlight).where(Highlight.id == gsi.item_id))
-            orig = orig.scalar_one_or_none()
+            orig = hl_map.get(gsi.item_id)
             if orig:
                 ref_parts = [orig.book, str(orig.chapter)]
                 if orig.verse:

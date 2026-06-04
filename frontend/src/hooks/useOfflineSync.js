@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useOnlineStatus } from './useOnlineStatus'
 
 const DB_NAME = 'logos-offline-queue'
@@ -6,19 +7,29 @@ const STORE_NAME = 'mutations'
 const DB_VERSION = 1
 const MAX_RETRIES = 3
 
+// Module-level singletons shared across all hook instances.
+let _dbPromise = null
+let _flushing = false  // guards against concurrent flush from multiple hook instances
+
 function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
-        store.createIndex('timestamp', 'timestamp', { unique: false })
+  if (!_dbPromise) {
+    _dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+          store.createIndex('timestamp', 'timestamp', { unique: false })
+        }
       }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => {
+        _dbPromise = null  // allow retry on next call
+        reject(req.error)
+      }
+    })
+  }
+  return _dbPromise
 }
 
 async function getAllQueued() {
@@ -90,12 +101,25 @@ async function replayMutation(entry) {
   return res.json()
 }
 
+// Map offline mutation paths to React Query cache keys to invalidate after sync.
+// Format: path prefix → query key prefix array
+const INVALIDATION_MAP = [
+  { prefix: '/notes', queryKey: ['notes'] },
+  { prefix: '/highlights', queryKey: ['highlights'] },
+  { prefix: '/bookmarks', queryKey: ['bookmarks'] },
+  { prefix: '/annotations', queryKey: ['annotations'] },
+  { prefix: '/prayer', queryKey: ['prayer'] },
+  { prefix: '/memorize', queryKey: ['memorize'] },
+  { prefix: '/reading-plans', queryKey: ['reading-plans'] },
+  { prefix: '/groups', queryKey: ['my-groups'] },
+]
+
 export function useOfflineSync() {
   const online = useOnlineStatus()
+  const qc = useQueryClient()
   const [syncStatus, setSyncStatus] = useState('online')
   const [queueLength, setQueueLength] = useState(0)
   const [queueItems, setQueueItems] = useState([])
-  const flushing = useRef(false)
 
   const refreshQueue = useCallback(async () => {
     try {
@@ -123,8 +147,8 @@ export function useOfflineSync() {
   }, [refreshQueue])
 
   const flushQueue = useCallback(async () => {
-    if (flushing.current) return
-    flushing.current = true
+    if (_flushing) return
+    _flushing = true
     setSyncStatus('syncing')
 
     try {
@@ -141,6 +165,9 @@ export function useOfflineSync() {
         try {
           await replayMutation(entry)
           await removeQueued(entry.id)
+          // Invalidate React Query cache so UI reflects the synced state.
+          const match = INVALIDATION_MAP.find((m) => entry.path.startsWith(m.prefix))
+          if (match) qc.invalidateQueries({ queryKey: match.queryKey })
         } catch (err) {
           if (err?.status === 409) {
             hadConflict = true
@@ -152,13 +179,7 @@ export function useOfflineSync() {
           } else {
             // Increment retry count and stop processing — will retry next flush
             entry.retries = (entry.retries || 0) + 1
-            const db2 = await openDB()
-            await new Promise((resolve, reject) => {
-              const tx = db2.transaction(STORE_NAME, 'readwrite')
-              tx.objectStore(STORE_NAME).put(entry)
-              tx.oncomplete = () => resolve()
-              tx.onerror = () => reject(tx.error)
-            })
+            await addQueued(entry)  // reuses cached connection via addQueued
             break
           }
         }
@@ -170,7 +191,7 @@ export function useOfflineSync() {
       console.error('[offline-sync] Flush error:', err)
       setSyncStatus('offline')
     } finally {
-      flushing.current = false
+      _flushing = false
     }
   }, [refreshQueue])
 

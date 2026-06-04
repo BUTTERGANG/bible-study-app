@@ -33,8 +33,12 @@ def upgrade() -> None:
         if not _has_column("reading_plans", "goal"):
             batch.add_column(sa.Column("goal", sa.Text(), nullable=True))
 
-    if not _has_column("reading_plans", "plan_type"):
-        op.create_index("ix_reading_plans_plan_type", "reading_plans", ["plan_type"])
+    # Create index unconditionally with IF NOT EXISTS — the column was just
+    # added (or already existed), so the prior guard was always False here.
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_reading_plans_plan_type "
+        "ON reading_plans (plan_type)"
+    )
 
 
 def downgrade() -> None:

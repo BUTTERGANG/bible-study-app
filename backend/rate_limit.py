@@ -36,7 +36,8 @@ class _IPBucket:
         self.hour: Deque[float] = deque()
 
 
-_buckets: Dict[str, _IPBucket] = defaultdict(_IPBucket)
+_ai_buckets: Dict[str, _IPBucket] = defaultdict(_IPBucket)
+_auth_buckets: Dict[str, _IPBucket] = defaultdict(_IPBucket)
 
 
 def _trim(d: Deque[float], cutoff: float) -> None:
@@ -45,16 +46,18 @@ def _trim(d: Deque[float], cutoff: float) -> None:
 
 
 def _client_ip(request: Request) -> str:
-    # Cloud Run / Replit set X-Forwarded-For. Take the first hop.
+    # Use the rightmost X-Forwarded-For hop — added by the trusted proxy, not
+    # spoofable by the client. Falls back to direct peer address.
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
-        return fwd.split(",")[0].strip()
+        hops = [h.strip() for h in fwd.split(",")]
+        return hops[-1]
     return request.client.host if request.client else "unknown"
 
 
 async def ai_rate_limit(request: Request) -> None:
     now = time.time()
-    bucket = _buckets[_client_ip(request)]
+    bucket = _ai_buckets[_client_ip(request)]
     _trim(bucket.minute, now - 60)
     _trim(bucket.hour, now - 3600)
 
@@ -76,8 +79,7 @@ async def ai_rate_limit(request: Request) -> None:
 async def auth_rate_limit(request: Request) -> None:
     """Stricter rate limiter for login/register endpoints to prevent brute-force."""
     now = time.time()
-    bucket = _buckets[_client_ip(request)]
-    # Use a separate counter space — trim with same windows
+    bucket = _auth_buckets[_client_ip(request)]
     _trim(bucket.minute, now - 60)
     _trim(bucket.hour, now - 3600)
 

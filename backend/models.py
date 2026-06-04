@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -209,6 +209,9 @@ class DictionaryEntry(Base):
 
 class Note(Base):
     __tablename__ = "notes"
+    __table_args__ = (
+        Index("ix_note_user_book_chapter", "user_id", "book", "chapter"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
@@ -225,6 +228,7 @@ class Highlight(Base):
     __tablename__ = "highlights"
     __table_args__ = (
         UniqueConstraint("user_id", "translation", "book", "chapter", "verse", name="uq_highlight_verse"),
+        Index("ix_highlight_user_book_chapter", "user_id", "book", "chapter"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

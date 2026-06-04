@@ -80,10 +80,18 @@ export default function RightPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 scrollbar-hide">
+      <div
+        role="tablist"
+        aria-label="Study panels"
+        className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0 scrollbar-hide"
+      >
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
+            role="tab"
+            aria-selected={rightPanel === id}
+            aria-controls={`${id}-panel`}
+            id={`tab-${id}`}
             onClick={() => setRightPanel(id)}
             className={clsx(
               'flex flex-col items-center gap-0.5 py-2 px-3 text-xs font-medium transition-colors min-w-[72px]',
@@ -98,7 +106,12 @@ export default function RightPanel() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div
+        role="tabpanel"
+        id={`${rightPanel}-panel`}
+        aria-labelledby={`tab-${rightPanel}`}
+        className="flex-1 overflow-hidden"
+      >
         <Suspense fallback={<PanelSkeleton />}>
           {rightPanel === 'home' && <DashboardPanel />}
           {rightPanel === 'insights' && <InsightsPanel />}
