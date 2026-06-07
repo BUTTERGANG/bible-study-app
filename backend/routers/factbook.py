@@ -6,11 +6,9 @@ GET /api/factbook           — list/search entries
 """
 
 import json
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -20,6 +18,7 @@ from ..auth import require_app_password
 from ..database import get_db
 from ..models import FactbookEntry
 from ..rate_limit import ai_rate_limit
+from ..ai_client import get_client as _client
 
 router = APIRouter(
     prefix="/api/factbook",
@@ -30,25 +29,8 @@ router = APIRouter(
 MODEL = "claude-sonnet-4-6"
 _CACHE = {"type": "ephemeral"}
 
-_async_client: Optional[anthropic.AsyncAnthropic] = None
-_cached_key: Optional[str] = None
-
 # Cache TTL — entries older than this are regenerated
 CACHE_TTL_DAYS = 30
-
-
-def _client() -> anthropic.AsyncAnthropic:
-    global _async_client, _cached_key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="AI features require ANTHROPIC_API_KEY. In Replit: Tools → Secrets → Add ANTHROPIC_API_KEY.",
-        )
-    if _async_client is None or api_key != _cached_key:
-        _async_client = anthropic.AsyncAnthropic(api_key=api_key)
-        _cached_key = api_key
-    return _async_client
 
 
 # ── Entity type prompts ────────────────────────────────────────────────────

@@ -2,16 +2,15 @@
 
 import json
 import logging
-import os
-from typing import Optional
+from datetime import datetime, timezone
 
-import anthropic
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..models import BookIntroduction
+from ..ai_client import get_client as _client
 
 logger = logging.getLogger("bible-study.book-intros")
 
@@ -44,9 +43,6 @@ async def get_book_introduction(
         if cached:
             return _intro_out(cached)
 
-    # Generate via AI
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
-
     prompt = (
         f"Write a concise introduction to the Bible book of {book_name}. "
         "Return ONLY valid JSON with these exact keys:\n"
@@ -58,8 +54,8 @@ async def get_book_introduction(
         "Be concise. Themes list: 3-5 items max."
     )
 
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    message = await _client().messages.create(
+        model="claude-haiku-4-5",
         max_tokens=400,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -86,8 +82,7 @@ async def get_book_introduction(
     existing = result.scalar_one_or_none()
     if existing:
         existing.content_json = content_json
-        from datetime import datetime
-        existing.generated_at = datetime.utcnow()
+        existing.generated_at = datetime.now(timezone.utc)
     else:
         intro = BookIntroduction(book_name=book_name, content_json=content_json)
         db.add(intro)

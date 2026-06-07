@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: 'Inter', system-ui, sans-serif;
     @apply bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
@@ -11,6 +15,11 @@
   .bible-text {
     font-family: 'Lora', Georgia, serif;
     line-height: 1.9;
+  }
+
+  /* iOS safe area support for bottom nav */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 

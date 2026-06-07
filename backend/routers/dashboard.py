@@ -4,7 +4,7 @@ import logging
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..auth import CurrentUser, get_current_user
 from ..database import get_db
 from ..models import BibleVerse, DailyDevotion, ReadingPlan, ReadingPlanDay, ReadingPlanProgress
+from ..ai_client import get_client as _client
 
 logger = logging.getLogger("bible-study.dashboard")
 
@@ -178,12 +179,8 @@ async def generate_reflection(
     user: CurrentUser = Depends(get_current_user),
 ):
     """Stream a short devotional reflection for today's verse of the day, caching the result."""
-    import os
-    import anthropic
-
     votd = await _get_votd(db)
     if not votd:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Verse of day not found")
 
     cached = await _get_cached_reflection(db, votd["reference"])
@@ -192,7 +189,7 @@ async def generate_reflection(
             yield cached
         return StreamingResponse(_yield_cached(), media_type="text/plain")
 
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = _client()
 
     prompt = (
         f"Write a brief 2-sentence devotional reflection on {votd['reference']}: "
@@ -203,12 +200,12 @@ async def generate_reflection(
     collected = []
 
     async def _stream():
-        with client.messages.stream(
-            model="claude-haiku-4-5-20251001",
+        async with client.messages.stream(
+            model="claude-haiku-4-5",
             max_tokens=150,
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
-            for chunk in stream.text_stream:
+            async for chunk in stream.text_stream:
                 collected.append(chunk)
                 yield chunk
 

@@ -8,13 +8,11 @@ so multi-turn conversations don't re-bill the same tokens.
 
 import json
 import logging
-import os
 from typing import List, Optional
 
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +20,7 @@ from ..auth import require_app_password
 from ..database import get_db
 from ..models import BibleVerse, LibraryBook, LibraryPage, LibrarySummary
 from ..rate_limit import ai_rate_limit
+from ..ai_client import get_client as _client
 
 logger = logging.getLogger("bible-study.ai")
 
@@ -33,23 +32,6 @@ router = APIRouter(
 
 MODEL = "claude-sonnet-4-6"
 _CACHE = {"type": "ephemeral"}
-
-_async_client: Optional[anthropic.AsyncAnthropic] = None
-
-
-def _client() -> anthropic.AsyncAnthropic:
-    """Return the async Anthropic client, raising 503 if no key is configured.
-    Lazy-initialized so a missing key only fails the AI endpoints, not startup."""
-    global _async_client
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="ANTHROPIC_API_KEY is not set. Add it in Replit Secrets to enable AI features.",
-        )
-    if _async_client is None:
-        _async_client = anthropic.AsyncAnthropic(api_key=api_key)
-    return _async_client
 
 
 SYSTEM_PROMPT = """You are a knowledgeable Bible study assistant with deep expertise in:
@@ -70,12 +52,12 @@ When answering questions:
 
 
 class AskRequest(BaseModel):
-    question: str
-    reference: Optional[str] = None
-    translation: Optional[str] = "KJV"
-    verse_text: Optional[str] = None
-    chapter_text: Optional[str] = None
-    conversation_history: Optional[List[dict]] = None
+    question: str = Field(..., max_length=2000)
+    reference: Optional[str] = Field(None, max_length=100)
+    translation: Optional[str] = Field("KJV", max_length=20)
+    verse_text: Optional[str] = Field(None, max_length=5000)
+    chapter_text: Optional[str] = Field(None, max_length=50000)
+    conversation_history: Optional[List[dict]] = Field(None, max_length=20)
     include_library_context: bool = True
 
 
@@ -712,7 +694,9 @@ class SearchSynopsisRequest(BaseModel):
 async def search_synopsis(body: SearchSynopsisRequest):
     """Stream a 1-2 sentence AI synthesis of what the top search results share."""
     if not body.results:
-        return _stream_response(lambda: (x for x in []))
+        async def _empty():
+            yield "data: [DONE]\n\n"
+        return StreamingResponse(_empty(), media_type="text/event-stream")
 
     snippets = "\n".join(
         f"- {r.get('reference', '')}: {(r.get('text') or r.get('snippet') or '')[:120]}"
@@ -876,7 +860,11 @@ async def summarize_resource(body: SummarizeRequest, db: AsyncSession = Depends(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    # Resolve effective chunk size before cache lookup so key is consistent
+    total_pages = book.page_count or 0
     chunk_size = body.chunk_size
+    if chunk_size == 0 and total_pages > _CHUNK_THRESHOLD:
+        chunk_size = _CHUNK_SIZE_PAGES
 
     async def generate():
         try:
@@ -891,11 +879,6 @@ async def summarize_resource(body: SummarizeRequest, db: AsyncSession = Depends(
                 yield f"data: {json.dumps({'stage': 'done', 'cached': True})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
-
-            # Determine chunking strategy
-            total_pages = book.page_count or 0
-            if chunk_size == 0 and total_pages > _CHUNK_THRESHOLD:
-                chunk_size = _CHUNK_SIZE_PAGES
 
             if chunk_size > 0 and total_pages > 0:
                 chunks = []
@@ -970,19 +953,19 @@ Provide a structured outline of the content using ## headings and - sub-points. 
                         continue
                     lines = section.split("\n", 1)
                     heading = lines[0].strip().lower()
-                    body = lines[1].strip() if len(lines) > 1 else ""
+                    section_body = lines[1].strip() if len(lines) > 1 else ""
 
                     if "tldr" in heading or "tl;dr" in heading:
-                        tldr = body.strip()
+                        tldr = section_body.strip()
                     elif "key point" in heading:
-                        for line in body.split("\n"):
+                        for line in section_body.split("\n"):
                             line = line.strip()
                             if line.startswith("- ") or line.startswith("* "):
                                 key_points.append(line[2:].strip())
                             elif line and not line.startswith("#"):
                                 key_points.append(line)
                     elif "outline" in heading:
-                        outline = body.strip()
+                        outline = section_body.strip()
 
                 # Fallback: if parsing failed, use the whole response
                 if not tldr and not key_points and not outline:
@@ -1021,7 +1004,8 @@ Provide a structured outline of the content using ## headings and - sub-points. 
         except HTTPException:
             raise
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            logger.exception("summarize_resource error for resource_id=%s", body.resource_id)
+            yield f"data: {json.dumps({'error': 'Summarization failed. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")

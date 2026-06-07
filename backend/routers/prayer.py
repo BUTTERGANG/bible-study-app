@@ -1,6 +1,6 @@
 """Prayer Journal — personal prayer requests with verse linking and status tracking."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -109,7 +109,7 @@ async def update_prayer(
         p.answered_note = body.answered_note
     if body.category is not None:
         p.category = body.category
-    p.updated_at = datetime.utcnow()
+    p.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return _out(p)
 

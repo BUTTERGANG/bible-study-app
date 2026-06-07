@@ -6,7 +6,7 @@ message structure (role, content, metadata) without schema churn.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -114,7 +114,7 @@ async def save_conversation(
         conv.translation = body.translation
         if body.title:
             conv.title = body.title
-        conv.updated_at = datetime.utcnow()
+        conv.updated_at = datetime.now(timezone.utc)
     else:
         conv = AiConversation(
             user_id=user.id,
@@ -155,7 +155,7 @@ async def update_conversation(
     conv.message_count = len(body.messages)
     if body.title is not None:
         conv.title = body.title
-    conv.updated_at = datetime.utcnow()
+    conv.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(conv)
     return _conv_dict(conv)

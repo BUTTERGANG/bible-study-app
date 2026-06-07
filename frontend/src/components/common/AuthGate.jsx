@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Lock } from 'lucide-react'
+import { BookOpen, Lock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { getAppPassword, getAccessToken, setAppPassword, setTokens } from '../../api/auth'
 
@@ -15,6 +16,7 @@ export default function AuthGate({ children }) {
   const [mode, setMode] = useState('login')   // 'login' | 'register'
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   const { data, isLoading } = useQuery({
     queryKey: ['auth-status', tick],
@@ -82,6 +84,7 @@ export default function AuthGate({ children }) {
         : await api.login(email, password)
       setTokens(res)
       setTick((t) => t + 1)
+      navigate('/read', { replace: true })
     } catch (err) {
       setError(err.message || 'Something went wrong')
     } finally {
@@ -92,7 +95,7 @@ export default function AuthGate({ children }) {
   return (
     <div className="h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
       <form onSubmit={submitAccount} className={cardCls}>
-        <Header title="Bible Study" />
+        <Header title="Scriptura Bible Study" />
 
         {/* Tab switcher */}
         <div className="flex mb-4 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
@@ -134,9 +137,11 @@ const btnCls =
 
 function Header({ title }) {
   return (
-    <div className="flex items-center gap-2 mb-4 text-gray-700 dark:text-gray-100">
-      <Lock size={18} />
-      <h1 className="text-base font-semibold">{title}</h1>
+    <div className="flex items-center gap-2.5 mb-5 text-gray-700 dark:text-gray-100">
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center flex-shrink-0">
+        <BookOpen size={15} className="text-white" />
+      </div>
+      <h1 className="text-base font-bold tracking-tight">{title}</h1>
     </div>
   )
 }

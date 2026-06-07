@@ -48,7 +48,7 @@ export async function getVerseExportData(book, chapter, verse, text, translation
   }
 
   lines.push('---')
-  lines.push(`*Exported from LOGOS Bible Study on ${new Date().toLocaleDateString()}*`)
+  lines.push(`*Exported from Scriptura Bible Study on ${new Date().toLocaleDateString()}*`)
 
   return lines.join('\n')
 }
@@ -144,7 +144,7 @@ export function printPassage(exportData) {
   <hr class="divider">
   ${versesHtml}
   ${notesHtml}
-  <p class="footer">Exported from LOGOS Bible Study &mdash; ${new Date().toLocaleDateString()}</p>
+  <p class="footer">Exported from Scriptura Bible Study &mdash; ${new Date().toLocaleDateString()}</p>
 </body>
 </html>`
 
@@ -155,12 +155,16 @@ export function printPassage(exportData) {
   }
   printWindow.document.write(html)
   printWindow.document.close()
-  // Wait for content to render, then trigger print
-  printWindow.onload = () => {
+  // Guard against double-print: onload fires in most browsers; setTimeout is a
+  // fallback for browsers that don't fire onload for document.write content.
+  let printed = false
+  const doPrint = () => {
+    if (printed) return
+    printed = true
     printWindow.print()
   }
-  // Fallback: print after a short delay for browsers that don't fire onload for document.write
-  setTimeout(() => printWindow.print(), 500)
+  printWindow.onload = doPrint
+  setTimeout(doPrint, 600)
 }
 
 function escapeHtml(text) {

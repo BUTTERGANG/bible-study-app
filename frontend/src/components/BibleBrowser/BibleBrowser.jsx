@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Compass, ChevronRight, Eye, Grid3X3, List, Search as SearchIcon, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Compass, ChevronRight, Eye, Grid3X3, List, Search as SearchIcon, X } from 'lucide-react';
 import { useStudyStore } from '../../stores/studyStore';
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData';
 import { api } from '../../api/client';
@@ -34,6 +34,8 @@ function BookCard({ book, view, isRecent, readingProgress, onSelect, isActive, i
   return (
     <button
       onClick={() => onSelect(book)}
+      aria-current={isActive ? 'true' : undefined}
+      aria-label={`${book.name}${isActive ? ' (selected)' : ''}`}
       className={clsx(
         'text-left transition-all rounded-lg border group',
         isCompact ? 'flex items-center gap-3 px-3 py-2.5' : 'flex flex-col p-3',
@@ -300,7 +302,7 @@ export default function BibleBrowser() {
     trackRecent(book);
     setReference(book.name, chapter, verse);
     setSelectedBook(null);
-    navigate('/');
+    navigate('/read');
   }, [setReference, trackRecent, navigate]);
 
   // Reset selected book and focus when testament changes
@@ -321,7 +323,11 @@ export default function BibleBrowser() {
       if (document.activeElement?.tagName === 'INPUT') return;
       e.preventDefault();
       const cols = view === 'list' ? 1 : 4;
-      if (e.key === 'Escape') { setSelectedBook(null); setFocusedBookIdx(-1); return; }
+      if (e.key === 'Escape') {
+        if (selectedBook) { setSelectedBook(null); setFocusedBookIdx(-1); }
+        else navigate('/read');
+        return;
+      }
       if (e.key === 'Enter' && focusedBookIdx >= 0 && flatBooks[focusedBookIdx]) {
         setSelectedBook((prev) => {
           const b = flatBooks[focusedBookIdx];
@@ -350,6 +356,14 @@ export default function BibleBrowser() {
       <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/read')}
+              title="Back to reader"
+              className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mr-1"
+            >
+              <ArrowLeft size={14} />
+              <span className="hidden sm:inline">Back</span>
+            </button>
             <Compass size={16} className="text-blue-600 dark:text-blue-400" />
             <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Bible Browser</h1>
             <span className="hidden sm:inline text-[10px] text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5">

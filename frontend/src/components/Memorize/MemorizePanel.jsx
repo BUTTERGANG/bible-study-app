@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Brain, Plus, Trash2, CheckCircle, XCircle, Eye, EyeOff, Star } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
+import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
@@ -76,7 +77,8 @@ function QuizCard({ verse, onResult, onClose }) {
 }
 
 export default function MemorizePanel() {
-  const { book, chapter, verse, translation } = useStudyStore()
+  const { book, chapter, translation } = useStudyStore()
+  const verse = useActiveVerse()
   const [quizVerse, setQuizVerse] = useState(null)
   const qc = useQueryClient()
 

@@ -17,7 +17,7 @@ function useConversations() {
 }
 
 export default function Sidebar() {
-  const { book: activeBook, chapter: activeChapter, translation, setReference, setRightPanel } = useStudyStore()
+  const { book: activeBook, chapter: activeChapter, translation, setReference, setRightPanel, rightPanel, rightPanelOpen } = useStudyStore()
   const navigate = useNavigate()
   const location = useLocation()
   const [expanded, setExpanded] = useState({ OT: true, NT: true, APO: false, conversations: false })
@@ -99,9 +99,9 @@ export default function Sidebar() {
         <div className="px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">
           Quick Actions
         </div>
-        <QuickAction icon={StickyNote} label="Notes" panel="notes" />
-        <QuickAction icon={Library} label="Library" panel="library" />
-        <QuickAction icon={Users} label="Groups" panel="groups" />
+        <QuickAction icon={StickyNote} label="Notes" panel="notes" active={rightPanelOpen && rightPanel === 'notes'} />
+        <QuickAction icon={Library} label="Library" panel="library" active={rightPanelOpen && rightPanel === 'library'} />
+        <QuickAction icon={Users} label="Groups" panel="groups" active={rightPanelOpen && rightPanel === 'groups'} />
         <QuickAction
           icon={Compass}
           label="Browse"

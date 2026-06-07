@@ -149,14 +149,14 @@ async def get_chapter_interlinear(
 
     canonical_t = await resolve_translation(translation, db)
 
-    # Determine testament from book number to pick the right word table
-    book_num = None
-    for i, (bn, bname) in enumerate(BOOKS):
-        if bname == canonical:
-            book_num = i
+    # Determine testament to pick the right word table
+    book_entry = None
+    for b in BOOKS:
+        if b["name"] == canonical:
+            book_entry = b
             break
 
-    is_nt = book_num is not None and book_num >= 39
+    is_nt = book_entry is not None and book_entry["testament"] == "NT"
 
     # Single query: fetch words with verse number, grouped in Python
     if is_nt:
@@ -293,7 +293,7 @@ async def get_chapter_lemmas(
             })
 
     return {
-        "translation": translation,
+        "translation": canonical_t,
         "book": canonical,
         "chapter": chapter,
         "language": "greek" if is_nt else "hebrew",

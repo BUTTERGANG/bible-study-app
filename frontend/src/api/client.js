@@ -44,6 +44,7 @@ const patch = (path, body) =>
 
 export const api = {
   generateOutline: (reference, translation) => post('/ai/outline', { reference, translation }),
+  getCrossReferences: (reference, verseText) => post('/ai/cross-references', { reference, verse_text: verseText || '' }),
   topicStudy: (topic, depth = 'overview') => post('/ai/topic-study', { topic, depth }),
   getPassageInsights: (book, chapter, verse, translation = 'KJV') =>
     post('/ai/insights', { book, chapter, verse, translation }),
@@ -99,6 +100,13 @@ export const api = {
   createNote: (data) => post('/notes', data),
   updateNote: (id, data) => put(`/notes/${id}`, data),
   deleteNote: (id) => del(`/notes/${id}`),
+  uploadMedia: (file, caption, noteId) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (caption) form.append('caption', caption)
+    if (noteId) form.append('note_id', noteId)
+    return request('/media/upload', { method: 'POST', body: form })
+  },
 
   // Highlights
   getHighlights: (book, chapter, translation) =>
@@ -280,26 +288,16 @@ export const api = {
     put(`/sermons/${id}/sections/${sectionType}`, { content }),
 
   // Sermon Series (Preaching Series Planner)
-  listSermonSeries: () => get('/sermons/series'),
-  createSermonSeries: (data) => post('/sermons/series', data),
-  getSermonSeries: (id) => get(`/sermons/series/${id}`),
-  updateSermonSeries: (id, data) => put(`/sermons/series/${id}`, data),
-  deleteSermonSeries: (id) => del(`/sermons/series/${id}`),
-  addSeriesEntry: (seriesId, data) => post(`/sermons/series/${seriesId}/entries`, data),
+  listSermonSeries: () => get('/sermon-series'),
+  createSermonSeries: (data) => post('/sermon-series', data),
+  getSermonSeries: (id) => get(`/sermon-series/${id}`),
+  updateSermonSeries: (id, data) => put(`/sermon-series/${id}`, data),
+  deleteSermonSeries: (id) => del(`/sermon-series/${id}`),
+  addSeriesEntry: (seriesId, data) => post(`/sermon-series/${seriesId}/entries`, data),
   updateSeriesEntry: (seriesId, entryId, data) =>
-    put(`/sermons/series/${seriesId}/entries/${entryId}`, data),
+    put(`/sermon-series/${seriesId}/entries/${entryId}`, data),
   deleteSeriesEntry: (seriesId, entryId) =>
-    del(`/sermons/series/${seriesId}/entries/${entryId}`),
-
-  // PreachingSeriesPanel aliases (same endpoints, panel-friendly names)
-  listSeries: () => get('/sermons/series'),
-  getSeries: (id) => get(`/sermons/series/${id}`),
-  createSeries: (data) => post('/sermons/series', data),
-  updateSeries: (id, data) => put(`/sermons/series/${id}`, data),
-  deleteSeries: (id) => del(`/sermons/series/${id}`),
-  addSeriesSlot: (seriesId, data) => post(`/sermons/series/${seriesId}/entries`, data),
-  updateSeriesSlot: (seriesId, slotId, data) => put(`/sermons/series/${seriesId}/entries/${slotId}`, data),
-  deleteSeriesSlot: (seriesId, slotId) => del(`/sermons/series/${seriesId}/entries/${slotId}`),
+    del(`/sermon-series/${seriesId}/entries/${entryId}`),
 
   // AI Conversations
   listConversations: (limit = 50, offset = 0) =>

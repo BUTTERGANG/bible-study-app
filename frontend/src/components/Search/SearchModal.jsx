@@ -280,6 +280,23 @@ export default function SearchModal({ onClose }) {
 
         {/* Results */}
         <div className="max-h-80 overflow-y-auto" ref={listRef}>
+          {!query && (
+            <div className="px-4 py-5 text-center space-y-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Search scripture, commentaries, or type a reference
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                e.g. <span className="font-mono">John 3:16</span> · <span className="font-mono">faith</span> · <span className="font-mono">Rom 8</span>
+              </p>
+            </div>
+          )}
+
+          {query.length > 0 && query.length < 3 && (
+            <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 text-center">
+              Keep typing…
+            </div>
+          )}
+
           {loading && (
             <div className="p-4 text-sm text-gray-400 text-center">Searching…</div>
           )}

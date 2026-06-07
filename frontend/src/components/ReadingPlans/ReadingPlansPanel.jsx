@@ -109,6 +109,8 @@ export default function ReadingPlansPanel() {
   const [planName, setPlanName] = useState('')
   const [planDuration, setPlanDuration] = useState('')
   const [aiPlanJson, setAiPlanJson] = useState(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState('')
 
   const { data: plansData } = useQuery({
     queryKey: ['reading-plans'],
@@ -166,8 +168,10 @@ export default function ReadingPlansPanel() {
   const builtInPlans = builtInData?.plans ?? []
 
   const handleGeneratePlan = () => {
-    if (!goal.trim()) return
+    if (!goal.trim() || isGenerating) return
     setAiPlanJson(null)
+    setIsGenerating(true)
+    setGenerateError('')
 
     const params = { goal: goal.trim() }
     if (planName.trim()) params.plan_name = planName.trim()
@@ -215,7 +219,9 @@ export default function ReadingPlansPanel() {
       }
       await process()
     }).catch((err) => {
-      console.error('Failed to generate plan:', err)
+      setGenerateError(err.message?.includes('503') ? 'AI key not configured.' : 'Generation failed — try again.')
+    }).finally(() => {
+      setIsGenerating(false)
     })
   }
 
@@ -321,12 +327,18 @@ export default function ReadingPlansPanel() {
 
                 <button
                   onClick={handleGeneratePlan}
-                  disabled={!goal.trim()}
+                  disabled={!goal.trim() || isGenerating}
                   className="w-full text-xs bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 disabled:opacity-40 flex items-center justify-center gap-1.5 font-medium"
                 >
-                  <Sparkles size={12} />
-                  Generate Plan
+                  {isGenerating ? (
+                    <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Generating…</>
+                  ) : (
+                    <><Sparkles size={12} />Generate Plan</>
+                  )}
                 </button>
+                {generateError && (
+                  <p className="text-xs text-red-500 text-center">{generateError}</p>
+                )}
 
                 <div>
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">Try an example:</p>

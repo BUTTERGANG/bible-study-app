@@ -334,7 +334,10 @@ function MarkdownContent({ content }) {
 
 // ── Main NotesPanel ───────────────────────────────────────────────────────
 export default function NotesPanel() {
-  const { book, chapter, verse, translation } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const verse = useStudyStore((s) => s.verse)
+  const translation = useStudyStore((s) => s.translation)
   const qc = useQueryClient()
   const [editing, setEditing] = useState(null)
   const [newNote, setNewNote] = useState('')
@@ -344,6 +347,7 @@ export default function NotesPanel() {
   const [filterTag, setFilterTag] = useState('')
   const [editTags, setEditTags] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState('')
   const [showMediaPicker, setShowMediaPicker] = useState(false)
   const [insertTarget, setInsertTarget] = useState(null) // null = newNote, number = editing note id
   const editAreaRef = useRef(null)
@@ -411,7 +415,8 @@ export default function NotesPanel() {
         tags: newTags.trim() || null,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notes'] })
+      qc.invalidateQueries({ queryKey: notesKey })
+      qc.invalidateQueries({ queryKey: ['notes', 'all'] })
       setNewNote('')
       setNewTags('')
       setShowNew(false)
@@ -421,25 +426,31 @@ export default function NotesPanel() {
   const updateMutation = useMutation({
     mutationFn: ({ id, content, tags }) => api.updateNote(id, { content, tags }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notes'] })
+      qc.invalidateQueries({ queryKey: notesKey })
+      qc.invalidateQueries({ queryKey: ['notes', 'all'] })
       setEditing(null)
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: api.deleteNote,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: notesKey })
+      qc.invalidateQueries({ queryKey: ['notes', 'all'] })
+    },
   })
 
   const generateOutline = async () => {
     setIsGenerating(true)
+    setGenerateError('')
     try {
       const res = await api.generateOutline(reference, translation)
       setNewNote(res.outline)
       setNewTags('outline, study')
       setShowNew(true)
     } catch (err) {
-      console.error('Failed to generate outline:', err)
+      setGenerateError(err.message?.includes('503') ? 'AI key not configured.' : 'Generation failed — try again.')
+      setTimeout(() => setGenerateError(''), 4000)
     } finally {
       setIsGenerating(false)
     }
@@ -455,15 +466,20 @@ export default function NotesPanel() {
         </span>
         <div className="flex items-center gap-1">
           {!viewAll && (
-            <button
-              onClick={generateOutline}
-              disabled={isGenerating}
-              className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 mr-1 disabled:opacity-50"
-              title="Generate AI study outline"
-            >
-              {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-              AI Outline
-            </button>
+            <div className="flex items-center gap-1 mr-1">
+              <button
+                onClick={generateOutline}
+                disabled={isGenerating}
+                className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 disabled:opacity-50"
+                title="Generate AI study outline"
+              >
+                {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                AI Outline
+              </button>
+              {generateError && (
+                <span className="text-[10px] text-red-500">{generateError}</span>
+              )}
+            </div>
           )}
           <button
             onClick={() => setViewAll(!viewAll)}
@@ -544,7 +560,7 @@ export default function NotesPanel() {
             <div className="flex items-center gap-1 mb-2">
               <button
                 onClick={() => { setInsertTarget(null); setShowMediaPicker(true) }}
-                className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-yellow-100 dark:hover:bg-yellow-800/30 transition-colors"
+                className="text-xs text-gray-500 hover:text-blue-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-yellow-100 dark:hover:bg-yellow-800/30 transition-colors min-h-[36px]"
                 title="Insert image"
               >
                 <Image size={12} />

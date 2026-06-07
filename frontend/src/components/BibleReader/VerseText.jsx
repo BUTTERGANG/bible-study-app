@@ -23,22 +23,28 @@ export default function VerseText({
   const [menuPos, setMenuPos] = useState(null)
   const [flashing, setFlashing] = useState(false)
   const ref = useRef(null)
+  const suppressFlash = useRef(false)
 
   useEffect(() => {
     if (!isActive) return
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    setFlashing(true)
-    const t = setTimeout(() => setFlashing(false), 1400)
-    return () => clearTimeout(t)
+    if (!suppressFlash.current) {
+      setFlashing(true)
+      const t = setTimeout(() => setFlashing(false), 1400)
+      return () => clearTimeout(t)
+    }
+    suppressFlash.current = false
   }, [isActive])
 
   function handleClick() {
+    suppressFlash.current = true
     selectVerse(verse, text)
     setMenuPos(null)
   }
 
   function handleContextMenu(e) {
     e.preventDefault()
+    suppressFlash.current = true
     selectVerse(verse, text)
     setMenuPos({ x: e.clientX, y: e.clientY })
   }

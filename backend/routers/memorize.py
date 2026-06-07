@@ -1,6 +1,6 @@
 """Verse Memorization — add verses to a memory queue and track quiz progress."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -120,7 +120,7 @@ async def record_quiz_result(
         raise HTTPException(status_code=404, detail="Memory verse not found")
 
     mv.attempts += 1
-    mv.last_reviewed = datetime.utcnow()
+    mv.last_reviewed = datetime.now(timezone.utc)
     if body.correct:
         mv.correct_count += 1
 
@@ -131,7 +131,7 @@ async def record_quiz_result(
             mv.mastery_level = 3  # mastered
         elif accuracy >= 0.7:
             mv.mastery_level = 2  # familiar
-        elif mv.attempts >= 1:
+        else:
             mv.mastery_level = 1  # learning
 
     await db.commit()

@@ -44,6 +44,20 @@ async def get_db():
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(lambda c: Base.metadata.create_all(c, checkfirst=True))
+        # Ensure the legacy open-mode user (id=0) exists so FK constraints on
+        # tables like sermon_projects, ai_conversations, etc. don't fail when
+        # the app runs without authentication (APP_PASSWORD not set).
+        from sqlalchemy import text
+        import logging as _logging
+        try:
+            await conn.execute(
+                text(
+                    "INSERT OR IGNORE INTO users (id, email, password_hash, is_active, created_at) "
+                    "VALUES (0, 'legacy@localhost', '', 1, datetime('now'))"
+                )
+            )
+        except Exception as _e:
+            _logging.getLogger("bible-study.db").warning("Legacy user seed skipped: %s", _e)
 
 
 async def db_status() -> dict:

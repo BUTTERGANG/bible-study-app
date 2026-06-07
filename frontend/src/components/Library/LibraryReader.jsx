@@ -469,6 +469,17 @@ export default function LibraryReader() {
                 <p>{browseQ ? 'No books match your search.' : 'No books in the library yet.'}</p>
               </div>
             )}
+            {!loadingBooks && filteredBooks.length > 0 && filteredBooks.every(b => !b.available) && (
+              <div className="mx-3 mt-3 mb-1 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                <p className="font-semibold">Library files not found on this server</p>
+                <p className="text-amber-700 dark:text-amber-400">The PDF paths in the database point to your local machine. To make books available on Replit:</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-amber-700 dark:text-amber-400">
+                  <li>Upload your PDF files to <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">data/library/</code> in this project</li>
+                  <li>Add <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded">LIBRARY_PATH=/home/runner/workspace/data/library</code> in Replit Secrets</li>
+                  <li>Restart the server</li>
+                </ol>
+              </div>
+            )}
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {filteredBooks.map((book) => (
                 <button
@@ -499,7 +510,7 @@ export default function LibraryReader() {
                           <span className="text-[10px] text-gray-400">{book.pages} pages</span>
                         )}
                         {!book.available && (
-                          <span className="text-[10px] text-orange-500">Unavailable</span>
+                          <span className="text-[10px] text-orange-500" title="PDF not found on server — see instructions above">PDF not on server</span>
                         )}
                       </div>
                     </div>

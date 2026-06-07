@@ -9,10 +9,6 @@ Notes are AI-generated on first request and cached in the DB.
 
 import json
 import logging
-import os
-from typing import Optional
-
-import anthropic
 
 logger = logging.getLogger("bible-study.cultural-notes")
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..models import BibleVerse, CulturalNote
 from ..rate_limit import ai_rate_limit
+from ..ai_client import get_client as _client
 
 router = APIRouter(
     prefix="/api/cultural",
@@ -31,23 +28,6 @@ router = APIRouter(
 
 MODEL = "claude-sonnet-4-6"
 _C_CACHE = {"type": "ephemeral"}
-
-_async_client: Optional[anthropic.AsyncAnthropic] = None
-_cached_key: Optional[str] = None
-
-
-def _client() -> anthropic.AsyncAnthropic:
-    global _async_client, _cached_key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="AI features require ANTHROPIC_API_KEY. In Replit: Tools → Secrets → Add ANTHROPIC_API_KEY.",
-        )
-    if _async_client is None or api_key != _cached_key:
-        _async_client = anthropic.AsyncAnthropic(api_key=api_key)
-        _cached_key = api_key
-    return _async_client
 
 
 CULTURAL_SYSTEM_PROMPT = """You are an expert biblical historian and cultural commentator, drawing on the scholarship of:

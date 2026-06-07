@@ -71,7 +71,7 @@ def _snippet(text_in: str, query: str, max_len: int = 200) -> str:
 @router.get("")
 async def search(
     q: str = Query(..., min_length=2),
-    scope: str = Query(default="bible"),
+    scope: str = Query(default="bible", pattern="^(bible|commentary|all)$"),
     translation: str = Query(default="KJV"),
     limit: int = Query(default=25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -508,11 +508,11 @@ async def morphological_search(
     params = dict(morph_params)
     params["limit"] = req.limit
 
-    # Scope filtering
+    # Scope filtering — use v.book_num from the joined bible_verses row
     if req.scope == "nt":
-        where_clauses.append("w.book_num >= 40")
+        where_clauses.append("v.book_num >= 40")
     elif req.scope == "ot":
-        where_clauses.append("w.book_num < 40")
+        where_clauses.append("v.book_num < 40")
     elif req.scope == "book" and req.book:
         where_clauses.append("w.book = :book")
         params["book"] = req.book
@@ -532,7 +532,7 @@ async def morphological_search(
             ON v.book = w.book AND v.chapter = w.chapter AND v.verse = w.verse
             AND v.translation = 'KJV'
         WHERE {where_sql}
-        ORDER BY w.book_num, w.chapter, w.verse, w.word_position
+        ORDER BY v.book_num, w.chapter, w.verse, w.word_position
         LIMIT :limit
     """)
 

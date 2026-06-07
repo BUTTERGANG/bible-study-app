@@ -19,6 +19,7 @@ export function useStreamingAI(endpoint, bodyFor, messages, setMessages) {
       if (!text.trim() || streaming) return
       const userMsg = { role: 'user', content: text }
       const aiMsg = { role: 'assistant', content: '', error: null }
+      setStreaming(true)
       setMessages((prev) => {
         // Build history from the previous state (always fresh) before appending
         const history = prev
@@ -48,7 +49,6 @@ export function useStreamingAI(endpoint, bodyFor, messages, setMessages) {
 
         return [...prev, userMsg, aiMsg]
       })
-      setStreaming(true)
     },
     [endpoint, bodyFor, streaming, setMessages]
   )

@@ -238,8 +238,18 @@ export default function MapPanel() {
         </MapContainer>
       </div>
 
-      {/* Status bar */}
-      <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+      {/* Route legend + status bar */}
+      <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-1.5">
+        {showRoutes && visibleRoutes.length > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {ROUTE_COLORS_LEGEND.filter(r => visibleRoutes.some(vr => vr.color === r.color)).map(r => (
+              <span key={r.label} className="flex items-center gap-1 text-[9px] text-gray-500 dark:text-gray-400">
+                <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: r.color }} />
+                {r.label}
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-[9px] text-gray-400 text-center">
           {visiblePlaces.length} places · {visibleRoutes.length} routes · click markers for details
         </p>

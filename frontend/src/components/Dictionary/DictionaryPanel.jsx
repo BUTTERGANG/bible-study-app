@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ChevronRight, Search } from 'lucide-react'
-import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
@@ -14,21 +13,18 @@ const DICTIONARY_SOURCES = [
 ]
 
 export default function DictionaryPanel() {
-  const { book, chapter, verse } = useStudyStore()
   const [query, setQuery] = useState('')
   const [selectedSource, setSelectedSource] = useState('')
   const [activeEntry, setActiveEntry] = useState(null)
   const [searchQ, setSearchQ] = useState('')
 
-  const reference = verse ? `${book} ${chapter}:${verse}` : `${book} ${chapter}`
-
-  const { data: searchResults, isLoading: searching } = useQuery({
+  const { data: searchResults, isLoading: searching, isError: searchError } = useQuery({
     queryKey: ['dictionary-search', searchQ, selectedSource],
     queryFn: () => api.searchDictionary(searchQ, selectedSource || undefined),
     enabled: searchQ.length >= 2,
   })
 
-  const { data: entryData, isLoading: loadingEntry } = useQuery({
+  const { data: entryData, isLoading: loadingEntry, isError: entryError } = useQuery({
     queryKey: ['dictionary-entry', activeEntry?.source, activeEntry?.term],
     queryFn: () => api.getDictionaryEntry(activeEntry.source, activeEntry.term),
     enabled: !!activeEntry,
@@ -130,7 +126,11 @@ export default function DictionaryPanel() {
               <div className="p-4 text-sm text-gray-400 text-center">Searching…</div>
             )}
 
-            {!searching && searchQ && results.length === 0 && (
+            {searchError && (
+              <div className="p-4 text-sm text-red-500 dark:text-red-400 text-center">Search failed — try again.</div>
+            )}
+
+            {!searching && !searchError && searchQ && results.length === 0 && (
               <div className="p-4 text-sm text-gray-400 text-center">
                 No results for "{searchQ}"
               </div>
@@ -162,6 +162,8 @@ export default function DictionaryPanel() {
         <div className="flex-1 overflow-y-auto">
           {loadingEntry ? (
             <div className="p-4 text-sm text-gray-400 text-center">Loading…</div>
+          ) : entryError ? (
+            <div className="p-4 text-sm text-red-500 dark:text-red-400 text-center">Could not load this entry.</div>
           ) : entryData ? (
             <div className="p-4">
               <div className="mb-4">

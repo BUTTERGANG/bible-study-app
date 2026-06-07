@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, BookOpen, ExternalLink, Link2 } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
+import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
@@ -112,7 +113,8 @@ function ConnectionCard({ conn, onNavigate }) {
 }
 
 export default function NtOtPanel() {
-  const { book, chapter, verse, setReference } = useStudyStore()
+  const { book, chapter, setReference } = useStudyStore()
+  const verse = useActiveVerse()
   const isNt = NT_BOOKS.has(book)
 
   // Build query params based on which testament we're in

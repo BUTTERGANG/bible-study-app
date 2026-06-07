@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Layers, ExternalLink, BarChart2 } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
+import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
@@ -134,7 +135,8 @@ function SemanticRangeSection({ strongs }) {
 }
 
 export default function WordStudyPanel() {
-  const { book, chapter, verse, interlinearMode, reverseInterlinear, toggleInterlinear, toggleReverseInterlinear, focusedStrongs, clearFocusedStrongs, setReference } = useStudyStore()
+  const { book, chapter, interlinearMode, reverseInterlinear, toggleInterlinear, toggleReverseInterlinear, focusedStrongs, clearFocusedStrongs, setReference } = useStudyStore()
+  const verse = useActiveVerse()
   const [selectedWord, setSelectedWord] = useState(null)
   const [expandedStrongs, setExpandedStrongs] = useState(null)
   const [showOccurrences, setShowOccurrences] = useState(null)
@@ -146,6 +148,12 @@ export default function WordStudyPanel() {
       clearFocusedStrongs()
     }
   }, [focusedStrongs, clearFocusedStrongs])
+
+  // Reset word selection when verse changes
+  useEffect(() => {
+    setSelectedWord(null)
+    setExpandedStrongs(null)
+  }, [verse])
 
   const { data, isLoading } = useQuery({
     queryKey: ['words', book, chapter, verse],

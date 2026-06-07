@@ -9,9 +9,9 @@ import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 import BookIntroCard from './BookIntroCard'
 
 export default function BibleReader() {
-  const { book, chapter, translation, verse: activeVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, showLemmas, openWordStudy, setCurrentVerses } = useStudyStore()
+  const { book, chapter, translation, verse: activeVerse, selectedVerse, fontSizeIdx, compareMode, interlinearMode, reverseInterlinear, showLemmas, openWordStudy, setCurrentVerses } = useStudyStore()
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['chapter', translation, book, chapter],
     queryFn: () => api.getChapter(translation, book, chapter),
     enabled: !!book && !!chapter && !compareMode,
@@ -79,7 +79,13 @@ export default function BibleReader() {
           ) : (
             <>
               <p className="font-medium">Could not load {book} {chapter}</p>
-              <p className="text-sm mt-1">The server may still be starting up — try again in a moment.</p>
+              <p className="text-sm mt-1">The server may still be starting up.</p>
+              <button
+                onClick={() => refetch()}
+                className="mt-3 px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+              >
+                Try again
+              </button>
             </>
           )}
         </div>
@@ -155,7 +161,7 @@ export default function BibleReader() {
                   book={data.book}
                   chapter={data.chapter}
                   translation={data.translation}
-                  isActive={activeVerse === verse}
+                  isActive={activeVerse === verse || selectedVerse === verse}
                   highlightColor={highlights[String(verse)]?.color}
                   highlightId={highlights[String(verse)]?.id}
                   words={interlinearMap[verse] || []}
@@ -173,7 +179,7 @@ export default function BibleReader() {
                 book={data.book}
                 chapter={data.chapter}
                 translation={data.translation}
-                isActive={activeVerse === verse}
+                isActive={activeVerse === verse || selectedVerse === verse}
                 highlightColor={highlights[String(verse)]?.color}
                 highlightId={highlights[String(verse)]?.id}
                 lemmaWords={lemmaMap[verse] || []}

@@ -1,6 +1,6 @@
 """Sermon Builder — CRUD for sermon projects and their sections."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -76,10 +76,13 @@ async def create_project(
     )
     db.add(project)
     await db.commit()
-    await db.refresh(project)
-    # Load sections relationship (empty on creation)
-    await db.execute(select(SermonSection).where(SermonSection.project_id == project.id))
-    project.sections = []
+    # Re-fetch with sections loaded to avoid lazy-load in async context.
+    result = await db.execute(
+        select(SermonProject)
+        .options(selectinload(SermonProject.sections))
+        .where(SermonProject.id == project.id)
+    )
+    project = result.scalar_one()
     return _project_out(project)
 
 
@@ -121,10 +124,15 @@ async def update_project(
         project.passage_ref = body.passage_ref
     if body.audience is not None:
         project.audience = body.audience
-    project.updated_at = datetime.utcnow()
+    project.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(project)
-    return _project_out(project)
+    # Re-fetch with sections eagerly loaded to avoid lazy-load in async context
+    result2 = await db.execute(
+        select(SermonProject)
+        .options(selectinload(SermonProject.sections))
+        .where(SermonProject.id == project.id)
+    )
+    return _project_out(result2.scalar_one())
 
 
 @router.delete("/{project_id}", status_code=204)
@@ -171,11 +179,11 @@ async def upsert_section(
     section = existing.scalar_one_or_none()
     if section:
         section.content = body.content
-        section.updated_at = datetime.utcnow()
+        section.updated_at = datetime.now(timezone.utc)
     else:
         section = SermonSection(project_id=project_id, section_type=section_type, content=body.content)
         db.add(section)
 
-    proj.updated_at = datetime.utcnow()
+    proj.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return {"section_type": section_type, "content": body.content}

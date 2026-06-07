@@ -7,8 +7,14 @@ import { useStudyStore } from '../stores/studyStore'
 // browser-back all work. UI-only state (font size, dark mode, open panel)
 // stays in Zustand's persisted slice.
 
+const READ_PREFIX = '/read'
+
 function parsePath(pathname) {
-  const parts = pathname.split('/').filter(Boolean)
+  // Strip the /read prefix — paths are /read/:translation/:book/:chapter/:verse?
+  const stripped = pathname.startsWith(READ_PREFIX)
+    ? pathname.slice(READ_PREFIX.length)
+    : pathname
+  const parts = stripped.split('/').filter(Boolean)
   if (parts.length === 0) return null
   const [translation, ...rest] = parts
   if (!translation || rest.length === 0) return null
@@ -22,7 +28,7 @@ function parsePath(pathname) {
 
 function buildPath({ translation, book, chapter, verse }) {
   const bookSlug = encodeURIComponent(book.replace(/ /g, '-'))
-  const base = `/${encodeURIComponent(translation)}/${bookSlug}/${chapter}`
+  const base = `${READ_PREFIX}/${encodeURIComponent(translation)}/${bookSlug}/${chapter}`
   return verse ? `${base}/${verse}` : base
 }
 
@@ -32,11 +38,15 @@ export function useUrlSync() {
   const { translation, book, chapter, verse, setReference, setTranslation } = useStudyStore()
   const lastUrl = useRef('')
 
+  // Only sync when we're actually in the reader, not on the landing page or browse
+  const isReader = location.pathname === READ_PREFIX || location.pathname.startsWith(READ_PREFIX + '/')
+
   // URL → store. Runs whenever the path changes (including initial load).
   useEffect(() => {
+    if (!isReader) return
     const parsed = parsePath(location.pathname)
     if (!parsed) {
-      // Empty path — write current store state into the URL so deep links work.
+      // /read with no sub-path — write current store state into the URL.
       const path = buildPath({ translation, book, chapter, verse })
       navigate(path, { replace: true })
       lastUrl.current = path
@@ -52,15 +62,14 @@ export function useUrlSync() {
     }
     lastUrl.current = location.pathname
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname])
+  }, [location.pathname, isReader])
 
-  // Store → URL. Use replace to avoid polluting the browser history stack —
-  // every store change (including those triggered by the URL → store effect
-  // above) should replace the current entry, not push a new one.
+  // Store → URL. Use replace to avoid polluting the browser history stack.
   useEffect(() => {
+    if (!isReader) return
     const next = buildPath({ translation, book, chapter, verse })
     if (next === lastUrl.current) return
     lastUrl.current = next
     navigate(next, { replace: true })
-  }, [translation, book, chapter, verse, navigate])
+  }, [translation, book, chapter, verse, navigate, isReader])
 }

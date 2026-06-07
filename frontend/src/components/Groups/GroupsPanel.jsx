@@ -45,21 +45,22 @@ export default function GroupsPanel() {
   const myGroups = useMemo(() => groups ?? [], [groups])
   const myInvites = useMemo(() => invites ?? [], [invites])
 
-  // Accept invite mutation
+  const [pendingAccept, setPendingAccept] = useState(null)
+  const [pendingDecline, setPendingDecline] = useState(null)
+
   const acceptMutation = useMutation({
-    mutationFn: (groupId) => api.acceptInvite(groupId),
+    mutationFn: (groupId) => { setPendingAccept(groupId); return api.acceptInvite(groupId) },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-invites'] })
       qc.invalidateQueries({ queryKey: ['my-groups'] })
     },
+    onSettled: () => setPendingAccept(null),
   })
 
-  // Decline invite mutation
   const declineMutation = useMutation({
-    mutationFn: (groupId) => api.declineInvite(groupId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['my-invites'] })
-    },
+    mutationFn: (groupId) => { setPendingDecline(groupId); return api.declineInvite(groupId) },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-invites'] }),
+    onSettled: () => setPendingDecline(null),
   })
 
   // Sort groups: most recently active first
@@ -129,10 +130,10 @@ export default function GroupsPanel() {
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => acceptMutation.mutate(invite.group_id || invite.group?.id)}
-                        disabled={acceptMutation.isPending}
+                        disabled={pendingAccept === (invite.group_id || invite.group?.id)}
                         className="text-xs bg-green-600 text-white px-2.5 py-1 rounded-md disabled:opacity-40 hover:bg-green-700 flex items-center gap-1"
                       >
-                        {acceptMutation.isPending ? (
+                        {pendingAccept === (invite.group_id || invite.group?.id) ? (
                           <Loader2 size={10} className="animate-spin" />
                         ) : (
                           <Check size={10} />
@@ -141,10 +142,10 @@ export default function GroupsPanel() {
                       </button>
                       <button
                         onClick={() => declineMutation.mutate(invite.group_id || invite.group?.id)}
-                        disabled={declineMutation.isPending}
+                        disabled={pendingDecline === (invite.group_id || invite.group?.id)}
                         className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md disabled:opacity-40 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 flex items-center gap-1"
                       >
-                        {declineMutation.isPending ? (
+                        {pendingDecline === (invite.group_id || invite.group?.id) ? (
                           <Loader2 size={10} className="animate-spin" />
                         ) : (
                           <Trash2 size={10} />

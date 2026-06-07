@@ -151,7 +151,7 @@ export default function GospelHarmony() {
   const [search, setSearch] = useState('')
   const [expandedSections, setExpandedSections] = useState({})
 
-  const { data: harmonyData, isLoading } = useQuery({
+  const { data: harmonyData, isLoading, isError, refetch } = useQuery({
     queryKey: ['harmony-list'],
     queryFn: api.getHarmonyList,
     staleTime: Infinity,
@@ -189,7 +189,23 @@ export default function GospelHarmony() {
       <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
         <div className="text-center">
           <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
-          <div className="text-xs">Loading Gospel Harmony...</div>
+          <div className="text-xs">Loading Gospel Harmony…</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 p-6">
+        <div className="text-center">
+          <p className="text-sm mb-3">Could not load Gospel Harmony data.</p>
+          <button
+            onClick={() => refetch()}
+            className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+          >
+            Try again
+          </button>
         </div>
       </div>
     )

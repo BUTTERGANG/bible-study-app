@@ -11,7 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, get_current_user
@@ -157,7 +157,7 @@ async def create_group(
     db.add(GroupMember(group_id=group.id, user_id=user.id, role="owner"))
     await db.commit()
     await db.refresh(group)
-    return _group_summary(g, member_count=1)
+    return _group_summary(group, member_count=1)
 
 
 @router.get("")
@@ -179,10 +179,8 @@ async def list_my_groups(
     groups = list(groups_q.scalars().all())
 
     # Batch member counts
-    from sqlalchemy import func as sa_func
-
     counts_q = await db.execute(
-        select(GroupMember.group_id, sa_func.count())
+        select(GroupMember.group_id, func.count())
         .where(GroupMember.group_id.in_(group_ids))
         .group_by(GroupMember.group_id)
     )
@@ -309,7 +307,10 @@ async def update_group(
         group.description = body.description.strip()
     group.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    return _group_summary(g=group, member_count=0)
+    cnt = await db.scalar(
+        select(func.count()).select_from(GroupMember).where(GroupMember.group_id == group_id)
+    )
+    return _group_summary(g=group, member_count=cnt or 0)
 
 
 @router.delete("/{group_id}")
@@ -348,16 +349,23 @@ async def invite_by_email(
     if existing_mem.first():
         raise HTTPException(status_code=400, detail="User is already a member")
 
-    # Check for existing pending invite
+    # Check for any existing invite (pending, declined, or cancelled) — upsert to pending
     existing_inv = await db.execute(
         select(GroupInvite).where(
             GroupInvite.group_id == group_id,
             GroupInvite.email == email,
-            GroupInvite.status == "pending",
         )
     )
-    if existing_inv.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Invite already pending")
+    existing = existing_inv.scalar_one_or_none()
+    if existing:
+        if existing.status == "pending":
+            raise HTTPException(status_code=400, detail="Invite already pending")
+        # Re-activate a previously declined or cancelled invite
+        existing.status = "pending"
+        existing.responded_at = None
+        existing.invited_at = datetime.now(timezone.utc)
+        await db.commit()
+        return {"ok": True, "reactivated": True}
 
     # If user exists with this email, auto-add as member
     user_q = await db.execute(select(User).where(User.email == email))
@@ -491,13 +499,12 @@ async def leave_group(
 
 
 def _note_dict(n: GroupNote, author_email: str = "") -> dict:
-    ref_parts = []
-    if n.book:
-        ref_parts.append(n.book)
-        if n.chapter:
-            ref_parts.append(str(n.chapter))
-            if n.verse:
-                ref_parts.append(f":{n.verse}")
+    if n.book and n.chapter:
+        ref = f"{n.book} {n.chapter}"
+        if n.verse:
+            ref += f":{n.verse}"
+    else:
+        ref = n.book or None
     return {
         "id": n.id,
         "group_id": n.group_id,
@@ -506,7 +513,7 @@ def _note_dict(n: GroupNote, author_email: str = "") -> dict:
         "book": n.book,
         "chapter": n.chapter,
         "verse": n.verse,
-        "reference": " ".join(ref_parts) if ref_parts else None,
+        "reference": ref,
         "content": n.content,
         "tags": n.tags,
         "created_at": n.created_at.isoformat() if n.created_at else None,

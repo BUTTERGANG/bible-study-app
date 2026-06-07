@@ -187,43 +187,50 @@ function SectionEditor({ project, sectionKey, onBack }) {
 
   const isQuestionSection = sectionKey === 'discussion_questions' || sectionKey === 'application_questions'
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (!section.aiEndpoint) return
     setContent('')
     setStreaming(true)
     setPreview(false)
-    let accumulated = ''
+
+    // cross-references returns plain JSON — use direct API call
+    if (sectionKey === 'cross_refs') {
+      try {
+        const res = await api.getCrossReferences(project.passage_ref)
+        const text = res.cross_references || ''
+        setContent(text)
+        setPreview(true)
+        saveMutation.mutate(text)
+      } catch (err) {
+        setContent(`[Error: ${err.message}]`)
+        setPreview(true)
+      } finally {
+        setStreaming(false)
+      }
+      return
+    }
 
     const body = sectionKey === 'observations'
       ? { reference: project.passage_ref, translation: 'KJV' }
-      : sectionKey === 'cross_refs'
-      ? { reference: project.passage_ref, verse_text: '' }
-      : sectionKey === 'discussion_questions'
-      ? {
-          passage: project.passage_ref,
-          translation: 'KJV',
-          context: contextType,
-          difficulty: DIFFICULTY_LEVELS[difficultyIdx].value,
-        }
-      : sectionKey === 'application_questions'
-      ? {
-          passage: project.passage_ref,
-          translation: 'KJV',
-          context: contextType,
-          difficulty: DIFFICULTY_LEVELS[difficultyIdx].value,
-        }
+      : sectionKey === 'discussion_questions' || sectionKey === 'application_questions'
+      ? { passage: project.passage_ref, translation: 'KJV', context: contextType, difficulty: DIFFICULTY_LEVELS[difficultyIdx].value }
       : { passage: project.passage_ref, translation: 'KJV', audience: 'general' }
 
+    let accumulated = ''
     stopRef.current = streamAI(
       section.aiEndpoint,
       body,
       (chunk) => { accumulated += chunk; setContent(accumulated) },
-      () => {
+      (err) => {
         setStreaming(false)
-        saveMutation.mutate(accumulated)
+        if (err) {
+          setContent((prev) => prev + `\n\n[Error: ${err.message}]`)
+        } else {
+          saveMutation.mutate(accumulated)
+        }
       },
     )
-  }, [section, sectionKey, project, contextType, difficultyIdx])
+  }, [section, sectionKey, project, contextType, difficultyIdx, saveMutation])
 
   const handleStop = () => {
     stopRef.current?.()

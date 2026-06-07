@@ -262,28 +262,33 @@ function SectionEditor({ project, sectionKey, onBack }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sermons'] }),
   })
 
-  const generate = useCallback(() => {
+  const generate = useCallback(async () => {
     setContent('')
     setPreview(false)
     setStreaming(true)
 
     const outlineContent = project.sections.find((s) => s.section_type === 'outline')?.content
-
     const endpoint = section.aiEndpoint
+
+    // Outline endpoint returns plain JSON — use direct API call
+    if (endpoint === 'outline') {
+      try {
+        const res = await api.generateOutline(project.passage_ref, 'KJV')
+        const text = res.outline || ''
+        setContent(text)
+        setPreview(true)
+        save(text)
+      } catch (err) {
+        setContent(`[Error: ${err.message}]`)
+      } finally {
+        setStreaming(false)
+      }
+      return
+    }
+
     const body = endpoint === 'sermon'
-      ? {
-          passage: project.passage_ref,
-          audience: project.audience,
-          translation: 'KJV',
-        }
-      : endpoint === 'outline'
-      ? { reference: project.passage_ref, translation: 'KJV' }
-      : {
-          passage: project.passage_ref,
-          translation: 'KJV',
-          audience: project.audience,
-          outline: outlineContent || undefined,
-        }
+      ? { passage: project.passage_ref, audience: project.audience, translation: 'KJV' }
+      : { passage: project.passage_ref, translation: 'KJV', audience: project.audience, outline: outlineContent || undefined }
 
     let accumulated = ''
     stopRef.current = streamAI(
@@ -294,10 +299,15 @@ function SectionEditor({ project, sectionKey, onBack }) {
         setContent(accumulated)
       },
       (err) => {
-        if (err) setContent((prev) => prev + `\n\n[Error: ${err.message}]`)
-        setStreaming(false)
-        setPreview(true)
-        save(accumulated)
+        if (err) {
+          setContent((prev) => prev + `\n\n[Error: ${err.message}]`)
+          setStreaming(false)
+          setPreview(true)
+        } else {
+          setStreaming(false)
+          setPreview(true)
+          save(accumulated)
+        }
       }
     )
   }, [project, sectionKey, section, save])
@@ -418,7 +428,7 @@ function ProjectDetail({ project, onBack }) {
         lines.push(`## ${sectionLabels[section_type] || section_type}`, '', content, '')
       }
     }
-    lines.push('---', `*Exported from LOGOS Sermon Builder on ${new Date().toLocaleDateString()}*`)
+    lines.push('---', `*Exported from Scriptura Sermon Builder on ${new Date().toLocaleDateString()}*`)
     const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

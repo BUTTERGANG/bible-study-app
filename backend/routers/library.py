@@ -17,6 +17,26 @@ from ..models import LibraryBook, LibraryPage
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
+# Original dev-machine prefix stored in the DB source_path column.
+_DEV_PREFIX = "/Volumes/T5 EVO/REPLIT/LOGOS-COPYCAT/library/"
+# Set LIBRARY_PATH in Replit Secrets to the directory where PDFs are uploaded.
+_LIBRARY_BASE = os.getenv("LIBRARY_PATH", "").rstrip("/")
+
+
+def _resolve_path(source_path: str) -> str:
+    """Remap a dev-machine absolute path to the configured LIBRARY_PATH."""
+    if not source_path:
+        return ""
+    # Already accessible as-is
+    if os.path.exists(source_path):
+        return source_path
+    # Try remapping the known dev prefix → LIBRARY_PATH
+    if _LIBRARY_BASE and source_path.startswith(_DEV_PREFIX):
+        relative = source_path[len(_DEV_PREFIX):]
+        candidate = os.path.join(_LIBRARY_BASE, relative)
+        return candidate
+    return source_path
+
 
 @router.get("/books")
 async def list_books(
@@ -50,7 +70,8 @@ async def list_books(
         if b.id in has_pages:
             available = True
         else:
-            on_disk = bool(b.source_path) and os.path.exists(b.source_path)
+            resolved = _resolve_path(b.source_path)
+            on_disk = bool(resolved) and os.path.exists(resolved)
             available = on_disk and (_FITZ_OK or b.source_format != "pdf")
         if available_only and not available:
             continue
@@ -102,13 +123,14 @@ async def get_book_page(
                 status_code=503,
                 detail="PDF reading not available — pages have not been pre-extracted, and PyMuPDF is unavailable in this environment.",
             )
-        if not os.path.exists(book.source_path):
+        resolved_path = _resolve_path(book.source_path)
+        if not os.path.exists(resolved_path):
             raise HTTPException(
                 status_code=404,
-                detail=f"PDF file not available and no pre-extracted pages: {book.title}",
+                detail=f"PDF not found. Upload your library PDFs and set LIBRARY_PATH in Replit Secrets.",
             )
         try:
-            pdf = fitz.open(book.source_path)
+            pdf = fitz.open(resolved_path)
             if page_num < 1 or page_num > pdf.page_count:
                 pdf.close()
                 raise HTTPException(status_code=404, detail="Page not found")
@@ -137,10 +159,11 @@ async def get_table_of_contents(book_id: int, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Book not found")
 
     if book.source_format == "pdf":
-        if not _FITZ_OK or not os.path.exists(book.source_path):
+        resolved_toc_path = _resolve_path(book.source_path)
+        if not _FITZ_OK or not os.path.exists(resolved_toc_path):
             return {"title": book.title, "toc": [], "unavailable": True}
         try:
-            pdf = fitz.open(book.source_path)
+            pdf = fitz.open(resolved_toc_path)
             toc = pdf.get_toc()
             pdf.close()
             return {

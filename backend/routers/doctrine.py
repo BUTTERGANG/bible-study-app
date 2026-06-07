@@ -6,11 +6,9 @@ POST /api/doctrine/generate     — force-regenerate a doctrine entry
 """
 
 import json
-import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select, func
@@ -20,6 +18,7 @@ from ..auth import require_app_password
 from ..database import get_db
 from ..models import DoctrineEntry
 from ..rate_limit import ai_rate_limit
+from ..ai_client import get_client as _client
 
 router = APIRouter(
     prefix="/api/doctrine",
@@ -29,18 +28,6 @@ router = APIRouter(
 
 MODEL = "claude-sonnet-4-6"
 CACHE_TTL_DAYS = 90
-
-_async_client: Optional[anthropic.AsyncAnthropic] = None
-
-
-def _client() -> anthropic.AsyncAnthropic:
-    global _async_client
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not set.")
-    if _async_client is None:
-        _async_client = anthropic.AsyncAnthropic(api_key=api_key)
-    return _async_client
 
 
 DOCTRINE_CATEGORIES = [
@@ -212,7 +199,7 @@ async def list_doctrines(
 async def force_generate(req: GenerateRequest, db: AsyncSession = Depends(get_db)):
     """Force-regenerate a doctrine entry (ignores cache)."""
     content = await _generate_doctrine(req.name, req.category)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     result = await db.execute(
         select(DoctrineEntry).where(DoctrineEntry.name == req.name)
@@ -249,7 +236,13 @@ async def get_doctrine(
     )
     entry = result.scalar_one_or_none()
 
-    stale = entry and (datetime.utcnow() - entry.generated_at) > timedelta(days=CACHE_TTL_DAYS)
+    # generated_at is read back from SQLite as a naive datetime, so compare
+    # against a naive UTC "now" to avoid an aware/naive subtraction TypeError.
+    stale = (
+        entry
+        and entry.generated_at is not None
+        and (datetime.utcnow() - entry.generated_at) > timedelta(days=CACHE_TTL_DAYS)
+    )
 
     if entry and not refresh and not stale:
         return {"name": entry.name, "category": entry.category, "content": json.loads(entry.content)}
@@ -260,7 +253,7 @@ async def get_doctrine(
         category = entry.category
 
     content = await _generate_doctrine(name, category)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     if entry:
         entry.content = content

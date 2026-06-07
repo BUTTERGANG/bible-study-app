@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Lightbulb, MapPin, User, Tag, ExternalLink, BookOpen, RefreshCw, Globe, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { useStudyStore } from '../../stores/studyStore'
+import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import clsx from 'clsx'
 
@@ -44,7 +45,7 @@ function Pill({ children, color = 'gray' }) {
 export default function InsightsPanel() {
   const book = useStudyStore((s) => s.book)
   const chapter = useStudyStore((s) => s.chapter)
-  const verse = useStudyStore((s) => s.verse)
+  const verse = useActiveVerse()
   const translation = useStudyStore((s) => s.translation)
   const setRightPanel = useStudyStore((s) => s.setRightPanel)
   const setReference = useStudyStore((s) => s.setReference)
@@ -274,10 +275,8 @@ export default function InsightsPanel() {
 function CulturalContextCard() {
   const book = useStudyStore((s) => s.book)
   const chapter = useStudyStore((s) => s.chapter)
-  const verse = useStudyStore((s) => s.verse)
-  const selectedVerse = useStudyStore((s) => s.selectedVerse)
+  const activeVerse = useActiveVerse()
   const [expanded, setExpanded] = useState(false)
-  const activeVerse = selectedVerse || verse
 
   const { data: notes, isLoading } = useQuery({
     queryKey: ['cultural-notes', book, chapter],

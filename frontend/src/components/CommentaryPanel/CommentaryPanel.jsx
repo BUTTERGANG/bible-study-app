@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
+import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import { BookOpen, Check, ChevronDown, ChevronRight, Filter } from 'lucide-react'
 import clsx from 'clsx'
 
 export default function CommentaryPanel() {
-  const { book, chapter, verse, commentarySources, setCommentarySources } = useStudyStore()
+  const { book, chapter, commentarySources, setCommentarySources } = useStudyStore()
+  const verse = useActiveVerse()
   const [expandedSources, setExpandedSources] = useState(new Set(['MHC', 'JFB']))
   const [showSourcePicker, setShowSourcePicker] = useState(false)
 

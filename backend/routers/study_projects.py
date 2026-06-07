@@ -1,6 +1,6 @@
 """Bible Study Builder — CRUD for personal study projects and sections."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -118,7 +118,7 @@ async def update_study(
         p.passage_ref = body.passage_ref
     if body.study_type is not None:
         p.study_type = body.study_type
-    p.updated_at = datetime.utcnow()
+    p.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(p)
     return _project_out(p)
@@ -168,11 +168,11 @@ async def upsert_section(
     section = existing.scalar_one_or_none()
     if section:
         section.content = body.content
-        section.updated_at = datetime.utcnow()
+        section.updated_at = datetime.now(timezone.utc)
     else:
         section = StudySection(project_id=project_id, section_type=section_type, content=body.content)
         db.add(section)
 
-    proj.updated_at = datetime.utcnow()
+    proj.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return {"section_type": section_type, "content": body.content}

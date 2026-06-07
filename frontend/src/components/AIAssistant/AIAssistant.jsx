@@ -47,7 +47,13 @@ function serializeMessages(msgs) {
 }
 
 export default function AIAssistant() {
-  const { book, chapter, verse, selectedVerseText, translation, aiHistory, setAiHistory, clearAiHistory } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const verse = useStudyStore((s) => s.verse)
+  const selectedVerseText = useStudyStore((s) => s.selectedVerseText)
+  const translation = useStudyStore((s) => s.translation)
+  const setAiHistory = useStudyStore((s) => s.setAiHistory)
+  const clearAiHistory = useStudyStore((s) => s.clearAiHistory)
   const qc = useQueryClient()
   const [input, setInput] = useState('')
   const [includeLibrary, setIncludeLibrary] = useState(true)
@@ -58,10 +64,10 @@ export default function AIAssistant() {
   const reference = verse ? `${book} ${chapter}:${verse}` : `${book} ${chapter}`
   const chapterKey = useMemo(() => `${translation}/${book}/${chapter}`, [translation, book, chapter])
 
-  const messages = aiHistory[chapterKey] || []
+  const messages = useStudyStore((s) => s.aiHistory[chapterKey] || [])
   const setMessages = useCallback((updater) => {
-    setAiHistory(chapterKey, typeof updater === 'function' ? updater(aiHistory[chapterKey] || []) : updater)
-  }, [chapterKey, aiHistory, setAiHistory])
+    setAiHistory(chapterKey, typeof updater === 'function' ? updater(messages) : updater)
+  }, [chapterKey, messages, setAiHistory])
 
   // Restore conversation from backend on chapter change
   useEffect(() => {

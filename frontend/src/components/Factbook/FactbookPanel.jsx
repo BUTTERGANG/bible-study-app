@@ -93,8 +93,11 @@ export default function FactbookPanel() {
     if (!selectedEntity) return
     setIsGenerating(true)
     try {
-      await qc.invalidateQueries({ queryKey: ['factbook', selectedEntity] })
-      await api.getFactbookEntry(selectedEntity, selectedType || undefined, true)
+      await qc.fetchQuery({
+        queryKey: ['factbook', selectedEntity, selectedType],
+        queryFn: () => api.getFactbookEntry(selectedEntity, selectedType || undefined, true),
+        staleTime: 0,
+      })
     } finally {
       setIsGenerating(false)
     }

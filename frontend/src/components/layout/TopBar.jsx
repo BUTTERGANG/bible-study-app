@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Layers, LogOut, Menu, Moon,
+  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Home, Layers, LogOut, Menu, Moon,
   PanelRightClose, PanelRightOpen, Search, Sun, User, X, Filter, Languages, Volume2,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { getChapterCount } from '../../api/bibleData'
 import { api } from '../../api/client'
@@ -14,6 +15,7 @@ import SyncStatus from './SyncStatus'
 const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 'BSB', 'LEB']
 
 export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
+  const navigate = useNavigate()
   const {
     book, chapter, translation, rightPanelOpen, rightPanel,
     darkMode, fontSizeIdx, compareMode, compareTranslations,
@@ -156,6 +158,14 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
         title="Toggle sidebar"
       >
         <Menu size={18} />
+      </button>
+
+      <button
+        onClick={() => navigate('/')}
+        className="text-slate-300 hover:text-white p-1.5 rounded"
+        title="Home"
+      >
+        <Home size={16} />
       </button>
 
       <div className="flex items-center gap-1.5 text-white font-semibold text-sm">

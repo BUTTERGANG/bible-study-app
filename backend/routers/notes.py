@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -109,7 +109,7 @@ async def update_note(
         note.content = body.content
     if body.tags is not None:
         note.tags = body.tags
-    note.updated_at = datetime.utcnow()
+    note.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return _note_dict(note)
 

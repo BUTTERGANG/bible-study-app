@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Calendar, ChevronRight, Sparkles } from 'lucide-react'
+import { AlertCircle, BookOpen, Calendar, ChevronRight, Sparkles } from 'lucide-react'
 import { api, authHeaders } from '../../api/client'
 import { useStudyStore } from '../../stores/studyStore'
 
-function VerseCard({ votd, reflection, onReflect, reflecting }) {
+function VerseCard({ votd, reflection, onReflect, reflecting, reflectError }) {
   if (!votd) return null
   return (
     <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 p-4 space-y-3">
@@ -15,10 +15,11 @@ function VerseCard({ votd, reflection, onReflect, reflecting }) {
         <button
           onClick={onReflect}
           disabled={reflecting}
+          aria-busy={reflecting}
           className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 disabled:opacity-40"
         >
           <Sparkles size={12} />
-          Reflect
+          {reflecting ? 'Reflecting…' : 'Reflect'}
         </button>
       </div>
 
@@ -29,10 +30,16 @@ function VerseCard({ votd, reflection, onReflect, reflecting }) {
         — {votd.reference} ({votd.translation})
       </p>
 
-      {(reflection || reflecting) && (
+      {reflectError && (
+        <div className="flex items-center gap-1.5 pt-2 border-t border-amber-200 dark:border-amber-700">
+          <AlertCircle size={12} className="text-red-500 flex-shrink-0" />
+          <p className="text-xs text-red-600 dark:text-red-400">{reflectError}</p>
+        </div>
+      )}
+      {(reflection || reflecting) && !reflectError && (
         <div className="pt-2 border-t border-amber-200 dark:border-amber-700">
           <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-            {reflection || <span className="opacity-50">Reflecting…</span>}
+            {reflection}
             {reflecting && <span className="inline-block w-1 h-3 ml-0.5 bg-current animate-pulse" />}
           </p>
         </div>
@@ -122,9 +129,11 @@ function QuickActions({ onAction }) {
 }
 
 export default function DashboardPanel() {
-  const { setRightPanel, setBook, setChapter } = useStudyStore()
+  const setRightPanel = useStudyStore((s) => s.setRightPanel)
+  const setReference = useStudyStore((s) => s.setReference)
   const [reflection, setReflection] = useState(null)
   const [reflecting, setReflecting] = useState(false)
+  const [reflectError, setReflectError] = useState('')
   const stopRef = useRef(null)
 
   const { data, isLoading } = useQuery({
@@ -138,7 +147,7 @@ export default function DashboardPanel() {
     if (data?.reflection && !reflection) {
       setReflection(data.reflection)
     }
-  }, [data])
+  }, [data?.reflection])
 
   async function handleReflect() {
     if (reflecting) {
@@ -165,7 +174,10 @@ export default function DashboardPanel() {
         setReflection((prev) => (prev || '') + chunk)
       }
     } catch (e) {
-      if (e.name !== 'AbortError') console.error('reflection error', e)
+      if (e.name !== 'AbortError') {
+        setReflectError('Reflection failed — tap to try again.')
+        setTimeout(() => setReflectError(''), 5000)
+      }
     } finally {
       setReflecting(false)
     }
@@ -174,12 +186,9 @@ export default function DashboardPanel() {
   function handleNavigate(ref) {
     // ref is like "Genesis 1" or "John 3"
     const parts = ref.split(' ')
-    const chapter = parseInt(parts[parts.length - 1])
-    const book = parts.slice(0, parts.length - 1).join(' ')
-    if (book && chapter) {
-      setBook(book)
-      setChapter(chapter)
-    }
+    const ch = parseInt(parts[parts.length - 1])
+    const bk = parts.slice(0, parts.length - 1).join(' ')
+    if (bk && ch) setReference(bk, ch)
   }
 
   if (isLoading) {
@@ -209,6 +218,7 @@ export default function DashboardPanel() {
         reflection={reflection}
         onReflect={handleReflect}
         reflecting={reflecting}
+        reflectError={reflectError}
       />
 
       {plan ? (

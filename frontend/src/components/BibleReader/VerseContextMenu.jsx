@@ -6,7 +6,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
-import { getPassageExportData, printPassage } from '../../utils/export'
+import { getVerseExportData, getPassageExportData, printPassage } from '../../utils/export'
 import ShareCardModal from './ShareCardModal'
 import clsx from 'clsx'
 

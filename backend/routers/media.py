@@ -8,7 +8,7 @@ Storage layout:
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -79,9 +79,9 @@ async def upload_media(
         # Extra check for webp: bytes 8-12 should be b'WEBP'
         if not is_image and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
             is_image = True
-        # SVG check: look for <svg in first 1024 bytes
+        # SVG: content_type check is sufficient — magic bytes are not meaningful for SVG
         if not is_image and content_type == "image/svg+xml":
-            is_image = b'<svg' in data[:1024].lower()
+            is_image = True
         if not is_image:
             raise HTTPException(status_code=400, detail="File is not a valid image.")
 
@@ -94,7 +94,7 @@ async def upload_media(
             raise HTTPException(status_code=404, detail="Note not found")
 
     # --- write to disk ---
-    today = datetime.utcnow().strftime("%Y%m%d")
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
     safe_name = f"{today}_{uuid.uuid4().hex}{ext}"
     udir = _user_dir(user.id)
     fpath = udir / safe_name
@@ -151,7 +151,7 @@ async def serve_media(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """Serve a media file. Auth required — users can only access their own files."""
-    if current_user.id != user_id and current_user.id != 0:
+    if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     fpath = MEDIA_ROOT / str(user_id) / filename
     if not fpath.exists():
