@@ -1,10 +1,9 @@
 """Prayer Journal — personal prayer requests with verse linking and status tracking."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,39 +17,45 @@ router = APIRouter(prefix="/api/prayer", tags=["prayer"])
 class PrayerCreate(BaseModel):
     title: str
     content: str
-    book: Optional[str] = None
-    chapter: Optional[int] = None
-    verse: Optional[int] = None
-    category: Optional[str] = None
+    book: str | None = None
+    chapter: int | None = None
+    verse: int | None = None
+    category: str | None = None
 
 
 class PrayerUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
-    status: Optional[str] = None
-    answered_note: Optional[str] = None
-    category: Optional[str] = None
+    title: str | None = None
+    content: str | None = None
+    status: str | None = None
+    answered_note: str | None = None
+    category: str | None = None
 
 
-def _out(p: PrayerEntry) -> dict:
-    return {
-        "id": p.id,
-        "title": p.title,
-        "content": p.content,
-        "book": p.book,
-        "chapter": p.chapter,
-        "verse": p.verse,
-        "status": p.status,
-        "category": p.category,
-        "answered_note": p.answered_note,
-        "created_at": p.created_at.isoformat(),
-        "updated_at": p.updated_at.isoformat(),
-    }
+class PrayerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    content: str
+    book: str | None
+    chapter: int | None
+    verse: int | None
+    status: str
+    category: str | None
+    answered_note: str | None
+    created_at: datetime
+    updated_at: datetime
 
 
-@router.get("")
+class PrayerListOut(BaseModel):
+    prayers: list[PrayerOut]
+    limit: int
+    offset: int
+
+
+@router.get("", response_model=PrayerListOut)
 async def list_prayers(
-    status: Optional[str] = None,
+    status: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -61,10 +66,14 @@ async def list_prayers(
         query = query.where(PrayerEntry.status == status)
     query = query.order_by(PrayerEntry.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
-    return {"prayers": [_out(p) for p in result.scalars().all()], "limit": limit, "offset": offset}
+    return PrayerListOut(
+        prayers=result.scalars().all(),
+        limit=limit,
+        offset=offset,
+    )
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=PrayerOut)
 async def create_prayer(
     body: PrayerCreate,
     db: AsyncSession = Depends(get_db),
@@ -82,10 +91,10 @@ async def create_prayer(
     db.add(p)
     await db.commit()
     await db.refresh(p)
-    return _out(p)
+    return p
 
 
-@router.patch("/{prayer_id}")
+@router.patch("/{prayer_id}", response_model=PrayerOut)
 async def update_prayer(
     prayer_id: int,
     body: PrayerUpdate,
@@ -109,9 +118,9 @@ async def update_prayer(
         p.answered_note = body.answered_note
     if body.category is not None:
         p.category = body.category
-    p.updated_at = datetime.now(timezone.utc)
+    p.updated_at = datetime.now(UTC)
     await db.commit()
-    return _out(p)
+    return p
 
 
 @router.delete("/{prayer_id}", status_code=204)

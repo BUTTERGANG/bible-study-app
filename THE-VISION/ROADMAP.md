@@ -1,12 +1,89 @@
 # Roadmap
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
 > **See also**: `FEATURE-GAPS.md` for a Logos Bible Software comparison and gap analysis.
 
 ---
 
 ## Recently Shipped
+
+### 2026-06-04 — Comprehensive Audit & Hardening
+
+Full swarm audit (8 parallel agents) followed by systematic fixes across security, performance, code quality, accessibility, and test coverage.
+
+#### Runtime Crashes Fixed (were 100% failure rate)
+- `groups.py` — `NameError: g` — group creation crashed on every request
+- `bible.py` — `IndexError` on dict unpack — entire interlinear feature broken
+- `DashboardPanel` + `GospelHarmony` — `setBook`/`setChapter` don't exist on store → `setReference`
+- `SermonBuilder` — `useQueryClient()` called inside event handler (React hooks violation)
+- `reading_plans.py` — missing `timezone` import caused `NameError` on `complete_reading`
+
+#### Security
+- **passlib → pwdlib** — eliminates silent breakage with bcrypt 4.x
+- **SVG removed from media upload** — was allowing stored XSS via `<script>` in SVG files
+- **JWT refresh endpoint** — now rate-limited + issues a new refresh token on use (rotation)
+- **Rate limiter IP spoofing fix** — uses rightmost `X-Forwarded-For` hop (was attacker-controlled first hop)
+- **Auth/AI rate limit buckets separated** — were sharing counters, causing cross-interference
+- **SSE error streams** no longer leak `str(e)` (internal SDK messages, file paths)
+- **Path traversal guard** on media file serve (`.resolve()` + prefix check)
+- **JWT minimum length** enforced at startup (32 chars for HS256 security)
+- **HSTS header** added when `DEPLOYMENT_ENV=production`
+- **`.env.example`** now includes `JWT_SECRET_KEY` with generation instructions + open-mode warning
+
+#### Dependencies (CVEs patched)
+- `python-jose` 3.3.0 → 3.5.0 (CRITICAL algorithm confusion + 3 additional CVEs)
+- `python-multipart` 0.0.12 → 0.0.30 (3 HIGH CVEs)
+- `uvicorn` → 0.49.0, `dompurify` → 3.4.8 (9 XSS bypass CVEs)
+- `react-router-dom` → 6.30.4 (open redirect), `vitest` → 4.1.0 (CRITICAL arbitrary file read)
+- `pymupdf` → `pypdf` (MIT license — eliminates AGPL obligation on networked deployments)
+- `passlib[bcrypt]` → `pwdlib[bcrypt]` (actively maintained, works with bcrypt 4.x+)
+
+#### Performance
+- **N+1 eliminated** in group feed (51 queries → 3 bulk IN queries) and lexicon semantic range (10 serial → 1 window query)
+- **`VerseText` + `InterlinearVerse`** wrapped in `React.memo` — prevents full-chapter re-render on unrelated state changes
+- **`BibleReader` + `TopBar`** switched to per-field Zustand selectors (was subscribing to full store)
+- **`html2canvas`** → dynamic import — removed from initial bundle (~90KB saving)
+- **`resolve_translation`** module-level cache — eliminates DB query per Bible chapter request
+- **`asyncio.gather`** for dashboard parallel queries (was sequential)
+- **`Cache-Control: public, max-age=86400`** on immutable Bible chapter/verse endpoints
+- **SQLite** `cache_size` 64MB → 256MB, `mmap_size` 512MB added
+
+#### Database
+- **Migration 0009** — composite indexes (`notes`, `highlights`, `reading_plan_days`) + FTS5 sync triggers for `library_pages` (new pages now searchable)
+- **Migration 0010** — batch-rebuilds 18 user-data tables with correct `ON DELETE CASCADE` DDL (was `NO ACTION` causing user deletion to fail)
+- **Migration 0008** — fixed inverted index guard (`plan_type` index was never created)
+- **`complete_reading`** — SQLite upsert (`ON CONFLICT DO UPDATE`) to fix TOCTOU race condition
+
+#### Code Quality
+- **JWT auto-refresh interceptor** in `client.js` — 401 responses silently refresh the token and retry (was silently failing after 15-min access token expiry)
+- **`useStreamingAI`** — moved `streamAI()` call outside `setMessages` updater (was double-invoking in React StrictMode)
+- **`useClickOutside` hook** extracted — was duplicated as inline `mousedown` `useEffect` in 5 components
+- **`useOfflineSync`** — module-level `_flushing` flag (was per-instance, causing race between `App.jsx` and `SyncStatus.jsx`)
+- **Offline sync** now invalidates React Query cache for affected query keys after replay
+- **`aiHistory`** capped to 10 most-recent keys in localStorage (was unbounded, causing 500KB+ serialization pauses)
+- **`groupsStore`** — added named export (named imports were silently `undefined` in 3 components)
+- **`window.confirm`** replaced with inline two-step confirm UI in GroupDetail, ReadingPlansPanel, SermonBuilder
+- **`datetime.utcnow()`** → `datetime.now(timezone.utc)` throughout (deprecated in Python 3.12)
+- **Pydantic response models** added to 8 routers: `notes`, `highlights`, `bookmarks`, `memorize`, `prayer`, `ai_conversations`, `media`, `study_projects` — free OpenAPI schemas, removed ~8 hand-rolled serializer helpers
+
+#### Accessibility
+- **All 4 modals** — `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, auto-focus on first input on open
+- **RightPanel 30-tab bar** — `role="tablist"`, `role="tab"`, `aria-selected`, `role="tabpanel"`
+- **TopBar toggles** — `aria-pressed` on Interlinear, Compare, and Show Lemmas buttons
+
+#### Mobile Responsive Layout
+- **Sidebar** — fixed slide-in drawer overlay below `md` (768px) breakpoint with tap-outside backdrop
+- **Right panel** — fixed bottom sheet (`h-[80vh]`, rounded top) below `md` breakpoint with tap-outside backdrop
+- Desktop three-column layout unchanged; no new dependencies
+
+#### Tests (new files)
+- `test_users.py` — register, login, wrong password, duplicate email, `/me`, refresh token
+- `test_groups.py` — create group, cross-user isolation, owner vs. non-owner ACL, delete
+- `test_highlights.py` — CRUD + multi-user isolation
+- `test_media.py` — valid JPEG, SVG rejection (415), oversized (413), invalid magic bytes
+
+---
 
 ### 2026-06-02 — Data Reingest, Bug Fixes & Cross-Reference UI
 
@@ -97,7 +174,7 @@ Last updated: 2026-06-02
 - Unlocks: full Strong's definitions in Word Study panel
 
 **Extract library PDF pages**
-- 246 books catalogued; `library_pages` FTS5 table ready but empty
+- 246 books catalogued; `library_pages` FTS5 table ready but empty; FTS5 sync triggers now in place (migration 0009)
 - Fix: run `python -m ingest.extract_pdf_pages` on a host with the PDFs
 - Unlocks: in-app library reader + FTS library search
 
@@ -109,8 +186,17 @@ Last updated: 2026-06-02
 
 ### P3 — Infrastructure
 
-**Automated test coverage**
-- Tests cover core Bible paths; Groups, AI conversations, media, doctrine, and lectionary routers lack coverage
+**Expand test coverage**
+- Auth, highlights, groups, and media now covered (added 2026-06-04)
+- Still uncovered: AI conversations, doctrine, lectionary, sermon builder, reading plans, annotations
+
+**Focus trap in modals**
+- ARIA roles added (2026-06-04); keyboard focus still not trapped inside open modals
+- Fix: `focus-trap-react` or a small custom implementation cycling Tab/Shift+Tab
+
+**`python-jose` → `PyJWT` migration**
+- `python-jose` patched to 3.5.0; long-term prefer `PyJWT>=2.4.0` (better maintained)
+- Only 3 call sites in `auth.py`
 
 **Postgres for user-mutable tables** (not urgent)
 - Bible/commentary/lexicon stay in SQLite; user-mutable tables move to Postgres for multi-instance scale

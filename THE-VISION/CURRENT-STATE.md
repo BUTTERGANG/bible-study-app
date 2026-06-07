@@ -1,6 +1,6 @@
 # Current State of Development
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
 ## What Works
 
@@ -39,7 +39,7 @@ Routers:
 - `ai_reading_plans.py` — AI-generated personalized reading plans
 - `word_study.py` — Greek/Hebrew per-verse word lookup
 - `lexicon.py` — Strong's entries, occurrences
-- `library.py` — book catalog + page fetch (prefers `library_pages`, falls back to PyMuPDF)
+- `library.py` — book catalog + page fetch (prefers `library_pages`, falls back to pypdf)
 - `dictionary.py` — dictionary lookup (table populated after re-ingest)
 - `ai.py` — Claude streaming endpoints: study, explain, outline, cross-refs, word study, topic, sermon, discussion questions
 - `ai_conversations.py` — persisted AI chat history per reference
@@ -65,10 +65,10 @@ Routers:
 - `dashboard.py` — aggregated dashboard data
 
 Cross-cutting:
-- `backend/auth.py` — JWT auth (`users` table) + optional shared-secret (`APP_PASSWORD`). Write + AI endpoints require auth. Timing-safe password comparison via `hmac.compare_digest`. Auth rate limiter (5/min, 30/hr) on register/login.
-- `backend/rate_limit.py` — per-IP token bucket on `/api/ai/*` (defaults: 15/min, 120/hr)
-- `backend/database.py` — async engine + `db_status()` helper
-- `SecurityHeadersMiddleware` — CSP, X-Frame-Options, and other security headers on all responses
+- `backend/auth.py` — JWT auth (`users` table) + optional shared-secret (`APP_PASSWORD`). `pwdlib[bcrypt]` for password hashing. Timing-safe `APP_PASSWORD` comparison. `JWT_SECRET_KEY` enforced ≥32 chars at startup.
+- `backend/rate_limit.py` — **separate** per-IP token buckets for AI (15/min, 120/hr) and auth (5/min, 30/hr) endpoints. IP extracted from rightmost `X-Forwarded-For` hop (spoofing-resistant). JWT `/refresh` is also rate-limited.
+- `backend/database.py` — async SQLite engine; `cache_size=256MB`, `mmap_size=512MB`, WAL mode, `busy_timeout=5000ms`
+- `SecurityHeadersMiddleware` — CSP, `X-Content-Type-Options`, `Referrer-Policy`, HSTS (production only via `DEPLOYMENT_ENV=production`)
 - `GZipMiddleware` — compression for responses ≥ 500 bytes
 
 ### Frontend (pre-built in frontend/dist/)
@@ -76,8 +76,9 @@ Cross-cutting:
 #### Navigation & Layout
 - **URL-canonical navigation** — `/{translation}/{book}/{chapter}/{verse?}` via React Router; refresh/share/back all work
 - **Full-screen Bible Browser** at `/browse` — testament tabs (All/OT/NT), book groups, grid/list toggle, search filter, recently visited strip, chapter picker, jump-to-verse
-- **Sidebar** — quick-action buttons with active state (Browse, Groups, Study, etc.)
-- **TopBar** — user profile display, sign-out dropdown, pending group invitations badge, sync status indicator
+- **Sidebar** — quick-action buttons; responsive: slide-in drawer overlay on mobile (`< md`), inline `w-56` column on desktop
+- **TopBar** — user profile display, sign-out dropdown, pending group invitations badge, sync status indicator; all toggle buttons have `aria-pressed`
+- **Right panel** — responsive: fixed bottom sheet (`h-[80vh]`) on mobile, inline `w-96` column on desktop
 
 #### Right Panel — 5 Category Tabs, 25+ Panels (all code-split / lazy-loaded)
 
@@ -123,7 +124,7 @@ Cross-cutting:
 
 #### PWA & Offline
 - Service worker registered at `/sw.js` (checks for updates on every page load)
-- **Offline mutation queue** — `useOfflineSync` hook manages IndexedDB queue (`logos-offline-queue`), auto-flushes on reconnect
+- **Offline mutation queue** — `useOfflineSync` hook manages IndexedDB queue (`logos-offline-queue`), auto-flushes on reconnect; module-level `_flushing` guard prevents concurrent flush from multiple instances; React Query cache is invalidated after successful replay
 - **SyncStatus** indicator in TopBar — shows online/offline/syncing/conflict state with pending-item badge
 - Offline banner in app chrome with queue count and conflict notice
 
@@ -147,15 +148,20 @@ Cross-cutting:
 - **Conversation history persisted** per reference (book/chapter) in `ai_conversations` table
 - AI-generated reading plans, book introductions, cultural notes, passage insights
 
-### Security (from 2026-05-27 audit)
+### Security (updated 2026-06-04)
 - DOMPurify on all `dangerouslySetInnerHTML` (XSS)
 - Auth + ownership checks on reading-plan completion and media file serving (IDOR)
-- `JWT_SECRET_KEY` required at startup
+- `JWT_SECRET_KEY` required at startup; enforced ≥ 32 chars
+- SVG removed from media upload allowed types (stored XSS vector)
+- Path traversal guard on media file serve (`.resolve()` + prefix assertion)
+- JWT `/refresh` endpoint is rate-limited + rotates the refresh token on each use
+- Separate rate-limit buckets for AI and auth endpoints (no cross-interference)
+- `X-Forwarded-For` IP extraction uses rightmost (trusted proxy) hop — not spoofable
 - Timing-safe `APP_PASSWORD` comparison
-- Auth rate limiter (5/min, 30/hr)
-- SSE error messages sanitized (no raw exception leaks)
-- `SecurityHeadersMiddleware` (CSP, X-Frame-Options, etc.)
+- SSE error messages sanitized (no raw `str(e)` leaks)
+- `SecurityHeadersMiddleware` (CSP, X-Content-Type-Options, Referrer-Policy, HSTS in production)
 - `GZipMiddleware` with 500-byte minimum
+- `pwdlib[bcrypt]` for password hashing (actively maintained; works with bcrypt 4.x+)
 
 ### Migrations (alembic/)
 | # | File | Contents |
@@ -164,14 +170,15 @@ Cross-cutting:
 | 0002 | `user_accounts.py` | `users` table + JWT auth |
 | 0003 | `ai_conversations.py` | Persisted AI chat history |
 | 0004 | `media_files.py` | Image upload storage |
-| 0005 | `library_pages_fts_and_fk_cascades.py` | FTS5 on `library_pages`, CASCADE on 14+ FK columns |
+| 0005 | `library_pages_fts_and_fk_cascades.py` | FTS5 on `library_pages` |
 | 0006 | `groups.py` | Groups, members, invites, group notes, shared items |
 | 0007 | `doctrine_entries.py` | Doctrine/systematic theology table |
-| 0008 | `reading_plan_type_goal.py` | Reading plan type + goal columns |
-| 0009 | `reading_plan_day_label_desc.py` | Day label + description columns (untracked) |
+| 0008 | `reading_plan_type_goal.py` | Reading plan type + goal columns; index guard fixed |
+| 0009 | `composite_indexes_and_fts_triggers.py` | Composite indexes on notes/highlights/plan_days + FTS5 sync triggers for library_pages |
+| 0010 | `fk_cascade_ddl.py` | Batch-rebuilds 18 tables with correct `ON DELETE CASCADE` DDL |
 
 ### Tests, lint, startup
-- `make test` — pytest (backend/tests)
+- `make test` — pytest (backend/tests); covers auth, Bible, notes, sermon, search, groups, highlights, media, users
 - `make lint` — ruff
 - `make frontend-lint` — ESLint flat config
 - `make migrate` — alembic upgrade head
@@ -182,9 +189,10 @@ Cross-cutting:
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Lexicon full coverage | Reduced | 726 clean Dodson entries. Re-run `ingest/ingest_sword.py` with `StrongsGreek`/`StrongsHebrew` modules to restore full Strong's |
-| Library PDF pages | Not extracted | Run `python -m ingest.extract_pdf_pages` to populate `library_pages`; reader then works without PyMuPDF |
+| Library PDF pages | Not extracted | Run `python -m ingest.extract_pdf_pages` to populate `library_pages`; FTS5 sync triggers are now in place (migration 0009) so newly ingested pages will be searchable |
 | Audio player | UI exists | `AudioPlayer` component present; backend audio serving not confirmed |
 | AI features | Need API key | All `/api/ai/*` endpoints require `ANTHROPIC_API_KEY` in Replit Secrets. Factbook/cultural notes/book intros/doctrine also AI-generated |
+| Modal focus trapping | Partial | ARIA roles added; keyboard Tab does not yet cycle inside open modals (needs `focus-trap-react` or manual implementation) |
 
 ## Ingest Scripts
 

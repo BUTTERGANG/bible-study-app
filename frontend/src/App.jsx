@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useStudyStore } from './stores/studyStore'
 import { getChapterCount } from './api/bibleData'
@@ -19,53 +19,11 @@ import LandingPage from './components/Landing/LandingPage'
 const SearchModal = lazy(() => import('./components/Search/SearchModal'))
 const MorphSearchModal = lazy(() => import('./components/Search/MorphSearchModal'))
 
-function useResizeHandle(initialWidth, min, max, direction = 'right') {
-  const [width, setWidth] = useState(initialWidth)
-  const widthRef = useRef(initialWidth)
-
-  const startDrag = useCallback((startX) => {
-    const startW = widthRef.current
-
-    const onMove = (clientX) => {
-      const delta = direction === 'right' ? clientX - startX : startX - clientX
-      const next = Math.min(max, Math.max(min, startW + delta))
-      widthRef.current = next
-      setWidth(next)
-    }
-    const onMouseMove = (me) => onMove(me.clientX)
-    const onTouchMove = (te) => onMove(te.touches[0].clientX)
-
-    const cleanup = () => {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', cleanup)
-      document.removeEventListener('touchmove', onTouchMove)
-      document.removeEventListener('touchend', cleanup)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', cleanup)
-    document.addEventListener('touchmove', onTouchMove, { passive: true })
-    document.addEventListener('touchend', cleanup)
-  }, [direction, min, max])
-
-  const onMouseDown = useCallback((e) => {
-    e.preventDefault()
-    startDrag(e.clientX)
-  }, [startDrag])
-
-  const onTouchStart = useCallback((e) => {
-    startDrag(e.touches[0].clientX)
-  }, [startDrag])
-
-  return [width, onMouseDown, onTouchStart]
-}
-
 function App() {
   const sidebarOpen = useStudyStore((s) => s.sidebarOpen)
   const rightPanelOpen = useStudyStore((s) => s.rightPanelOpen)
+  const toggleSidebar = useStudyStore((s) => s.toggleSidebar)
+  const toggleRightPanel = useStudyStore((s) => s.toggleRightPanel)
   const darkMode = useStudyStore((s) => s.darkMode)
   const book = useStudyStore((s) => s.book)
   const chapter = useStudyStore((s) => s.chapter)
@@ -73,8 +31,6 @@ function App() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [morphSearchOpen, setMorphSearchOpen] = useState(false)
   const [audioOpen, setAudioOpen] = useState(false)
-  const [sidebarWidth, onSidebarMouseDown, onSidebarTouchStart] = useResizeHandle(224, 140, 400, 'right')
-  const [rightWidth, onRightMouseDown, onRightTouchStart] = useResizeHandle(384, 240, 600, 'left')
   const online = useOnlineStatus()
   const { syncStatus, queueLength } = useOfflineSync()
   useUrlSync()
@@ -150,41 +106,60 @@ function App() {
             />
 
             <div className="flex flex-1 overflow-hidden">
+              {/* ── Sidebar — mobile: slide-in drawer overlay ── */}
               {sidebarOpen && (
                 <>
+                  {/* Backdrop: only visible on mobile, closes drawer on click */}
                   <div
-                    className="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto"
-                    style={{ width: sidebarWidth }}
-                  >
+                    className="fixed inset-0 z-40 bg-black/40 md:hidden"
+                    onClick={toggleSidebar}
+                    aria-hidden="true"
+                  />
+                  {/* Drawer panel */}
+                  <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-xl overflow-y-auto md:hidden">
                     <ErrorBoundary fallback="Sidebar failed to render.">
                       <Sidebar />
                     </ErrorBoundary>
                   </div>
-                  <div
-                    className="w-1 flex-shrink-0 cursor-col-resize bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-500 active:bg-blue-500 transition-colors"
-                    onMouseDown={onSidebarMouseDown}
-                    onTouchStart={onSidebarTouchStart}
-                  />
                 </>
               )}
 
+              {/* ── Sidebar — desktop: inline column ── */}
+              {sidebarOpen && (
+                <div className="hidden md:block md:w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+                  <ErrorBoundary fallback="Sidebar failed to render.">
+                    <Sidebar />
+                  </ErrorBoundary>
+                </div>
+              )}
+
+              {/* ── Main reader — always full-width on mobile ── */}
               <div className="flex-1 overflow-hidden flex flex-col min-w-0">
                 <ErrorBoundary fallback="Bible reader failed to render.">
                   <BibleReader />
                 </ErrorBoundary>
               </div>
 
+              {/* ── Right panel — desktop: inline column ── */}
+              {rightPanelOpen && (
+                <div className="hidden md:flex md:w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex-col">
+                  <ErrorBoundary fallback="Right panel failed to render.">
+                    <RightPanel />
+                  </ErrorBoundary>
+                </div>
+              )}
+
+              {/* ── Right panel — mobile: slide-up bottom sheet ── */}
               {rightPanelOpen && (
                 <>
+                  {/* Backdrop: only visible on mobile, closes sheet on click */}
                   <div
-                    className="w-1 flex-shrink-0 cursor-col-resize bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-500 active:bg-blue-500 transition-colors"
-                    onMouseDown={onRightMouseDown}
-                    onTouchStart={onRightTouchStart}
+                    className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                    onClick={toggleRightPanel}
+                    aria-hidden="true"
                   />
-                  <div
-                    className="flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col"
-                    style={{ width: rightWidth }}
-                  >
+                  {/* Bottom sheet panel */}
+                  <div className="fixed bottom-0 left-0 right-0 z-40 h-[80vh] bg-white dark:bg-gray-800 rounded-t-xl shadow-xl overflow-hidden flex flex-col md:hidden">
                     <ErrorBoundary fallback="Right panel failed to render.">
                       <RightPanel />
                     </ErrorBoundary>

@@ -27,7 +27,7 @@ def _isolated_test_db(tmp_path_factory):
     test_data = tmp_path_factory.mktemp("data")
     os.environ["DATA_PATH"] = str(test_data)
     os.environ["APP_PASSWORD"] = ""  # disable auth for tests
-    os.environ.setdefault("JWT_SECRET_KEY", "test-secret-do-not-use-in-prod")
+    os.environ.setdefault("JWT_SECRET_KEY", "test-secret-do-not-use-in-prod-min-32-chars-long")
 
     import sqlite3
     db = test_data / "bible.db"

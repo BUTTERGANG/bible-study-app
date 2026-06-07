@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Users, X } from 'lucide-react'
 import { api } from '../../api/client'
@@ -13,6 +13,7 @@ export default function CreateGroupModal({ onClose }) {
   const [description, setDescription] = useState('')
   const qc = useQueryClient()
   const addGroup = useGroupsStore((s) => s.addGroup)
+  const firstInputRef = useRef(null)
 
   const mutation = useMutation({
     mutationFn: () => api.createGroup({ name: name.trim(), description: description.trim() || undefined }),
@@ -25,8 +26,16 @@ export default function CreateGroupModal({ onClose }) {
     },
   })
 
+  // Move focus to the first input when the modal opens
+  useEffect(() => { firstInputRef.current?.focus() }, [])
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
   const handleBackdropMouseDown = (e) => {
-    // Only close if the click target is the backdrop itself
     if (e.target === e.currentTarget) onClose()
   }
 
@@ -42,17 +51,24 @@ export default function CreateGroupModal({ onClose }) {
       onMouseDown={handleBackdropMouseDown}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-group-title"
         className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-5 space-y-4"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <h3
+            id="create-group-title"
+            className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2"
+          >
             <Users size={16} />
             Create a Group
           </h3>
           <button
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <X size={16} />
@@ -67,12 +83,12 @@ export default function CreateGroupModal({ onClose }) {
               Group Name <span className="text-red-500">*</span>
             </label>
             <input
+              ref={firstInputRef}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sunday School Class"
               className="w-full text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-200 placeholder-gray-400"
-              autoFocus
             />
           </div>
 

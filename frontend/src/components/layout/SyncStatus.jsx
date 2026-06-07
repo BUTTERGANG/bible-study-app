@@ -1,24 +1,15 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Cloud, CloudOff, Loader2, RefreshCw } from 'lucide-react'
 import clsx from 'clsx'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
+import { useClickOutside } from '../../hooks/useClickOutside'
 
 export default function SyncStatus() {
   const { syncStatus, queueLength, queueItems, flushQueue } = useOfflineSync()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const ref = useRef(null)
 
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setDropdownOpen(false)
-      }
-    }
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handler)
-      return () => document.removeEventListener('mousedown', handler)
-    }
-  }, [dropdownOpen])
+  useClickOutside(ref, () => setDropdownOpen(false), dropdownOpen)
 
   // Status icon
   function renderIcon() {

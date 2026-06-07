@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
+import { useClickOutside } from '../../hooks/useClickOutside'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Home, Layers, LogOut, Menu, Moon,
@@ -16,11 +17,19 @@ const FALLBACK_TRANSLATIONS = ['KJV', 'ASV', 'YLT', 'Darby', 'Webster', 'NHEB', 
 
 export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
   const navigate = useNavigate()
-  const {
-    book, chapter, translation, rightPanelOpen, rightPanel,
-    darkMode, fontSizeIdx, compareMode, compareTranslations,
-    interlinearMode, showLemmas, lemmaPosition, audioPlaying,
-  } = useStudyStore()
+  const book = useStudyStore((s) => s.book)
+  const chapter = useStudyStore((s) => s.chapter)
+  const translation = useStudyStore((s) => s.translation)
+  const rightPanelOpen = useStudyStore((s) => s.rightPanelOpen)
+  const rightPanel = useStudyStore((s) => s.rightPanel)
+  const darkMode = useStudyStore((s) => s.darkMode)
+  const fontSizeIdx = useStudyStore((s) => s.fontSizeIdx)
+  const compareMode = useStudyStore((s) => s.compareMode)
+  const compareTranslations = useStudyStore((s) => s.compareTranslations)
+  const interlinearMode = useStudyStore((s) => s.interlinearMode)
+  const showLemmas = useStudyStore((s) => s.showLemmas)
+  const lemmaPosition = useStudyStore((s) => s.lemmaPosition)
+  const audioPlaying = useStudyStore((s) => s.audioPlaying)
   const setTranslation = useStudyStore((s) => s.setTranslation)
   const setReference = useStudyStore((s) => s.setReference)
   const toggleSidebar = useStudyStore((s) => s.toggleSidebar)
@@ -38,6 +47,11 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
   const pickerRef = useRef(null)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef(null)
+
+  const closeUserMenu = useCallback(() => setUserMenuOpen(false), [])
+  const closeComparePicker = useCallback(() => setComparePickerOpen(false), [])
+  useClickOutside(userMenuRef, closeUserMenu, userMenuOpen)
+  useClickOutside(pickerRef, closeComparePicker, comparePickerOpen)
 
   // Fetch current user profile when logged in
   const { data: userProfile } = useQuery({
@@ -61,18 +75,6 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
     window.location.reload()
   }
 
-  // Close user menu on outside click
-  useEffect(() => {
-    function handler(e) {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-        setUserMenuOpen(false)
-      }
-    }
-    if (userMenuOpen) {
-      document.addEventListener('mousedown', handler)
-      return () => document.removeEventListener('mousedown', handler)
-    }
-  }, [userMenuOpen])
 
   const { data: transData } = useQuery({
     queryKey: ['translations'],
@@ -137,18 +139,6 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
     }
   }
 
-  // Close picker on outside click
-  useEffect(() => {
-    function handler(e) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
-        setComparePickerOpen(false)
-      }
-    }
-    if (comparePickerOpen) {
-      document.addEventListener('mousedown', handler)
-      return () => document.removeEventListener('mousedown', handler)
-    }
-  }, [comparePickerOpen])
 
   return (
     <div className="h-12 bg-slate-800 flex items-center px-3 gap-3 flex-shrink-0 shadow-md">
@@ -216,6 +206,7 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
       {/* Interlinear toggle */}
       <button
         onClick={toggleInterlinear}
+        aria-pressed={interlinearMode}
         className={clsx(
           'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
           interlinearMode
@@ -233,6 +224,7 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
         <div className="flex items-center gap-0.5">
           <button
             onClick={toggleShowLemmas}
+            aria-pressed={showLemmas}
             className={clsx(
               'flex items-center gap-1 text-xs px-2 py-1 rounded-l border transition-colors',
               showLemmas
@@ -260,6 +252,7 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
       <div className="relative" ref={pickerRef}>
         <button
           onClick={handleToggleCompare}
+          aria-pressed={compareMode}
           className={clsx(
             'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
             compareMode

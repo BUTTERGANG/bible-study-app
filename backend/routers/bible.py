@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+
+_BIBLE_CACHE = "public, max-age=86400, stale-while-revalidate=604800"
 
 from ..database import get_db
 from ..models import BibleVerse, GreekWord, HebrewWord, LexiconEntry
@@ -8,16 +11,22 @@ from ..bible_data import BOOKS, resolve_book_name
 
 router = APIRouter(prefix="/api/bible", tags=["bible"])
 
+_TRANSLATION_CACHE: dict[str, str] = {}
+
 
 async def resolve_translation(translation: str, db: AsyncSession) -> str:
-    """Return the canonical (DB-stored) translation name, case-insensitively."""
-    result = await db.execute(
-        select(BibleVerse.translation)
-        .where(func.lower(BibleVerse.translation) == translation.lower())
-        .limit(1)
-    )
-    row = result.scalar_one_or_none()
-    return row if row else translation
+    """Return the canonical (DB-stored) translation name, case-insensitively.
+    Result is cached in-process — translation list never changes at runtime."""
+    key = translation.lower()
+    if key not in _TRANSLATION_CACHE:
+        result = await db.execute(
+            select(BibleVerse.translation)
+            .where(func.lower(BibleVerse.translation) == key)
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        _TRANSLATION_CACHE[key] = row if row else translation
+    return _TRANSLATION_CACHE[key]
 
 
 @router.get("/books")
@@ -128,12 +137,15 @@ async def get_chapter(
     if not verses:
         raise HTTPException(status_code=404, detail="No verses found")
 
-    return {
-        "translation": canonical_t,
-        "book": canonical,
-        "chapter": chapter,
-        "verses": [{"verse": v.verse, "text": v.text} for v in verses],
-    }
+    return JSONResponse(
+        content={
+            "translation": canonical_t,
+            "book": canonical,
+            "chapter": chapter,
+            "verses": [{"verse": v.verse, "text": v.text} for v in verses],
+        },
+        headers={"Cache-Control": _BIBLE_CACHE},
+    )
 
 
 @router.get("/{translation}/{book}/{chapter}/interlinear")
@@ -329,11 +341,14 @@ async def get_verse(
     if not v:
         raise HTTPException(status_code=404, detail="Verse not found")
 
-    return {
-        "translation": v.translation,
-        "book": v.book,
-        "chapter": v.chapter,
-        "verse": v.verse,
-        "text": v.text,
-        "reference": f"{v.book} {v.chapter}:{v.verse}",
-    }
+    return JSONResponse(
+        content={
+            "translation": v.translation,
+            "book": v.book,
+            "chapter": v.chapter,
+            "verse": v.verse,
+            "text": v.text,
+            "reference": f"{v.book} {v.chapter}:{v.verse}",
+        },
+        headers={"Cache-Control": _BIBLE_CACHE},
+    )

@@ -147,7 +147,7 @@ function PericopeRow({ pericope, sectionLabel, translation, onNavigate }) {
 }
 
 export default function GospelHarmony() {
-  const { translation, setBook, setChapter, setVerse } = useStudyStore()
+  const { translation, setReference, setVerse } = useStudyStore()
   const [search, setSearch] = useState('')
   const [expandedSections, setExpandedSections] = useState({})
 
@@ -175,8 +175,7 @@ export default function GospelHarmony() {
   }, [harmonyData, search])
 
   function handleNavigate(book, chapter, verse) {
-    setBook(book)
-    setChapter(chapter)
+    setReference(book, chapter)
     if (verse) setVerse(verse)
   }
 

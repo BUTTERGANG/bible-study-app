@@ -14,7 +14,8 @@ from typing import Optional
 
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_db
@@ -25,12 +26,15 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
 def _require_secret() -> str:
     if not SECRET_KEY:
         raise RuntimeError("JWT_SECRET_KEY environment variable must be set")
+    if len(SECRET_KEY) < 32:
+        raise RuntimeError("JWT_SECRET_KEY must be at least 32 characters for HS256 security")
     return SECRET_KEY
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_pwd = PasswordHash((BcryptHasher(),))
 
 
 @dataclass
@@ -41,11 +45,11 @@ class CurrentUser:
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return _pwd.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return _pwd.verify(plain, hashed)
 
 
 def create_access_token(user_id: int) -> str:

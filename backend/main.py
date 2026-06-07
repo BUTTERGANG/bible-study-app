@@ -125,6 +125,8 @@ if _cors_origins:
 # Security headers middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+_IS_PRODUCTION = os.getenv("DEPLOYMENT_ENV", "").lower() == "production"
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -139,6 +141,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "img-src 'self' data: https://*.tile.openstreetmap.org; "
             "connect-src 'self'"
         )
+        if _IS_PRODUCTION:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)

@@ -27,7 +27,8 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA busy_timeout=5000")
-    cursor.execute("PRAGMA cache_size=-64000")
+    cursor.execute("PRAGMA cache_size=-262144")  # 256MB — db is 2.24GB
+    cursor.execute("PRAGMA mmap_size=536870912")  # 512MB memory-mapped I/O
     cursor.execute("PRAGMA temp_store=MEMORY")
     cursor.close()
 

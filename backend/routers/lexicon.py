@@ -141,20 +141,30 @@ async def get_semantic_range(
 
     total = sum(r.count for r in rows)
 
-    # Fetch up to 3 example verses per gloss
-    examples = {}
-    for row in rows[:10]:
-        ex_stmt = (
-            select(model.book, model.chapter, model.verse, word_col)
+    # Fetch up to 3 example verses per gloss in a single query using ROW_NUMBER().
+    top_glosses = [r.english_gloss for r in rows[:10]]
+    examples: dict[str, list] = {g: [] for g in top_glosses}
+    if top_glosses:
+        from sqlalchemy import Integer, case, literal_column, over
+        from sqlalchemy.dialects.sqlite import insert  # noqa: F401 (ensure dialect available)
+        rn_col = func.row_number().over(
+            partition_by=model.english_gloss,
+            order_by=model.id,
+        ).label("rn")
+        subq = (
+            select(model.book, model.chapter, model.verse, word_col.label("word"),
+                   model.english_gloss, rn_col)
             .where(model.strongs_num == strongs_num)
-            .where(model.english_gloss == row.english_gloss)
-            .limit(3)
+            .where(model.english_gloss.in_(top_glosses))
+            .subquery()
         )
-        ex_result = await db.execute(ex_stmt)
-        examples[row.english_gloss] = [
-            {"reference": f"{r.book} {r.chapter}:{r.verse}", "word": r[3]}
-            for r in ex_result.all()
-        ]
+        ex_result = await db.execute(
+            select(subq).where(subq.c.rn <= 3)
+        )
+        for r in ex_result.all():
+            gloss = r.english_gloss
+            if gloss in examples:
+                examples[gloss].append({"reference": f"{r.book} {r.chapter}:{r.verse}", "word": r.word})
 
     return {
         "strongs_num": strongs_num,

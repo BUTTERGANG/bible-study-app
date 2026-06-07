@@ -1,5 +1,6 @@
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,25 @@ class HighlightCreate(BaseModel):
     color: str = "yellow"
 
 
-@router.post("")
+class HighlightOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    color: str
+
+
+class HighlightVerseEntry(BaseModel):
+    """Per-verse highlight detail returned in the chapter highlights map."""
+    color: str
+    id: int
+
+
+class ChapterHighlightsOut(BaseModel):
+    """Map of verse number (as string) -> highlight detail for a chapter."""
+    highlights: dict[str, HighlightVerseEntry]
+
+
+@router.post("", response_model=HighlightOut)
 async def create_highlight(
     body: HighlightCreate,
     db: AsyncSession = Depends(get_db),
@@ -59,10 +78,10 @@ async def create_highlight(
         )
     )
     hl = result.scalar_one()
-    return {"id": hl.id, "color": hl.color}
+    return HighlightOut(id=hl.id, color=hl.color)
 
 
-@router.get("/{book}/{chapter}")
+@router.get("/{book}/{chapter}", response_model=ChapterHighlightsOut)
 async def get_chapter_highlights(
     book: str,
     chapter: int,
@@ -82,12 +101,12 @@ async def get_chapter_highlights(
         query = query.where(Highlight.translation == translation)
     result = await db.execute(query)
     highlights = result.scalars().all()
-    return {
-        "highlights": {
-            str(h.verse): {"color": h.color, "id": h.id}
+    return ChapterHighlightsOut(
+        highlights={
+            str(h.verse): HighlightVerseEntry(color=h.color, id=h.id)
             for h in highlights
         }
-    }
+    )
 
 
 @router.delete("/{highlight_id}")

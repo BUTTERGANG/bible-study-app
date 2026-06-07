@@ -129,8 +129,7 @@ function QuickActions({ onAction }) {
 }
 
 export default function DashboardPanel() {
-  const setRightPanel = useStudyStore((s) => s.setRightPanel)
-  const setReference = useStudyStore((s) => s.setReference)
+  const { setRightPanel, setReference } = useStudyStore()
   const [reflection, setReflection] = useState(null)
   const [reflecting, setReflecting] = useState(false)
   const [reflectError, setReflectError] = useState('')
@@ -165,13 +164,28 @@ export default function DashboardPanel() {
         signal: controller.signal,
       })
       if (!res.ok) throw new Error(`${res.status}`)
+      if (!res.body) throw new Error('Response not streamable')
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
+      let buffer = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        setReflection((prev) => (prev || '') + chunk)
+        buffer += decoder.decode(value, { stream: true })
+        let sep
+        while ((sep = buffer.indexOf('\n\n')) !== -1) {
+          const event = buffer.slice(0, sep)
+          buffer = buffer.slice(sep + 2)
+          for (const line of event.split('\n')) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6)
+            if (data === '[DONE]') break
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.text) setReflection((prev) => (prev || '') + parsed.text)
+            } catch {}
+          }
+        }
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -186,9 +200,11 @@ export default function DashboardPanel() {
   function handleNavigate(ref) {
     // ref is like "Genesis 1" or "John 3"
     const parts = ref.split(' ')
-    const ch = parseInt(parts[parts.length - 1])
-    const bk = parts.slice(0, parts.length - 1).join(' ')
-    if (bk && ch) setReference(bk, ch)
+    const chapter = parseInt(parts[parts.length - 1])
+    const book = parts.slice(0, parts.length - 1).join(' ')
+    if (book && chapter) {
+      setReference(book, chapter)
+    }
   }
 
   if (isLoading) {

@@ -8,11 +8,12 @@ Storage layout:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import delete, select
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import CurrentUser, get_current_user
@@ -23,14 +24,51 @@ router = APIRouter(prefix="/api/media", tags=["media"])
 
 MEDIA_ROOT = DATA_PATH / "media"
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"}
-ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+class MediaFileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    filename: str
+    original_filename: str
+    mime_type: str
+    file_size: int
+    caption: str | None
+    width: int | None
+    height: int | None
+    # url is not stored on the model — computed by endpoints
+    url: str
+    note_id: int | None
+    created_at: datetime
+
+
+class MediaListOut(BaseModel):
+    media: list[MediaFileOut]
 
 
 def _user_dir(user_id: int) -> Path:
     d = MEDIA_ROOT / str(user_id)
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def _media_out(m: MediaFile) -> MediaFileOut:
+    return MediaFileOut(
+        id=m.id,
+        filename=m.filename,
+        original_filename=m.original_filename,
+        mime_type=m.mime_type,
+        file_size=m.file_size,
+        caption=m.caption,
+        width=m.width,
+        height=m.height,
+        url=f"/api/media/file/{m.user_id}/{m.filename}",
+        note_id=m.note_id,
+        created_at=m.created_at,
+    )
 
 
 @router.post("/upload")
@@ -94,7 +132,7 @@ async def upload_media(
             raise HTTPException(status_code=404, detail="Note not found")
 
     # --- write to disk ---
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    today = datetime.now(UTC).strftime("%Y%m%d")
     safe_name = f"{today}_{uuid.uuid4().hex}{ext}"
     udir = _user_dir(user.id)
     fpath = udir / safe_name
@@ -105,8 +143,9 @@ async def upload_media(
     width = height = None
     if content_type in ("image/jpeg", "image/png", "image/gif", "image/webp"):
         try:
-            from PIL import Image as PILImage
             import io
+
+            from PIL import Image as PILImage
             img = PILImage.open(io.BytesIO(data))
             width, height = img.size
         except Exception:
@@ -153,7 +192,10 @@ async def serve_media(
     """Serve a media file. Auth required — users can only access their own files."""
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    fpath = MEDIA_ROOT / str(user_id) / filename
+    fpath = (MEDIA_ROOT / str(user_id) / filename).resolve()
+    media_root_resolved = MEDIA_ROOT.resolve()
+    if not str(fpath).startswith(str(media_root_resolved)):
+        raise HTTPException(status_code=400, detail="Invalid filename")
     if not fpath.exists():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -169,7 +211,7 @@ async def serve_media(
     return FileResponse(str(fpath), media_type=mime)
 
 
-@router.get("")
+@router.get("", response_model=MediaListOut)
 async def list_media(
     note_id: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -180,22 +222,7 @@ async def list_media(
         query = query.where(MediaFile.note_id == note_id)
     query = query.order_by(MediaFile.created_at.desc())
     result = await db.execute(query)
-    items = []
-    for m in result.scalars().all():
-        items.append({
-            "id": m.id,
-            "filename": m.filename,
-            "original_filename": m.original_filename,
-            "mime_type": m.mime_type,
-            "file_size": m.file_size,
-            "caption": m.caption,
-            "width": m.width,
-            "height": m.height,
-            "url": f"/api/media/file/{m.user_id}/{m.filename}",
-            "note_id": m.note_id,
-            "created_at": m.created_at.isoformat(),
-        })
-    return {"media": items}
+    return MediaListOut(media=[_media_out(m) for m in result.scalars().all()])
 
 
 @router.delete("/{media_id}")

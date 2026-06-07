@@ -1,4 +1,4 @@
-import { getAccessToken, getAppPassword } from './auth'
+import { clearTokens, getAccessToken, getAppPassword, getRefreshToken, setTokens } from './auth'
 
 const BASE = '/api'
 
@@ -10,7 +10,9 @@ function authHeaders() {
   return pw ? { Authorization: `Bearer ${pw}` } : {}
 }
 
-async function request(path, init = {}) {
+let _refreshing = null
+
+async function request(path, init = {}, _retry = false) {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -19,6 +21,35 @@ async function request(path, init = {}) {
       ...authHeaders(),
     },
   })
+
+  // Auto-refresh expired JWT once, then retry the original request.
+  if (res.status === 401 && !_retry) {
+    const rt = getRefreshToken()
+    if (rt) {
+      try {
+        if (!_refreshing) {
+          _refreshing = fetch(`${BASE}/users/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: rt }),
+          }).then(async (r) => {
+            _refreshing = null
+            if (!r.ok) throw new Error('refresh failed')
+            return r.json()
+          })
+        }
+        const tokens = await _refreshing
+        setTokens(tokens)
+        return request(path, init, true)
+      } catch {
+        _refreshing = null
+        clearTokens()
+        window.location.reload()
+        return
+      }
+    }
+  }
+
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`
     try {
@@ -297,7 +328,7 @@ export const api = {
   updateSeriesEntry: (seriesId, entryId, data) =>
     put(`/sermon-series/${seriesId}/entries/${entryId}`, data),
   deleteSeriesEntry: (seriesId, entryId) =>
-    del(`/sermon-series/${seriesId}/entries/${entryId}`),
+    del(`/sermons/series/${seriesId}/entries/${entryId}`),
 
   // AI Conversations
   listConversations: (limit = 50, offset = 0) =>

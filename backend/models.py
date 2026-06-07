@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -36,7 +36,6 @@ class GroupMember(Base):
     __tablename__ = "group_members"
     __table_args__ = (
         UniqueConstraint("group_id", "user_id", name="uq_group_member"),
-        Index("ix_group_members_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -54,7 +53,6 @@ class GroupInvite(Base):
     __tablename__ = "group_invites"
     __table_args__ = (
         UniqueConstraint("group_id", "email", name="uq_group_invite"),
-        Index("ix_group_invites_email", "email"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -209,6 +207,9 @@ class DictionaryEntry(Base):
 
 class Note(Base):
     __tablename__ = "notes"
+    __table_args__ = (
+        Index("ix_note_user_book_chapter", "user_id", "book", "chapter"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
@@ -225,6 +226,7 @@ class Highlight(Base):
     __tablename__ = "highlights"
     __table_args__ = (
         UniqueConstraint("user_id", "translation", "book", "chapter", "verse", name="uq_highlight_verse"),
+        Index("ix_highlight_user_book_chapter", "user_id", "book", "chapter"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -347,10 +349,6 @@ class FactbookEntry(Base):
 class TimelineEvent(Base):
     """A major biblical event with approximate date and verse references."""
     __tablename__ = "timeline_events"
-    __table_args__ = (
-        Index("ix_timeline_events_category", "category"),
-        Index("ix_timeline_events_date_sort", "date_sort"),
-    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     event_name: Mapped[str] = mapped_column(String(200), index=True)
@@ -578,10 +576,6 @@ class CulturalNote(Base):
 class MediaFile(Base):
     """Uploaded media file (images, attachments) scoped to a user."""
     __tablename__ = "media_files"
-    __table_args__ = (
-        Index("ix_media_files_user_id", "user_id"),
-        Index("ix_media_files_note_id", "note_id"),
-    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True)
@@ -619,7 +613,6 @@ class VocabMastery(Base):
     __tablename__ = "vocab_mastery"
     __table_args__ = (
         UniqueConstraint("user_id", "strongs_num", "language", name="uq_vocab_mastery"),
-        Index("ix_vocab_mastery_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

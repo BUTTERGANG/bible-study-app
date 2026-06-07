@@ -57,7 +57,7 @@ class AskRequest(BaseModel):
     translation: Optional[str] = Field("KJV", max_length=20)
     verse_text: Optional[str] = Field(None, max_length=5000)
     chapter_text: Optional[str] = Field(None, max_length=50000)
-    conversation_history: Optional[List[dict]] = Field(None, max_length=20)
+    conversation_history: Optional[List[dict]] = Field(None, max_length=50)
     include_library_context: bool = True
 
 
@@ -345,6 +345,8 @@ Make it suitable for personal Bible study or small group teaching."""
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
+    if not response.content:
+        raise HTTPException(status_code=502, detail="AI returned no content")
     return {"outline": response.content[0].text, "reference": body.reference}
 
 
@@ -365,6 +367,8 @@ Format as a clean list."""
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
+    if not response.content:
+        raise HTTPException(status_code=502, detail="AI returned no content")
     return {"cross_references": response.content[0].text, "reference": body.reference}
 
 
@@ -1003,7 +1007,7 @@ Provide a structured outline of the content using ## headings and - sub-points. 
 
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("summarize_resource error for resource_id=%s", body.resource_id)
             yield f"data: {json.dumps({'error': 'Summarization failed. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"

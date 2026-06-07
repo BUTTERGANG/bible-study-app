@@ -2,11 +2,11 @@ import os
 import re
 
 try:
-    import fitz  # PyMuPDF
-    _FITZ_OK = True
-except (ImportError, OSError):
-    fitz = None
-    _FITZ_OK = False
+    from pypdf import PdfReader as _PdfReader
+    _PDF_OK = True
+except ImportError:
+    _PdfReader = None
+    _PDF_OK = False
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, text
@@ -72,7 +72,7 @@ async def list_books(
         else:
             resolved = _resolve_path(b.source_path)
             on_disk = bool(resolved) and os.path.exists(resolved)
-            available = on_disk and (_FITZ_OK or b.source_format != "pdf")
+            available = on_disk and (_PDF_OK or b.source_format != "pdf")
         if available_only and not available:
             continue
         items.append({
@@ -118,10 +118,10 @@ async def get_book_page(
 
     # Fallback: read live from the PDF (development convenience).
     if book.source_format == "pdf":
-        if not _FITZ_OK:
+        if not _PDF_OK:
             raise HTTPException(
                 status_code=503,
-                detail="PDF reading not available — pages have not been pre-extracted, and PyMuPDF is unavailable in this environment.",
+                detail="PDF reading not available — pages have not been pre-extracted, and pypdf is unavailable.",
             )
         resolved_path = _resolve_path(book.source_path)
         if not os.path.exists(resolved_path):
@@ -130,23 +130,22 @@ async def get_book_page(
                 detail=f"PDF not found. Upload your library PDFs and set LIBRARY_PATH in Replit Secrets.",
             )
         try:
-            pdf = fitz.open(resolved_path)
-            if page_num < 1 or page_num > pdf.page_count:
-                pdf.close()
+            reader = _PdfReader(resolved_path)
+            total = len(reader.pages)
+            if page_num < 1 or page_num > total:
                 raise HTTPException(status_code=404, detail="Page not found")
-            text = pdf[page_num - 1].get_text()
-            pdf.close()
+            text = reader.pages[page_num - 1].extract_text() or ""
             return {
                 "book_id": book_id,
                 "title": book.title,
                 "page": page_num,
-                "total_pages": book.page_count,
+                "total_pages": total,
                 "text": text,
             }
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            raise HTTPException(status_code=500, detail="Failed to read PDF page")
 
     raise HTTPException(status_code=400, detail=f"Cannot read format: {book.source_format}")
 
@@ -160,18 +159,23 @@ async def get_table_of_contents(book_id: int, db: AsyncSession = Depends(get_db)
 
     if book.source_format == "pdf":
         resolved_toc_path = _resolve_path(book.source_path)
-        if not _FITZ_OK or not os.path.exists(resolved_toc_path):
+        if not _PDF_OK or not os.path.exists(resolved_toc_path):
             return {"title": book.title, "toc": [], "unavailable": True}
         try:
-            pdf = fitz.open(resolved_toc_path)
-            toc = pdf.get_toc()
-            pdf.close()
-            return {
-                "title": book.title,
-                "toc": [{"level": t[0], "title": t[1], "page": t[2]} for t in toc],
-            }
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            reader = _PdfReader(resolved_toc_path)
+            outline = reader.outline
+            toc = []
+            def _flatten(items, level=1):
+                for item in items:
+                    if isinstance(item, list):
+                        _flatten(item, level + 1)
+                    elif hasattr(item, "title"):
+                        page = reader.get_destination_page_number(item) + 1 if hasattr(item, "page") else 0
+                        toc.append({"level": level, "title": item.title, "page": page})
+            _flatten(outline)
+            return {"title": book.title, "toc": toc}
+        except Exception:
+            raise HTTPException(status_code=500, detail="Failed to read PDF table of contents")
 
     return {"title": book.title, "toc": []}
 

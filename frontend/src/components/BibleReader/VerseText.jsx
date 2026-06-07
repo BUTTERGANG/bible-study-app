@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { memo, useRef, useState, useEffect } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 import VerseContextMenu from './VerseContextMenu'
 import LemmaInline from './LemmaInline'
@@ -12,7 +12,7 @@ const HIGHLIGHT_CLASSES = {
   orange: 'highlight-orange',
 }
 
-export default function VerseText({
+const VerseText = memo(function VerseText({
   verse, text, book, chapter, translation,
   isActive, highlightColor, highlightId,
   lemmaWords, lemmaLanguage,
@@ -96,4 +96,6 @@ export default function VerseText({
       )}
     </>
   )
-}
+})
+
+export default VerseText

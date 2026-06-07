@@ -148,11 +148,11 @@ async def generate_reading_plan(
             yield f"data: {json.dumps({'stage': 'done'})}\n\n"
             yield "data: [DONE]\n\n"
 
-        except json.JSONDecodeError as e:
-            yield f"data: {json.dumps({'error': f'Failed to parse plan: {str(e)}. Try rephrasing your goal.'})}\n\n"
+        except json.JSONDecodeError:
+            yield f"data: {json.dumps({'error': 'Failed to parse plan response. Try rephrasing your goal.'})}\n\n"
             yield "data: [DONE]\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        except Exception:
+            yield f"data: {json.dumps({'error': 'An error occurred generating the plan. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")

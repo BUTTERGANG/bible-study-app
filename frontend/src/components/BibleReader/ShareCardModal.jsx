@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import { Download, X, Copy, Check } from 'lucide-react'
-import html2canvas from 'html2canvas'
 
 const THEMES = [
   {
@@ -51,6 +50,7 @@ export default function ShareCardModal({ verse, text, book, chapter, translation
 
   async function capture() {
     if (!cardRef.current) return null
+    const { default: html2canvas } = await import('html2canvas')
     return html2canvas(cardRef.current, {
       scale: 2,
       useCORS: true,
@@ -106,10 +106,24 @@ export default function ShareCardModal({ verse, text, book, chapter, translation
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col gap-4 p-5">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-card-title"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col gap-4 p-5"
+      >
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Share as Card</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <h2
+            id="share-card-title"
+            className="font-semibold text-gray-800 dark:text-gray-100 text-sm"
+          >
+            Share as Card
+          </h2>
+          <button
+            onClick={onClose}
+            aria-label="Close share card"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
             <X size={16} />
           </button>
         </div>

@@ -111,6 +111,7 @@ export default function ReadingPlansPanel() {
   const [aiPlanJson, setAiPlanJson] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generateError, setGenerateError] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   const { data: plansData } = useQuery({
     queryKey: ['reading-plans'],
@@ -188,6 +189,7 @@ export default function ReadingPlansPanel() {
       body: JSON.stringify(params),
     }).then(async (res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.body) throw new Error('Response not streamable')
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -440,17 +442,26 @@ export default function ReadingPlansPanel() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Delete "${plan.name}"?`)) {
-                        deleteMutation.mutate(plan.id)
-                      }
-                    }}
-                    className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                    title="Delete plan"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {confirmDeleteId === plan.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { deleteMutation.mutate(plan.id); setConfirmDeleteId(null) }}
+                        className="text-[10px] px-1.5 py-0.5 bg-red-600 text-white rounded hover:bg-red-700"
+                      >Delete</button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-[10px] px-1.5 py-0.5 text-gray-500 hover:text-gray-700"
+                      >Cancel</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(plan.id)}
+                      className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete plan"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

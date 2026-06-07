@@ -29,3 +29,6 @@ backend/*.db-wal
 
 # Keep the data directory itself
 !data/.gitkeep
+
+# User-uploaded runtime media (not source)
+data/media/

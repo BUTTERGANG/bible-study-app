@@ -48,7 +48,7 @@ def _make_mock_client(text_chunks):
 @pytest.fixture
 def mock_anthropic_stream():
     mock = _make_mock_client(["Here is your sermon on ", "John 3:16.\n\n## Sermon Title\nAmazing Grace"])
-    with patch("backend.routers.ai._async_client", mock):
+    with patch("backend.routers.ai._client", return_value=mock):
         yield mock
 
 
@@ -74,7 +74,7 @@ def mock_anthropic_stream_error():
 
     mock = AsyncMock()
     mock.messages.stream.return_value = FakeStreamManager()
-    with patch("backend.routers.ai._async_client", mock):
+    with patch("backend.routers.ai._client", return_value=mock):
         yield mock
 
 

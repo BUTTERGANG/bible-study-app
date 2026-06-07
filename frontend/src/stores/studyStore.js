@@ -134,7 +134,16 @@ export const useStudyStore = create(
         comparePickerOpen: s.comparePickerOpen,
         compareTranslations: s.compareTranslations,
         commentarySources: s.commentarySources,
-        aiHistory: s.aiHistory,
+        // Cap to most-recent 10 chapter conversations to limit localStorage size.
+        aiHistory: Object.fromEntries(
+          Object.entries(s.aiHistory)
+            .sort(([, a], [, b]) => {
+              const lastA = a.at?.(-1)?.id ?? ''
+              const lastB = b.at?.(-1)?.id ?? ''
+              return lastB.localeCompare(lastA)
+            })
+            .slice(0, 10)
+        ),
         visualFiltersEnabled: s.visualFiltersEnabled,
         visualFilters: s.visualFilters,
       }),

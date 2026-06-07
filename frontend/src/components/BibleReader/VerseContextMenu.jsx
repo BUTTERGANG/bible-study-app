@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
+import { useClickOutside } from '../../hooks/useClickOutside'
 import {
   AlertCircle, Bookmark, Copy, Download, Highlighter, Image, Layers, Link,
   Loader2, MessageSquare, Printer, Share2, StickyNote, X,
@@ -31,13 +32,7 @@ export default function VerseContextMenu({
   const [isExporting, setIsExporting] = useState(false)
   const [showCard, setShowCard] = useState(false)
 
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose()
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [onClose])
+  useClickOutside(ref, onClose)
 
   const highlightMutation = useMutation({
     mutationFn: (color) =>

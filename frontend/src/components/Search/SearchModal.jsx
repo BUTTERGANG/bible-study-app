@@ -161,7 +161,12 @@ export default function SearchModal({ onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20 px-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Scripture search"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-xl overflow-hidden"
+      >
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <Search size={18} className="text-gray-400 flex-shrink-0" />
@@ -175,10 +180,15 @@ export default function SearchModal({ onClose }) {
                 handleKeyDown(e)
               }
             }}
+            aria-label="Search scriptures and commentaries"
             placeholder="Search scriptures and commentaries…"
             className="flex-1 text-base focus:outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           />
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <button
+            onClick={onClose}
+            aria-label="Close search"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
             <X size={18} />
           </button>
         </div>
@@ -279,24 +289,7 @@ export default function SearchModal({ onClose }) {
         )}
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto" ref={listRef}>
-          {!query && (
-            <div className="px-4 py-5 text-center space-y-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Search scripture, commentaries, or type a reference
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                e.g. <span className="font-mono">John 3:16</span> · <span className="font-mono">faith</span> · <span className="font-mono">Rom 8</span>
-              </p>
-            </div>
-          )}
-
-          {query.length > 0 && query.length < 3 && (
-            <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 text-center">
-              Keep typing…
-            </div>
-          )}
-
+        <div className="max-h-80 overflow-y-auto" ref={listRef} role="listbox" aria-label="Search results">
           {loading && (
             <div className="p-4 text-sm text-gray-400 text-center">Searching…</div>
           )}
@@ -310,6 +303,8 @@ export default function SearchModal({ onClose }) {
           {resultList.map((result, i) => (
             <button
               key={i}
+              role="option"
+              aria-selected={activeIdx === i}
               onClick={() => navigate(result)}
               className={clsx(
                 'w-full text-left px-4 py-3 border-b border-gray-50 dark:border-gray-700 transition-colors',
