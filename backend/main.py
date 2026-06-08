@@ -27,7 +27,7 @@ from .auth import auth_is_enabled, get_current_user, require_app_password
 from .database import db_status, init_db
 from .routers import (
     ai, ai_conversations, ai_reading_plans, annotations, bible, book_intros,
-    bookmarks, commentary, counseling, cultural_notes, dashboard, dictionary,
+    bookmarks, commentary, counseling, courses, cultural_notes, dashboard, dictionary,
     doctrine, factbook, gospel_harmony, groups, health, highlights, lectionary,
     lexicon, library, media, memorize, notes, nt_ot, prayer, reading_plans,
     search, sermon_series, sermons, shares, streaks, study_projects, tags,
@@ -56,6 +56,12 @@ async def lifespan(app: FastAPI):
     async with SessionLocal() as _db:
         tl_seeded = await timeline_maps.seed_timeline_data(_db)
         if tl_seeded: logger.info("Timeline/Maps: inserted %d events + places + routes", tl_seeded)
+    async with SessionLocal() as _db:
+        tv_seeded = await textual.seed_textual_variants(_db)
+        if tv_seeded: logger.info("Textual: inserted %d curated variants", tv_seeded)
+    async with SessionLocal() as _db:
+        cr_seeded = await courses.seed_courses(_db)
+        if cr_seeded: logger.info("Courses: inserted %d lessons", cr_seeded)
     if auth_is_enabled(): logger.info("App-level password authentication is enabled")
     yield
 
@@ -124,6 +130,7 @@ app.include_router(textual.router)
 app.include_router(textual_notes.router)
 app.include_router(timeline_maps.router)
 app.include_router(annotations.router, dependencies=_protected)
+app.include_router(courses.router)
 app.include_router(media.router)
 
 FRONTEND_BUILD = Path(__file__).parent.parent / "frontend" / "dist"

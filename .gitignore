@@ -27,6 +27,9 @@ backend/*.db-shm
 backend/*.db-wal
 *.db-journal
 
+# Stray shell config snippets
+your
+
 # Keep the data directory itself
 !data/.gitkeep
 

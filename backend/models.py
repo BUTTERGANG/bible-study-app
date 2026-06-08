@@ -867,3 +867,131 @@ class TagUpvote(Base):
         Integer, ForeignKey("passage_tags.id", ondelete="CASCADE"), nullable=False, index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ── In-App Notifications ──────────────────────────────────────────────────────
+
+class InAppNotification(Base):
+    """In-app notification for a user (e.g. group reply, new invite)."""
+    __tablename__ = "in_app_notifications"
+    __table_args__ = (
+        Index("ix_notifications_user_id", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str] = mapped_column(String(500), nullable=True)
+    data_json: Mapped[str] = mapped_column(Text, nullable=True)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ── Original Language Courses ────────────────────────────────────────────────
+
+class LanguageCourse(Base):
+    """A structured Greek or Hebrew learning course."""
+    __tablename__ = "language_courses"
+    __table_args__ = (
+        UniqueConstraint("language", "slug", name="uq_course_lang_slug"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    language: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # "greek" | "hebrew"
+    slug: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    total_units: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    units: Mapped[list["CourseUnit"]] = relationship(
+        back_populates="course", cascade="all, delete-orphan", order_by="CourseUnit.unit_number"
+    )
+
+
+class CourseUnit(Base):
+    """A unit within a language course (e.g. Unit 1: The Alphabet)."""
+    __tablename__ = "course_units"
+    __table_args__ = (
+        UniqueConstraint("course_id", "unit_number", name="uq_unit_number"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    course_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("language_courses.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    unit_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+
+    course: Mapped["LanguageCourse"] = relationship(back_populates="units")
+    lessons: Mapped[list["CourseLesson"]] = relationship(
+        back_populates="unit", cascade="all, delete-orphan", order_by="CourseLesson.lesson_number"
+    )
+
+
+class CourseLesson(Base):
+    """A single lesson within a unit."""
+    __tablename__ = "course_lessons"
+    __table_args__ = (
+        UniqueConstraint("unit_id", "lesson_number", name="uq_lesson_number"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    unit_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("course_units.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    lesson_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    instruction: Mapped[str] = mapped_column(Text, nullable=False)
+    # JSON blob: [{letter, name, transliteration, pronunciation, example_word}]
+    paradigm_table: Mapped[str] = mapped_column(Text, nullable=True)
+
+    unit: Mapped["CourseUnit"] = relationship(back_populates="lessons")
+    exercises: Mapped[list["LessonExercise"]] = relationship(
+        back_populates="lesson", cascade="all, delete-orphan", order_by="LessonExercise.order"
+    )
+
+
+class LessonExercise(Base):
+    """A single exercise within a lesson."""
+    __tablename__ = "lesson_exercises"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    lesson_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("course_lessons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order: Mapped[int] = mapped_column(Integer, nullable=False)
+    # "flashcard" | "multiple_choice" | "fill_in" | "transliterate"
+    exercise_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    # JSON array of wrong answers for multiple_choice
+    distractors: Mapped[str] = mapped_column(Text, nullable=True)
+    hint: Mapped[str] = mapped_column(String(300), nullable=True)
+
+    lesson: Mapped["CourseLesson"] = relationship(back_populates="exercises")
+
+
+class UserCourseProgress(Base):
+    """Per-user progress through a course."""
+    __tablename__ = "user_course_progress"
+    __table_args__ = (
+        UniqueConstraint("user_id", "course_id", name="uq_user_course"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True
+    )
+    course_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("language_courses.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    current_unit: Mapped[int] = mapped_column(Integer, default=1)
+    current_lesson: Mapped[int] = mapped_column(Integer, default=1)
+    completed_lesson_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON array
+    percent_complete: Mapped[float] = mapped_column(Float, default=0.0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
