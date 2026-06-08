@@ -8,6 +8,7 @@ Priority order in get_current_user:
 """
 
 import os
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -55,7 +56,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_access_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
-        {"sub": str(user_id), "type": "access", "exp": expire},
+        {"sub": str(user_id), "type": "access", "exp": expire, "jti": str(uuid.uuid4())},
         _require_secret(),
         algorithm=ALGORITHM,
     )
@@ -64,7 +65,7 @@ def create_access_token(user_id: int) -> str:
 def create_refresh_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     return jwt.encode(
-        {"sub": str(user_id), "type": "refresh", "exp": expire},
+        {"sub": str(user_id), "type": "refresh", "exp": expire, "jti": str(uuid.uuid4())},
         _require_secret(),
         algorithm=ALGORITHM,
     )

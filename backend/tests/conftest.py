@@ -7,31 +7,38 @@ touched by tests.
 
 import asyncio
 import os
+import shutil
+import sqlite3
 import tempfile
 from pathlib import Path
 
 import pytest
 
+# ── Pre-collection setup ──────────────────────────────────────────────────────
+# test_auth.py imports backend.auth at module level, which triggers
+# backend.database to create its SQLAlchemy engine at import time.  Fixtures
+# run *after* collection, so a session-scoped fixture is too late to redirect
+# DATA_PATH.  pytest_configure runs before collection and fixes this.
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+_TEST_DIR: Path | None = None
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _isolated_test_db(tmp_path_factory):
-    """Point DATA_PATH at a temp dir before any backend module imports the
-    database engine, then seed a few verses + an FTS table so search works."""
-    test_data = tmp_path_factory.mktemp("data")
-    os.environ["DATA_PATH"] = str(test_data)
-    os.environ["APP_PASSWORD"] = ""  # disable auth for tests
+def pytest_configure(config):
+    global _TEST_DIR
+    _TEST_DIR = Path(tempfile.mkdtemp(prefix="logos_test_"))
+    os.environ["DATA_PATH"] = str(_TEST_DIR)
+    os.environ["APP_PASSWORD"] = ""
     os.environ.setdefault("JWT_SECRET_KEY", "test-secret-do-not-use-in-prod-min-32-chars-long")
+    _seed_db(_TEST_DIR / "bible.db")
 
-    import sqlite3
-    db = test_data / "bible.db"
-    conn = sqlite3.connect(db)
+
+def pytest_unconfigure(config):
+    if _TEST_DIR and _TEST_DIR.exists():
+        shutil.rmtree(_TEST_DIR, ignore_errors=True)
+
+
+def _seed_db(db_path: Path) -> None:
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     cur.executescript(
         """
@@ -57,7 +64,6 @@ def _isolated_test_db(tmp_path_factory):
         CREATE VIRTUAL TABLE commentary_fts USING fts5(text, content='commentary_entries', content_rowid='id');
         """
     )
-    # A tiny but coherent fixture set: John 3:16-17 (KJV + ASV) + one commentary.
     cur.executemany(
         "INSERT INTO bible_verses (translation, book, book_num, chapter, verse, text) VALUES (?,?,?,?,?,?)",
         [
@@ -78,7 +84,16 @@ def _isolated_test_db(tmp_path_factory):
     cur.execute("INSERT INTO commentary_fts(rowid, text) SELECT id, text FROM commentary_entries;")
     conn.commit()
     conn.close()
-    yield
+
+
+# ── Fixtures ──────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture()

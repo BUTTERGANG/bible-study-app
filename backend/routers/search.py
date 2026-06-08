@@ -110,7 +110,7 @@ async def search(
             )
         for row in rows:
             results.append({
-                "type": "verse",
+                "type": "bible",
                 "reference": f"{row.book} {row.chapter}:{row.verse}",
                 "book": row.book,
                 "chapter": row.chapter,
