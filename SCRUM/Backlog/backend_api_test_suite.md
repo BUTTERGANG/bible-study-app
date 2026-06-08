@@ -1,13 +1,13 @@
 ---
 title: "Backend API Test Suite"
-status: sprint
+status: done
 priority: P1
 project: bible-study-app
 type: dev
-agent_claimed: null
+agent_claimed: agent-03
 claimed_at: null
 created: '2026-06-08T00:00:00Z'
-updated: '2026-06-08T00:00:00Z'
+updated: '2026-06-08T12:00:00Z'
 tags: []
 due: null
 estimate: medium
