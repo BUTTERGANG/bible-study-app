@@ -1,6 +1,6 @@
 ---
 title: "Group Discussion Threads"
-status: backlog
+status: sprint
 priority: P1
 project: bible-study-app
 type: dev
