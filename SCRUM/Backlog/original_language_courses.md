@@ -1,6 +1,6 @@
 ---
 title: "Original Language Courses"
-status: backlog
+status: sprint
 priority: P3
 project: bible-study-app
 type: dev
