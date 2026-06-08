@@ -1,0 +1,121 @@
+# CI pipeline — mirrors Replit deployment to catch breakage before merge.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend:
+    name: Backend lint & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio ruff asgi-lifespan httpx
+
+      - name: Ruff lint
+        run: python -m ruff check backend ingest
+
+      - name: Pytest
+        env:
+          APP_PASSWORD: ""
+          JWT_SECRET_KEY: test-secret-do-not-use-in-prod-min-32-chars-long
+        run: python -m pytest backend/tests -v
+
+  frontend:
+    name: Frontend build & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Vite build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Validate build output
+        run: |
+          test -f frontend/dist/index.html || (echo "ERROR: frontend/dist/index.html missing" && exit 1)
+          grep -q 'src="' frontend/dist/index.html || (echo "ERROR: index.html has no script tags" && exit 1)
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+
+  smoke-test:
+    name: Runtime smoke test
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend deps
+        run: pip install -r requirements.txt --quiet
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm ci --silent && npm run build
+
+      - name: Start server & health check
+        env:
+          APP_PASSWORD: ""
+          JWT_SECRET_KEY: test-secret-do-not-use-in-prod-min-32-chars-long
+        run: |
+          python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
+          SERVER_PID=$!
+          # Wait up to 15s for startup
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+              echo "Server is up!"
+              break
+            fi
+            sleep 0.5
+          done
+          # Verify health endpoint returns 200
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/health)
+          echo "Health endpoint returned HTTP $STATUS"
+          kill $SERVER_PID 2>/dev/null
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: health check failed"
+            exit 1
+          fi
