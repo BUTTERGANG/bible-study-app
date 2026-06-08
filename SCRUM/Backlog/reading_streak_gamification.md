@@ -1,6 +1,6 @@
 ---
 title: "Reading Streak & Badges"
-status: backlog
+status: sprint
 priority: P2
 project: bible-study-app
 type: dev
