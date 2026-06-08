@@ -36,7 +36,7 @@ export const useStudyStore = create(
       showLemmas: false,
       lemmaPosition: 'below', // 'below' | 'inline'
       focusedStrongs: null,
-      darkMode: false,
+      darkMode: true,
       fontSizeIdx: 1,
 
       // Compare mode state

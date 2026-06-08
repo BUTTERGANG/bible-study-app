@@ -71,7 +71,7 @@ function App() {
 
   return (
     <AuthGate>
-      <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-slate-950 overflow-hidden">
         {!online && (
           <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-amber-500 text-white text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80 animate-pulse" />
@@ -116,7 +116,7 @@ function App() {
                     aria-hidden="true"
                   />
                   {/* Drawer panel */}
-                  <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-xl overflow-y-auto md:hidden">
+                  <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto md:hidden">
                     <ErrorBoundary fallback="Sidebar failed to render.">
                       <Sidebar />
                     </ErrorBoundary>
@@ -126,7 +126,7 @@ function App() {
 
               {/* ── Sidebar — desktop: inline column ── */}
               {sidebarOpen && (
-                <div className="hidden md:block md:w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+                <div className="hidden md:block md:w-56 flex-shrink-0 border-r border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 overflow-y-auto">
                   <ErrorBoundary fallback="Sidebar failed to render.">
                     <Sidebar />
                   </ErrorBoundary>
@@ -142,7 +142,7 @@ function App() {
 
               {/* ── Right panel — desktop: inline column ── */}
               {rightPanelOpen && (
-                <div className="hidden md:flex md:w-96 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex-col">
+                <div className="hidden md:flex md:w-96 flex-shrink-0 border-l border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 overflow-hidden flex-col">
                   <ErrorBoundary fallback="Right panel failed to render.">
                     <RightPanel />
                   </ErrorBoundary>
@@ -159,7 +159,7 @@ function App() {
                     aria-hidden="true"
                   />
                   {/* Bottom sheet panel */}
-                  <div className="fixed bottom-0 left-0 right-0 z-40 h-[80vh] bg-white dark:bg-gray-800 rounded-t-xl shadow-xl overflow-hidden flex flex-col md:hidden">
+                  <div className="fixed bottom-0 left-0 right-0 z-40 h-[80vh] bg-white dark:bg-slate-900 rounded-t-xl shadow-xl overflow-hidden flex flex-col md:hidden">
                     <ErrorBoundary fallback="Right panel failed to render.">
                       <RightPanel />
                     </ErrorBoundary>

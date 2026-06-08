@@ -83,10 +83,10 @@ export default function Sidebar() {
           'w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors',
           active
             ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-            : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300'
+            : 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-slate-300'
         )}
       >
-        <Icon size={14} className={active ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'} />
+        <Icon size={14} className={active ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'} />
         <span className="font-medium">{label}</span>
       </button>
     )
@@ -96,7 +96,7 @@ export default function Sidebar() {
     <div className="text-sm">
       {/* Quick Actions */}
       <div>
-        <div className="px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">
+        <div className="px-3 py-2 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-900">
           Quick Actions
         </div>
         <QuickAction icon={StickyNote} label="Notes" panel="notes" active={rightPanelOpen && rightPanel === 'notes'} />
@@ -109,7 +109,7 @@ export default function Sidebar() {
           active={location.pathname.startsWith('/browse')}
         />
       </div>
-      <div className="h-px bg-gray-200 dark:bg-gray-700 mx-2" />
+      <div className="h-px bg-gray-200 dark:bg-white/10 mx-2" />
 
       <BookSection
         label="Old Testament"
@@ -151,7 +151,7 @@ export default function Sidebar() {
       <div>
         <button
           onClick={() => toggleSection('conversations')}
-          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800"
         >
           <span className="flex items-center gap-1.5">
             <MessageSquare size={12} />
@@ -163,7 +163,7 @@ export default function Sidebar() {
         {expanded.conversations && (
           <div className="max-h-60 overflow-y-auto">
             {conversations.length === 0 && (
-              <p className="px-3 py-3 text-xs text-gray-400 dark:text-gray-500 text-center italic">
+              <p className="px-3 py-3 text-xs text-gray-400 dark:text-slate-500 text-center italic">
                 No saved conversations
               </p>
             )}
@@ -174,21 +174,21 @@ export default function Sidebar() {
                 className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center justify-between gap-1 group"
               >
                 <span className="truncate flex-1">
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className="text-gray-700 dark:text-slate-300">
                     {conv.title
                       ? conv.title.length > 30
                         ? conv.title.slice(0, 30) + '…'
                         : conv.title
                       : conv.reference}
                   </span>
-                  <span className="text-gray-400 dark:text-gray-500 ml-1">
+                  <span className="text-gray-400 dark:text-slate-500 ml-1">
                     ({conv.message_count})
                   </span>
                 </span>
                 <Trash2
                   size={12}
                   onClick={(e) => handleDeleteConversation(e, conv.reference)}
-                  className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-gray-300 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 />
               </button>
             ))}
@@ -208,7 +208,7 @@ function BookSection({
     <div>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800"
       >
         {label}
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -222,18 +222,18 @@ function BookSection({
               'w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center justify-between',
               activeBook === book.name
                 ? 'text-blue-700 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-900/20'
-                : 'text-gray-700 dark:text-gray-300'
+                : 'text-gray-700 dark:text-slate-300'
             )}
           >
             {book.name}
             {selectedBook === book.name
               ? <ChevronDown size={12} className="text-gray-400" />
-              : <ChevronRight size={12} className="text-gray-300 dark:text-gray-600" />
+              : <ChevronRight size={12} className="text-gray-300 dark:text-slate-500" />
             }
           </button>
 
           {selectedBook === book.name && (
-            <div className="grid grid-cols-6 gap-0.5 px-2 pb-2 bg-gray-50 dark:bg-gray-700/40">
+            <div className="grid grid-cols-6 gap-0.5 px-2 pb-2 bg-gray-50 dark:bg-slate-800/60">
               {Array.from({ length: book.chapters }, (_, i) => i + 1).map((ch) => (
                 <button
                   key={ch}
@@ -242,7 +242,7 @@ function BookSection({
                     'text-xs py-1 rounded text-center hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors',
                     activeBook === book.name && activeChapter === ch
                       ? 'bg-blue-600 text-white font-bold'
-                      : 'text-gray-600 dark:text-gray-400'
+                      : 'text-gray-600 dark:text-slate-400'
                   )}
                 >
                   {ch}

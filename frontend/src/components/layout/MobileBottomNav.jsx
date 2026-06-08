@@ -38,7 +38,7 @@ export default function MobileBottomNav({ onSearch }) {
   }
 
   return (
-    <nav className="sm:hidden flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 safe-area-bottom">
+    <nav className="sm:hidden flex-shrink-0 border-t border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900 safe-area-bottom">
       <div className="flex">
         {NAV_ITEMS.map(item => {
           const active = isActive(item)
@@ -50,7 +50,7 @@ export default function MobileBottomNav({ onSearch }) {
                 'flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors min-h-[52px]',
                 active
                   ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
               )}
               aria-label={item.label}
             >
