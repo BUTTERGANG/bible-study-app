@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "id": "kingdom_david",
+    "name": "Kingdom of David & Solomon",
+    "color": "#eab308",
+    "fillColor": "#eab308",
+    "fillOpacity": 0.15,
+    "description": "Approximate boundaries of the United Kingdom under David and Solomon (~1010–931 BC)",
+    "verse_refs": "2 Samuel 8:1-14; 1 Kings 4:21-24",
+    "period": "~1010-931 BC"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [34.25, 33.30],
+          [35.70, 33.20],
+          [36.80, 32.80],
+          [37.20, 31.50],
+          [36.50, 30.00],
+          [35.00, 29.50],
+          [34.60, 29.50],
+          [34.30, 30.00],
+          [34.20, 30.80],
+          [34.20, 31.50],
+          [34.25, 32.00],
+          [34.20, 32.50],
+          [34.25, 33.00],
+          [34.25, 33.30]
+        ]]
+      },
+      "properties": {
+        "name": "Kingdom of David & Solomon",
+        "reference": "2 Samuel 8:1-14; 1 Kings 4:21-24",
+        "event_name": "United Kingdom of Israel",
+        "description": "At its greatest extent under Solomon, the kingdom stretched from the Euphrates in the north to the border of Egypt in the south, fulfilling God's promise to Abraham."
+      }
+    }
+  ],
+  "highlights": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.21, 31.77] },
+      "properties": {
+        "name": "Jerusalem (Capital)",
+        "reference": "2 Samuel 5:6-9",
+        "event_name": "David Captures Jerusalem",
+        "description": "David captured the Jebusite stronghold of Jerusalem and made it his capital, calling it the City of David."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.26, 31.96] },
+      "properties": {
+        "name": "Gibeon",
+        "reference": "1 Kings 3:4-15",
+        "event_name": "Solomon's Wisdom at Gibeon",
+        "description": "At Gibeon God appeared to Solomon in a dream and offered him anything. Solomon asked for wisdom; God gave him wisdom and also riches and honor."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.60, 32.28] },
+      "properties": {
+        "name": "Megiddo",
+        "reference": "1 Kings 9:15",
+        "event_name": "Solomon's Building Projects",
+        "description": "Solomon rebuilt Megiddo as a strategic fortified city, one of his great building projects alongside Jerusalem and Gezer."
+      }
+    }
+  ]
+}

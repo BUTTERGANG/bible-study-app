@@ -1,11 +1,11 @@
 ---
 title: "Clause Syntax Search"
-status: backlog
+status: done
 priority: P3
 project: bible-study-app
 type: dev
-agent_claimed: null
-claimed_at: null
+agent_claimed: agent-02
+claimed_at: 2026-06-08T00:00:00Z
 created: '2026-06-08T00:00:00Z'
 updated: '2026-06-08T00:00:00Z'
 tags: []

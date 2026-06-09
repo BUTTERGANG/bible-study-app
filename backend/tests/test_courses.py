@@ -96,6 +96,7 @@ async def test_progress_initial_state(client):
     assert body["current_unit"] == 1
     assert body["current_lesson"] == 1
     assert body["percent_complete"] == 0.0
+    assert body["current_streak"] == 0
 
 
 @pytest.mark.asyncio
@@ -118,3 +119,4 @@ async def test_update_progress(client):
     assert body["current_lesson"] == 2
     assert lesson_id in body["completed_lesson_ids"]
     assert body["percent_complete"] == 25.0
+    assert body["current_streak"] == 1

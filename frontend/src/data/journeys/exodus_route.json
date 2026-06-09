@@ -1,0 +1,146 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "id": "exodus_route",
+    "name": "The Exodus Route",
+    "color": "#f59e0b",
+    "description": "Israel's journey from Egypt through the wilderness to Canaan (~1446 BC)",
+    "verse_refs": "Exodus 12:37, Numbers 33:1-49",
+    "period": "Exodus (~1446 BC)"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.27, 30.62] },
+      "properties": {
+        "name": "Rameses (Goshen)",
+        "reference": "Exodus 12:37",
+        "event_name": "Israel Departs Egypt",
+        "description": "The Israelites set out from Rameses with about 600,000 men plus families, ending 430 years of sojourn in Egypt."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.55, 30.55] },
+      "properties": {
+        "name": "Succoth",
+        "reference": "Exodus 12:37",
+        "event_name": "First Camp: Succoth",
+        "description": "Israel's first stop after leaving Rameses; they baked unleavened cakes since there was no time for bread to rise."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.60, 30.72] },
+      "properties": {
+        "name": "Etham",
+        "reference": "Exodus 13:20",
+        "event_name": "Pillar of Cloud and Fire",
+        "description": "At Etham on the edge of the wilderness, God led Israel by a pillar of cloud by day and a pillar of fire by night."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.60, 29.90] },
+      "properties": {
+        "name": "Pi-hahiroth (Red Sea Crossing)",
+        "reference": "Exodus 14:21-31",
+        "event_name": "Crossing of the Red Sea",
+        "description": "God parted the Red Sea; Israel crossed on dry ground, and Pharaoh's pursuing army was drowned when the waters returned."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.90, 28.70] },
+      "properties": {
+        "name": "Marah",
+        "reference": "Exodus 15:23-26",
+        "event_name": "Bitter Waters Made Sweet",
+        "description": "The people could not drink the bitter waters of Marah; God showed Moses a tree which, when thrown in, made the water sweet."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.60, 28.40] },
+      "properties": {
+        "name": "Elim",
+        "reference": "Exodus 15:27",
+        "event_name": "Twelve Springs at Elim",
+        "description": "At Elim there were twelve springs of water and seventy palm trees, and the people camped there by the waters."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [33.20, 28.20] },
+      "properties": {
+        "name": "Wilderness of Sin",
+        "reference": "Exodus 16:1-36",
+        "event_name": "Manna and Quail Provided",
+        "description": "Israel grumbled about food; God provided quail in the evening and manna each morning — except on the Sabbath."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [33.97, 28.53] },
+      "properties": {
+        "name": "Mount Sinai (Horeb)",
+        "reference": "Exodus 19:1-20:17",
+        "event_name": "The Ten Commandments Given",
+        "description": "God descended on the mountain in fire, thunder, and lightning, and gave the Ten Commandments and the Mosaic Law to Israel."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [34.80, 29.60] },
+      "properties": {
+        "name": "Kadesh-barnea",
+        "reference": "Numbers 13:26; 14:1-45",
+        "event_name": "The Twelve Spies and Rebellion",
+        "description": "The twelve spies returned from Canaan; ten gave a fearful report. Israel rebelled and was condemned to 40 years in the wilderness."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.08, 30.35] },
+      "properties": {
+        "name": "Oboth / Punon",
+        "reference": "Numbers 21:4-9",
+        "event_name": "Bronze Serpent on a Pole",
+        "description": "God sent fiery serpents as judgment for Israel's complaints. Moses lifted a bronze serpent on a pole — all who looked at it lived."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.55, 31.50] },
+      "properties": {
+        "name": "Plains of Moab",
+        "reference": "Deuteronomy 34:1-12",
+        "event_name": "Moses Views Canaan; Death of Moses",
+        "description": "From Mount Nebo, Moses viewed the Promised Land he could not enter. He died at 120 years old; Joshua was commissioned to lead Israel across the Jordan."
+      }
+    }
+  ],
+  "route": {
+    "type": "Feature",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [32.27, 30.62],
+        [32.55, 30.55],
+        [32.60, 30.72],
+        [32.60, 29.90],
+        [32.90, 28.70],
+        [32.60, 28.40],
+        [33.20, 28.20],
+        [33.97, 28.53],
+        [34.80, 29.60],
+        [35.08, 30.35],
+        [35.55, 31.50]
+      ]
+    },
+    "properties": {
+      "name": "The Exodus Route",
+      "color": "#f59e0b"
+    }
+  }
+}

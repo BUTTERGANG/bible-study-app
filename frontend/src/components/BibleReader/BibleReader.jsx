@@ -51,6 +51,14 @@ export default function BibleReader() {
     enabled: !!book && !!chapter && showLemmas && !compareMode && !interlinearMode && !reverseInterlinear,
   })
 
+  // Fetch inline annotations for this chapter (always when not in compare/interlinear mode)
+  const annotationsQueryKey = ['annotations', book, chapter]
+  const { data: annotationsData } = useQuery({
+    queryKey: annotationsQueryKey,
+    queryFn: () => api.getAnnotations(book, chapter),
+    enabled: !!book && !!chapter && !compareMode && !interlinearMode && !reverseInterlinear,
+  })
+
   // Keep audio player in sync with current chapter verses
   useEffect(() => {
     if (data?.verses) {
@@ -59,6 +67,15 @@ export default function BibleReader() {
   }, [data?.verses, setCurrentVerses])
 
   const highlights = highlightData?.highlights ?? {}
+
+  // Build per-verse annotation map: verse -> annotation[]
+  const annotationsByVerse = {}
+  if (annotationsData?.annotations) {
+    for (const ann of annotationsData.annotations) {
+      if (!annotationsByVerse[ann.verse]) annotationsByVerse[ann.verse] = []
+      annotationsByVerse[ann.verse].push(ann)
+    }
+  }
 
   if (compareMode) {
     return <CompareView />
@@ -163,6 +180,12 @@ export default function BibleReader() {
               Loading lemma data…
             </div>
           )}
+          {showLemmas && !interlinearMode && !reverseInterlinear && lemmaLoading && (
+            <div className="flex items-center justify-center gap-2 py-2 text-sm text-gray-400 dark:text-gray-500">
+              <div className="animate-spin w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full" />
+              Loading lemma data…
+            </div>
+          )}
 
           {data.verses.map(({ verse, text }) => {
             if (interlinearMode || reverseInterlinear) {
@@ -197,6 +220,8 @@ export default function BibleReader() {
                 highlightId={highlights[String(verse)]?.id}
                 lemmaWords={lemmaMap[verse] || []}
                 lemmaLanguage={lemmaData?.language || null}
+                verseAnnotations={annotationsByVerse[verse] || []}
+                annotationsQueryKey={annotationsQueryKey}
               />
             )
           })}

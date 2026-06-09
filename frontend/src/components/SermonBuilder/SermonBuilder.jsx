@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronLeft, Download, HelpCircle, Import, Lightbulb, List,
+  BookOpen, ChevronLeft, Download, HelpCircle, Import, Layers, Lightbulb, List,
   PlusCircle, Send, Square, Trash2, Upload, Wand2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -11,6 +11,7 @@ import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import { streamAI } from '../../api/streamAI'
 import clsx from 'clsx'
+import SeriesPlanner from './SeriesPlanner'
 
 const AUDIENCES = [
   { value: 'general', label: 'General' },
@@ -41,7 +42,7 @@ const MD_COMPONENTS = {
 }
 
 // ── Project List ───────────────────────────────────────────────
-function ProjectList({ onSelect, onNew }) {
+function ProjectList({ onSelect, onNew, onSeries }) {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['sermons'],
@@ -117,6 +118,14 @@ function ProjectList({ onSelect, onNew }) {
           Sermon Builder
         </span>
         <div className="flex items-center gap-1">
+          <button
+            onClick={onSeries}
+            className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+            title="Preaching Series Planner"
+          >
+            <Layers size={12} />
+            Series
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
@@ -512,8 +521,12 @@ function ProjectDetail({ project, onBack }) {
 
 // ── Root ───────────────────────────────────────────────────────
 export default function SermonBuilder() {
-  const [view, setView] = useState('list') // list | new | detail
+  const [view, setView] = useState('list') // list | new | detail | series
   const [selectedProject, setSelectedProject] = useState(null)
+
+  if (view === 'series') {
+    return <SeriesPlanner onBack={() => setView('list')} />
+  }
 
   if (view === 'new') {
     return (
@@ -537,6 +550,7 @@ export default function SermonBuilder() {
     <ProjectList
       onSelect={(p) => { setSelectedProject(p); setView('detail') }}
       onNew={() => setView('new')}
+      onSeries={() => setView('series')}
     />
   )
 }

@@ -99,6 +99,23 @@ const LANGUAGE_OPTIONS = [
   { value: 'hebrew', label: 'Hebrew (OT)' },
 ]
 
+const CLAUSE_ROLE_OPTIONS = [
+  { value: '', label: 'Any clause role' },
+  { value: 'subject', label: 'Subject' },
+  { value: 'predicate', label: 'Predicate' },
+  { value: 'complement', label: 'Complement' },
+  { value: 'adjunct', label: 'Adjunct' },
+]
+
+const CLAUSE_SCOPE_OPTIONS = [
+  { value: 'all', label: 'Entire Bible' },
+  { value: 'nt', label: 'New Testament' },
+  { value: 'ot', label: 'Old Testament' },
+  { value: 'pauline', label: "Paul's letters" },
+  { value: 'non-pauline', label: 'Non-Pauline' },
+  { value: 'book', label: 'Current book' },
+]
+
 function SelectField({ label, value, onChange, options, disabled }) {
   return (
     <div className="flex flex-col gap-1">
@@ -151,6 +168,7 @@ function MorphHelpPanel({ language }) {
 
 export default function MorphSearchModal({ onClose }) {
   const { book, setReference } = useStudyStore()
+  const [mode, setMode] = useState('morph')
 
   // Query state
   const [language, setLanguage] = useState('greek')
@@ -163,6 +181,14 @@ export default function MorphSearchModal({ onClose }) {
   const [gender, setGender] = useState('')
   const [case_, setCase] = useState('')
   const [scope, setScope] = useState('all')
+  const [clauseRole, setClauseRole] = useState('')
+  const [clauseTense, setClauseTense] = useState('')
+  const [clauseVoice, setClauseVoice] = useState('')
+  const [clauseMood, setClauseMood] = useState('')
+  const [clauseScope, setClauseScope] = useState('all')
+  const [clauseKeyword, setClauseKeyword] = useState('')
+  const [clauseLemma, setClauseLemma] = useState('')
+  const [clauseStrongs, setClauseStrongs] = useState('')
 
   // Results state
   const [results, setResults] = useState(null)
@@ -222,6 +248,34 @@ export default function MorphSearchModal({ onClose }) {
     }
   }
 
+  const buildClauseQuery = useCallback(() => {
+    const q = { scope: clauseScope }
+    if (clauseRole) q.role = clauseRole
+    if (clauseTense) q.verb_tense = clauseTense
+    if (clauseVoice) q.verb_voice = clauseVoice
+    if (clauseMood) q.verb_mood = clauseMood
+    if (clauseKeyword.trim()) q.keyword = clauseKeyword.trim()
+    if (clauseLemma.trim()) q.lemma = clauseLemma.trim()
+    if (clauseStrongs.trim()) q.strongs_num = clauseStrongs.trim()
+    if (clauseScope === 'book' && book) q.book = book
+    return q
+  }, [book, clauseKeyword, clauseLemma, clauseMood, clauseRole, clauseScope, clauseStrongs, clauseTense, clauseVoice])
+
+  async function executeClauseSearch() {
+    setLoading(true)
+    setError(null)
+    setResults(null)
+    setActiveIdx(-1)
+    try {
+      const data = await api.clauseSyntaxSearch(buildClauseQuery())
+      setResults(data)
+    } catch (err) {
+      setError(err.message || 'Search failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function handleSave() {
     if (!saveName.trim()) return
     const query = buildQuery()
@@ -257,13 +311,15 @@ export default function MorphSearchModal({ onClose }) {
     setPos(''); setTense(''); setVoice(''); setMood('')
     setPerson(''); setNumber(''); setGender(''); setCase('')
     setScope('all')
+    setClauseRole(''); setClauseTense(''); setClauseVoice(''); setClauseMood('')
+    setClauseScope('all'); setClauseKeyword(''); setClauseLemma(''); setClauseStrongs('')
     setResults(null)
     setError(null)
     setActiveIdx(-1)
   }
 
   function navigate(result) {
-    setReference(result.book, result.chapter, result.verse)
+    setReference(result.book, result.chapter, result.verse || result.verse_start)
     onClose()
   }
 
@@ -320,7 +376,9 @@ export default function MorphSearchModal({ onClose }) {
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <Search size={18} className="text-purple-500 flex-shrink-0" />
-          <h2 id="morph-search-title" className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-1">Morphological Search</h2>
+          <h2 id="morph-search-title" className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-1">
+            {mode === 'morph' ? 'Morphological Search' : 'Clause Syntax Search'}
+          </h2>
           <button
             onClick={() => setShowHelp(!showHelp)}
             className="text-gray-400 hover:text-blue-500 p-1 rounded"
@@ -333,8 +391,25 @@ export default function MorphSearchModal({ onClose }) {
           </button>
         </div>
 
+        <div className="flex border-b border-gray-200 dark:border-gray-700 px-2 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+          {[{ id: 'morph', label: 'Morphology' }, { id: 'clause', label: 'Clause Syntax' }].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { setMode(tab.id); setResults(null); setActiveIdx(-1); setError(null) }}
+              className={clsx(
+                'px-3 py-2 text-xs font-semibold transition-colors border-b-2',
+                mode === tab.id
+                  ? 'border-purple-600 text-purple-700 dark:text-purple-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* Help panel */}
-        {showHelp && (
+        {showHelp && mode === 'morph' && (
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <MorphHelpPanel language={language} />
           </div>
@@ -342,36 +417,59 @@ export default function MorphSearchModal({ onClose }) {
 
         {/* Query builder */}
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-3">
-          {/* Row 1: Language + Scope */}
-          <div className="grid grid-cols-2 gap-3">
-            <SelectField label="Language" value={language} onChange={setLanguage} options={LANGUAGE_OPTIONS} />
-            <SelectField label="Scope" value={scope} onChange={setScope} options={SCOPE_OPTIONS} />
-          </div>
-
-          {/* Row 2: Part of Speech */}
-          <SelectField label="Part of Speech" value={pos} onChange={setPos} options={posOptions} />
-
-          {/* Row 3: Verb-specific fields */}
-          {isVerbSelected && (
-            <div className="grid grid-cols-3 gap-3">
-              <SelectField label="Tense" value={tense} onChange={setTense} options={TENSE_OPTIONS} />
-              <SelectField label="Voice" value={voice} onChange={setVoice} options={VOICE_OPTIONS} />
-              <SelectField label="Mood" value={mood} onChange={setMood} options={MOOD_OPTIONS} />
-            </div>
+          {mode === 'morph' ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField label="Language" value={language} onChange={setLanguage} options={LANGUAGE_OPTIONS} />
+                <SelectField label="Scope" value={scope} onChange={setScope} options={SCOPE_OPTIONS} />
+              </div>
+              <SelectField label="Part of Speech" value={pos} onChange={setPos} options={posOptions} />
+              {isVerbSelected && (
+                <div className="grid grid-cols-3 gap-3">
+                  <SelectField label="Tense" value={tense} onChange={setTense} options={TENSE_OPTIONS} />
+                  <SelectField label="Voice" value={voice} onChange={setVoice} options={VOICE_OPTIONS} />
+                  <SelectField label="Mood" value={mood} onChange={setMood} options={MOOD_OPTIONS} />
+                </div>
+              )}
+              <div className="grid grid-cols-4 gap-3">
+                <SelectField label="Person" value={person} onChange={setPerson} options={PERSON_OPTIONS} disabled={!isVerbSelected} />
+                <SelectField label="Number" value={number} onChange={setNumber} options={NUMBER_OPTIONS} />
+                <SelectField label="Gender" value={gender} onChange={setGender} options={GENDER_OPTIONS} />
+                <SelectField label="Case" value={case_} onChange={setCase} options={CASE_OPTIONS} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <SelectField label="Scope" value={clauseScope} onChange={setClauseScope} options={CLAUSE_SCOPE_OPTIONS} />
+                <SelectField label="Clause role" value={clauseRole} onChange={setClauseRole} options={CLAUSE_ROLE_OPTIONS} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <SelectField label="Verb tense" value={clauseTense} onChange={setClauseTense} options={TENSE_OPTIONS} />
+                <SelectField label="Verb voice" value={clauseVoice} onChange={setClauseVoice} options={VOICE_OPTIONS} />
+                <SelectField label="Verb mood" value={clauseMood} onChange={setClauseMood} options={MOOD_OPTIONS} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Keyword</label>
+                  <input value={clauseKeyword} onChange={(e) => setClauseKeyword(e.target.value)} placeholder="faith, Spirit…" className="text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Lemma</label>
+                  <input value={clauseLemma} onChange={(e) => setClauseLemma(e.target.value)} placeholder="περιπατέω" className="text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Strong’s</label>
+                  <input value={clauseStrongs} onChange={(e) => setClauseStrongs(e.target.value)} placeholder="G4043" className="text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded px-2 py-1.5 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-400" />
+                </div>
+              </div>
+            </>
           )}
-
-          {/* Row 4: Person, Number, Gender, Case */}
-          <div className="grid grid-cols-4 gap-3">
-            <SelectField label="Person" value={person} onChange={setPerson} options={PERSON_OPTIONS} disabled={!isVerbSelected} />
-            <SelectField label="Number" value={number} onChange={setNumber} options={NUMBER_OPTIONS} />
-            <SelectField label="Gender" value={gender} onChange={setGender} options={GENDER_OPTIONS} />
-            <SelectField label="Case" value={case_} onChange={setCase} options={CASE_OPTIONS} />
-          </div>
 
           {/* Action buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={executeSearch}
+              onClick={mode === 'morph' ? executeSearch : executeClauseSearch}
               disabled={loading}
               className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors"
             >

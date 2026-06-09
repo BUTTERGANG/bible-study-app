@@ -799,12 +799,26 @@ async def _fetch_book_pages(db: AsyncSession, book_id: int, page_start: int = 0,
     return book, text
 
 
-async def _get_cached_summary(db: AsyncSession, book_id: int, chunk_size: int):
+def _cache_key(chunk_size: int, summary_length: str) -> int:
+    """Encode chunk_size + summary_length into a single integer cache key.
+
+    The LibrarySummary unique constraint is (book_id, chunk_size).  We reuse
+    that column to store a composite: chunk_size * 10 + length_offset so that
+    different length variants produce distinct cache rows without a migration.
+
+    brief=0  standard=1  detailed=2
+    """
+    offset = {"brief": 0, "standard": 1, "detailed": 2}.get(summary_length, 1)
+    return chunk_size * 10 + offset
+
+
+async def _get_cached_summary(db: AsyncSession, book_id: int, chunk_size: int, summary_length: str = "standard"):
     """Return a cached summary if one exists."""
+    key = _cache_key(chunk_size, summary_length)
     result = await db.execute(
         select(LibrarySummary).where(
             LibrarySummary.book_id == book_id,
-            LibrarySummary.chunk_size == chunk_size,
+            LibrarySummary.chunk_size == key,
         )
     )
     return result.scalar_one_or_none()
@@ -814,6 +828,7 @@ async def _save_summary(
     db: AsyncSession,
     book_id: int,
     chunk_size: int,
+    summary_length: str,
     tldr: str,
     key_points: list,
     outline: str,
@@ -821,10 +836,11 @@ async def _save_summary(
     """Persist a summary to the database (upsert semantics)."""
     from datetime import datetime as _dt
 
+    key = _cache_key(chunk_size, summary_length)
     existing = await db.execute(
         select(LibrarySummary).where(
             LibrarySummary.book_id == book_id,
-            LibrarySummary.chunk_size == chunk_size,
+            LibrarySummary.chunk_size == key,
         )
     )
     row = existing.scalar_one_or_none()
@@ -836,7 +852,7 @@ async def _save_summary(
     else:
         row = LibrarySummary(
             book_id=book_id,
-            chunk_size=chunk_size,
+            chunk_size=key,
             tldr=tldr,
             key_points=json.dumps(key_points),
             outline=outline,
@@ -869,11 +885,42 @@ async def summarize_resource(body: SummarizeRequest, db: AsyncSession = Depends(
     chunk_size = body.chunk_size
     if chunk_size == 0 and total_pages > _CHUNK_THRESHOLD:
         chunk_size = _CHUNK_SIZE_PAGES
+    summary_length = body.summary_length if body.summary_length in ("brief", "standard", "detailed") else "standard"
+
+    # Per-length prompt instructions
+    _LENGTH_INSTRUCTIONS = {
+        "brief": (
+            "## TL;DR\n"
+            "Write 1-2 sentences summarizing the entire content.\n\n"
+            "## Key Points\n"
+            "List exactly 3-5 key takeaways as bullet points. Each should be a single concise sentence.\n\n"
+            "## Outline\n"
+            "Provide a brief outline (5-8 lines) using ## headings and - sub-points. Include page references where notable chapters/sections begin."
+        ),
+        "standard": (
+            "## TL;DR\n"
+            "Write 2-3 sentences summarizing the entire content at a high level.\n\n"
+            "## Key Points\n"
+            "List 5-10 key takeaways as bullet points. Each should be a single substantive sentence capturing a major argument, theme, or insight.\n\n"
+            "## Outline\n"
+            "Provide a structured outline of the content using ## headings and - sub-points. Capture the logical flow of the work. Include page references (e.g. p.12) where notable sections begin."
+        ),
+        "detailed": (
+            "## TL;DR\n"
+            "Write 3-5 sentences summarizing the entire content, including the author's main argument and conclusion.\n\n"
+            "## Key Points\n"
+            "List 10-15 key takeaways as bullet points. Each should be a substantive sentence. Include page references (e.g. p.12) for significant claims.\n\n"
+            "## Outline\n"
+            "Provide a detailed sectioned outline using ## headings and - sub-points for each chapter or major section. "
+            "For each section include: the main argument, 2-3 supporting points, and the page range (e.g. pp.1-20). "
+            "Capture connections between sections where the author builds an argument across chapters."
+        ),
+    }
 
     async def generate():
         try:
             # Check cache first
-            cached = await _get_cached_summary(db, body.resource_id, chunk_size)
+            cached = await _get_cached_summary(db, body.resource_id, chunk_size, summary_length)
             if cached:
                 yield f"data: {json.dumps({'stage': 'status', 'message': 'Loading cached summary…'})}\n\n"
                 yield f"data: {json.dumps({'stage': 'tldr', 'text': cached.tldr})}\n\n"
@@ -914,6 +961,7 @@ async def summarize_resource(body: SummarizeRequest, db: AsyncSession = Depends(
                 author_note = f" by {book_meta.author}" if book_meta.author else ""
                 page_range = f" (pages {p_start}-{p_end})" if p_start > 0 else ""
 
+                length_instructions = _LENGTH_INSTRUCTIONS[summary_length]
                 prompt = f"""Summarize the following content from the book **{book_meta.title}**{author_note}{page_range}.
 
 Content:
@@ -925,20 +973,14 @@ Content:
 
 Provide a structured summary with:
 
-## TL;DR
-Write 2-3 sentences summarizing the entire content at a high level.
+{length_instructions}"""
 
-## Key Points
-List 5-10 key takeaways as bullet points. Each should be a single substantive sentence capturing a major argument, theme, or insight.
-
-## Outline
-Provide a structured outline of the content using ## headings and - sub-points. Capture the logical flow of the work."""
-
+                _max_tokens = {"brief": 1000, "standard": 3000, "detailed": 5000}.get(summary_length, 3000)
                 client = _client()
                 accumulated = ""
                 async with client.messages.stream(
                     model=MODEL,
-                    max_tokens=3000,
+                    max_tokens=_max_tokens,
                     system=[{"type": "text", "text": SUMMARY_SYSTEM_PROMPT, "cache_control": _CACHE}],
                     messages=[{"role": "user", "content": prompt}],
                 ) as stream:
@@ -996,7 +1038,7 @@ Provide a structured outline of the content using ## headings and - sub-points. 
             final_outline = "\n\n".join(all_outlines) if all_outlines else "No outline generated."
 
             # Cache the combined result
-            await _save_summary(db, body.resource_id, chunk_size, final_tldr, deduped_kp, final_outline)
+            await _save_summary(db, body.resource_id, chunk_size, summary_length, final_tldr, deduped_kp, final_outline)
 
             # Stream the final result
             yield f"data: {json.dumps({'stage': 'tldr', 'text': final_tldr})}\n\n"

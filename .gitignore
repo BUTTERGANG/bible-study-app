@@ -35,3 +35,4 @@ your
 
 # User-uploaded runtime media (not source)
 data/media/
+.claude/worktrees/

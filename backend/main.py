@@ -27,7 +27,7 @@ from .auth import auth_is_enabled, get_current_user, require_app_password
 from .database import db_status, init_db
 from .routers import (
     ai, ai_conversations, ai_reading_plans, annotations, bible, book_intros,
-    bookmarks, commentary, counseling, courses, cultural_notes, dashboard, dictionary,
+    bookmarks, clause_syntax, commentary, counseling, courses, cultural_notes, dashboard, dictionary,
     doctrine, factbook, gospel_harmony, groups, health, highlights, lectionary,
     lexicon, library, media, memorize, notes, nt_ot, prayer, reading_plans,
     search, sermon_series, sermons, shares, streaks, study_projects, tags,
@@ -62,6 +62,9 @@ async def lifespan(app: FastAPI):
     async with SessionLocal() as _db:
         cr_seeded = await courses.seed_courses(_db)
         if cr_seeded: logger.info("Courses: inserted %d lessons", cr_seeded)
+    async with SessionLocal() as _db:
+        cs_seeded = await clause_syntax.seed_clause_syntax(_db)
+        if cs_seeded: logger.info("Clause syntax: inserted %d seed clauses", cs_seeded)
     if auth_is_enabled(): logger.info("App-level password authentication is enabled")
     yield
 
@@ -94,6 +97,7 @@ app.include_router(bible.router)
 app.include_router(book_intros.router)
 app.include_router(commentary.router)
 app.include_router(search.router)
+app.include_router(clause_syntax.router)
 app.include_router(word_study.router)
 app.include_router(lexicon.router)
 app.include_router(library.router)

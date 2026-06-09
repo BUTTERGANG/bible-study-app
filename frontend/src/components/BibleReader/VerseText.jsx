@@ -2,6 +2,7 @@ import { memo, useRef, useState, useEffect } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 import VerseContextMenu from './VerseContextMenu'
 import LemmaInline from './LemmaInline'
+import AnnotatedVerseText from './AnnotatedVerseText'
 import clsx from 'clsx'
 
 const HIGHLIGHT_CLASSES = {
@@ -16,6 +17,9 @@ const VerseText = memo(function VerseText({
   verse, text, book, chapter, translation,
   isActive, highlightColor, highlightId,
   lemmaWords, lemmaLanguage,
+  // Inline annotation data for this verse (passed from BibleReader)
+  verseAnnotations,
+  annotationsQueryKey,
 }) {
   const selectVerse = useStudyStore((s) => s.selectVerse)
   const showLemmas = useStudyStore((s) => s.showLemmas)
@@ -36,7 +40,8 @@ const VerseText = memo(function VerseText({
     suppressFlash.current = false
   }, [isActive])
 
-  function handleClick() {
+  function handleClick(e) {
+    if (e.target.closest('[data-word-idx]')) return
     suppressFlash.current = true
     selectVerse(verse, text)
     setMenuPos(null)
@@ -52,6 +57,35 @@ const VerseText = memo(function VerseText({
   // When lemmas are enabled and data is available, render via LemmaInline
   const hasLemmaData = showLemmas && lemmaWords && lemmaWords.length > 0
 
+  // Annotations mode: non-empty array means this verse has annotations or we want
+  // to support annotation creation (annotationsQueryKey present).
+  const hasAnnotations = annotationsQueryKey != null
+
+  function renderBody() {
+    if (hasLemmaData) {
+      return (
+        <LemmaInline
+          words={lemmaWords}
+          text={text}
+          position={lemmaPosition}
+        />
+      )
+    }
+    if (hasAnnotations) {
+      return (
+        <AnnotatedVerseText
+          text={text}
+          verse={verse}
+          book={book}
+          chapter={chapter}
+          annotations={verseAnnotations || []}
+          queryKey={annotationsQueryKey}
+        />
+      )
+    }
+    return <>{text}{' '}</>
+  }
+
   return (
     <>
       <span
@@ -63,7 +97,7 @@ const VerseText = memo(function VerseText({
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
         onContextMenu={handleContextMenu}
         className={clsx(
-          'cursor-pointer rounded px-0.5 transition-colors hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
+          'cursor-pointer rounded px-0.5 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
           isActive && 'verse-selected',
           flashing && 'verse-flash',
           highlightColor && HIGHLIGHT_CLASSES[highlightColor],
@@ -71,15 +105,7 @@ const VerseText = memo(function VerseText({
         )}
       >
         <sup className="verse-num">{verse}</sup>
-        {hasLemmaData ? (
-          <LemmaInline
-            words={lemmaWords}
-            text={text}
-            position={lemmaPosition}
-          />
-        ) : (
-          <>{text}{' '}</>
-        )}
+        {renderBody()}
       </span>
 
       {menuPos && (

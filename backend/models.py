@@ -985,7 +985,7 @@ class UserCourseProgress(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), default=0, index=True
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     course_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("language_courses.id", ondelete="CASCADE"), nullable=False, index=True
@@ -994,4 +994,39 @@ class UserCourseProgress(Base):
     current_lesson: Mapped[int] = mapped_column(Integer, default=1)
     completed_lesson_ids: Mapped[str] = mapped_column(Text, default="[]")  # JSON array
     percent_complete: Mapped[float] = mapped_column(Float, default=0.0)
+    current_streak: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ── Clause Syntax Search ──────────────────────────────────────────────────────
+
+class ClauseSyntax(Base):
+    """Clause-level syntactic annotation for structured Bible search."""
+    __tablename__ = "clause_syntax"
+    __table_args__ = (
+        UniqueConstraint("source", "clause_id", name="uq_clause_syntax_source_clause"),
+        Index("ix_clause_ref", "book", "chapter", "verse_start"),
+        Index("ix_clause_book_num", "book_num"),
+        Index("ix_clause_role", "role"),
+        Index("ix_clause_verb_tvm", "verb_tense", "verb_voice", "verb_mood"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    source: Mapped[str] = mapped_column(String(50), default="fixture", nullable=False, index=True)
+    book: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    book_num: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    chapter: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    verse_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    verse_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    clause_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    clause_text: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    verb_tense: Mapped[str] = mapped_column(String(30), nullable=True, index=True)
+    verb_voice: Mapped[str] = mapped_column(String(30), nullable=True, index=True)
+    verb_mood: Mapped[str] = mapped_column(String(30), nullable=True, index=True)
+    verb_person: Mapped[str] = mapped_column(String(10), nullable=True)
+    verb_number: Mapped[str] = mapped_column(String(10), nullable=True)
+    verb_lemma: Mapped[str] = mapped_column(String(100), nullable=True, index=True)
+    verb_strongs: Mapped[str] = mapped_column(String(20), nullable=True, index=True)
+    tokens_json: Mapped[str] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[str] = mapped_column(Text, nullable=True)

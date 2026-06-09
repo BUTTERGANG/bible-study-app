@@ -35,6 +35,7 @@ const GroupsPanel = lazy(() => import('../Groups/GroupsPanel'))
 const DoctrinePanel = lazy(() => import('../Doctrine/DoctrinePanel'))
 const CounselingPanel = lazy(() => import('../Counseling/CounselingPanel'))
 const PreachingSeriesPanel = lazy(() => import('../PreachingSeries/PreachingSeriesPanel'))
+const OriginalLanguageCoursesPanel = lazy(() => import('../OriginalLanguages/OriginalLanguageCoursesPanel'))
 
 const TABS = [
   { id: 'home', label: 'Home', icon: BookOpen },
@@ -50,6 +51,7 @@ const TABS = [
   { id: 'factbook', label: 'Factbook', icon: BookMarked },
   { id: 'notes', label: 'Notes', icon: StickyNote },
   { id: 'word-study', label: 'Words', icon: Layers },
+  { id: 'languages', label: 'Languages', icon: GraduationCap },
   { id: 'library', label: 'Library', icon: Library },
   { id: 'bookmarks', label: 'Saved', icon: Bookmark },
   { id: 'reading', label: 'Plans', icon: Calendar },
@@ -126,6 +128,7 @@ export default function RightPanel() {
           {rightPanel === 'factbook' && <FactbookPanel />}
           {rightPanel === 'notes' && <NotesPanel />}
           {rightPanel === 'word-study' && <WordStudyPanel />}
+          {rightPanel === 'languages' && <OriginalLanguageCoursesPanel />}
           {rightPanel === 'library' && <LibraryReader />}
           {rightPanel === 'bookmarks' && <BookmarksPanel />}
           {rightPanel === 'reading' && <ReadingPlansPanel />}

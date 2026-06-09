@@ -6,6 +6,8 @@ import { useStudyStore } from '../../stores/studyStore'
 import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import clsx from 'clsx'
+import TextualNotesCard from './TextualNotesCard'
+import VideoOverviewCard from './VideoOverviewCard'
 
 const REF_RE = /\b([A-Z][A-Za-z.]*(?:\s+[A-Z][A-Za-z.]*)*)\s+(\d+):(\d+)(?:-(\d+))?/g
 
@@ -265,6 +267,12 @@ export default function InsightsPanel() {
             </p>
           </div>
         )}
+
+        {/* Book overview video — shown for chapter 1 of any book */}
+        <VideoOverviewCard />
+
+        {/* Textual Notes — only appears when variants exist for this verse */}
+        <TextualNotesCard />
 
       </div>
     </div>

@@ -1,0 +1,125 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "id": "paul_journey_3",
+    "name": "Paul's 3rd Missionary Journey",
+    "color": "#a855f7",
+    "description": "Paul's extended ministry in Ephesus and return to Jerusalem (~53-57 AD)",
+    "verse_refs": "Acts 18:23-21:17",
+    "period": "~53-57 AD"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [36.16, 36.20] },
+      "properties": {
+        "name": "Antioch (Syria)",
+        "reference": "Acts 18:23",
+        "event_name": "Third Journey Begins",
+        "description": "After spending some time in Antioch, Paul set out and traveled systematically through Galatia and Phrygia, strengthening all the disciples."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [27.34, 37.94] },
+      "properties": {
+        "name": "Ephesus",
+        "reference": "Acts 19:1-41",
+        "event_name": "Three Years in Ephesus",
+        "description": "Paul spent three years in Ephesus — the longest stay anywhere in his journeys. He reasoned daily in the hall of Tyrannus. Extraordinary miracles occurred; many who practiced magic burned their scrolls (worth 50,000 drachmas). The riot of Demetrius the silversmith erupted over Diana (Artemis) of the Ephesians."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [24.29, 41.01] },
+      "properties": {
+        "name": "Macedonia (Philippi)",
+        "reference": "Acts 20:1-6",
+        "event_name": "Encouraged the Churches of Macedonia",
+        "description": "Paul traveled through Macedonia, speaking many words of encouragement to the believers. He spent three months in Greece before returning through Macedonia."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [22.92, 37.93] },
+      "properties": {
+        "name": "Corinth (Greece)",
+        "reference": "Acts 20:2-3",
+        "event_name": "Three Months in Greece",
+        "description": "Paul spent three months in Greece (Corinth). When a plot against him was discovered, he changed his plan to sail directly to Syria and went back through Macedonia."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [24.29, 41.01] },
+      "properties": {
+        "name": "Philippi",
+        "reference": "Acts 20:6",
+        "event_name": "Eutychus Raised from the Dead",
+        "description": "At Troas, a young man named Eutychus fell asleep during Paul's late-night sermon and fell from a third-floor window. Paul embraced him and he was restored to life."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [26.54, 39.12] },
+      "properties": {
+        "name": "Miletus",
+        "reference": "Acts 20:17-38",
+        "event_name": "Farewell to Ephesian Elders",
+        "description": "Paul summoned the Ephesian elders to Miletus. He warned of wolves entering the flock and committed them to God. They wept as he knelt and prayed, grieving that they would see his face no more."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.10, 32.82] },
+      "properties": {
+        "name": "Tyre",
+        "reference": "Acts 21:3-6",
+        "event_name": "Disciples Urge Paul Not to Go",
+        "description": "Through the Spirit, disciples at Tyre urged Paul not to go on to Jerusalem. After seven days they knelt on the beach, prayed together, and said farewell."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [34.89, 31.90] },
+      "properties": {
+        "name": "Caesarea Maritima",
+        "reference": "Acts 21:8-14",
+        "event_name": "Agabus Prophesies Paul's Arrest",
+        "description": "Philip the evangelist hosted Paul. The prophet Agabus bound his own hands and feet with Paul's belt and said: The Holy Spirit says that in this way the Jews in Jerusalem will bind the owner of this belt and hand him over to the Gentiles."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.21, 31.77] },
+      "properties": {
+        "name": "Jerusalem",
+        "reference": "Acts 21:17",
+        "event_name": "Arrival in Jerusalem",
+        "description": "The brothers in Jerusalem welcomed Paul warmly. He reported in detail what God had done among the Gentiles, and they praised God. The journey that led to his arrest had begun."
+      }
+    }
+  ],
+  "route": {
+    "type": "Feature",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [36.16, 36.20],
+        [27.34, 37.94],
+        [24.29, 41.01],
+        [22.92, 37.93],
+        [24.29, 41.01],
+        [26.54, 39.12],
+        [27.34, 37.94],
+        [35.10, 32.82],
+        [34.89, 31.90],
+        [35.21, 31.77]
+      ]
+    },
+    "properties": {
+      "name": "Paul's 3rd Missionary Journey",
+      "color": "#a855f7"
+    }
+  }
+}

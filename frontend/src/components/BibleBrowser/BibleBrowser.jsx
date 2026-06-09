@@ -246,16 +246,29 @@ export default function BibleBrowser() {
     }
   });
 
-  // Filter books based on testament + search
+  // Filter books based on testament + search (fuzzy-aware)
   const filteredBooks = useMemo(() => {
     const base = TESTAMENTS.find((t) => t.id === testament)?.books || [];
     if (!searchQuery.trim()) return base;
     const q = searchQuery.toLowerCase().trim();
-    return base.filter(
+
+    // First try exact substring match (fast path)
+    const exactMatches = base.filter(
       (b) =>
         b.name.toLowerCase().includes(q) ||
         b.testament.toLowerCase().includes(q)
     );
+    if (exactMatches.length > 0) return exactMatches;
+
+    // Fall back to fuzzy book resolution via resolveBook
+    const resolved = resolveBook(q);
+    if (resolved) {
+      const canonicalName = resolved.book.name;
+      const fuzzyMatch = base.find((b) => b.name === canonicalName);
+      if (fuzzyMatch) return [fuzzyMatch];
+    }
+
+    return [];
   }, [testament, searchQuery]);
 
   // Group books by category when showing all/OT

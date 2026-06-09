@@ -1,0 +1,147 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "id": "paul_journey_2",
+    "name": "Paul's 2nd Missionary Journey",
+    "color": "#22c55e",
+    "description": "Paul and Silas travel through Asia Minor and into Macedonia and Greece (~49-52 AD)",
+    "verse_refs": "Acts 15:36-18:22",
+    "period": "~49-52 AD"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [36.16, 36.20] },
+      "properties": {
+        "name": "Antioch (Syria)",
+        "reference": "Acts 15:36-41",
+        "event_name": "Paul and Silas Depart",
+        "description": "After a sharp disagreement with Barnabas over John Mark, Paul chose Silas and departed, commended by the brothers to the grace of the Lord."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.14, 37.58] },
+      "properties": {
+        "name": "Lystra",
+        "reference": "Acts 16:1-3",
+        "event_name": "Timothy Joins the Team",
+        "description": "Paul came to Derbe and Lystra, where Timothy, well-spoken of by brothers there, joined them. Paul circumcised him because of the Jews in the area."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [27.48, 39.74] },
+      "properties": {
+        "name": "Troas",
+        "reference": "Acts 16:6-10",
+        "event_name": "The Macedonian Vision",
+        "description": "During the night Paul had a vision of a man from Macedonia pleading, 'Come over to Macedonia and help us.' They concluded God was calling them to preach there."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [24.73, 40.84] },
+      "properties": {
+        "name": "Neapolis",
+        "reference": "Acts 16:11",
+        "event_name": "First Step into Europe",
+        "description": "Setting sail from Troas, they ran a straight course to Samothrace, and the following day to Neapolis — the port of Philippi in Macedonia."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [24.29, 41.01] },
+      "properties": {
+        "name": "Philippi",
+        "reference": "Acts 16:12-40",
+        "event_name": "Lydia Believes; Paul and Silas Imprisoned",
+        "description": "Lydia, a dealer in purple cloth, was converted and baptized. Paul cast out a spirit of divination from a slave girl; Paul and Silas were beaten and jailed. An earthquake freed them; the jailer and his household were baptized."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [22.94, 40.64] },
+      "properties": {
+        "name": "Thessalonica",
+        "reference": "Acts 17:1-9",
+        "event_name": "Preaching in the Synagogue",
+        "description": "Paul reasoned from Scripture for three Sabbaths that Jesus was the Christ. Some Jews and many God-fearing Greeks believed. A mob attacked Jason's house seeking Paul and Silas."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [22.08, 41.04] },
+      "properties": {
+        "name": "Berea",
+        "reference": "Acts 17:10-15",
+        "event_name": "The Noble Bereans",
+        "description": "The Bereans received the word with eagerness and examined the Scriptures every day to see if what Paul said was true — called more noble-minded than the Thessalonians."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [23.73, 37.98] },
+      "properties": {
+        "name": "Athens",
+        "reference": "Acts 17:16-34",
+        "event_name": "Sermon on the Areopagus",
+        "description": "Seeing the city full of idols, Paul preached to the Athenians about the 'unknown god.' Some sneered at the resurrection; others believed, including Dionysius the Areopagite."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [22.92, 37.93] },
+      "properties": {
+        "name": "Corinth",
+        "reference": "Acts 18:1-18",
+        "event_name": "Eighteen Months in Corinth",
+        "description": "Paul stayed 18 months, working with Aquila and Priscilla as tentmakers, and reasoning in the synagogue every Sabbath. Crispus, the synagogue ruler, believed."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [27.34, 37.94] },
+      "properties": {
+        "name": "Ephesus",
+        "reference": "Acts 18:19-21",
+        "event_name": "Brief Visit to Ephesus",
+        "description": "Paul stopped briefly in Ephesus, reasoning in the synagogue. Though they asked him to stay longer, he declined but promised to return if God willed."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [34.89, 31.90] },
+      "properties": {
+        "name": "Caesarea Maritima",
+        "reference": "Acts 18:22",
+        "event_name": "Return Journey Through Caesarea",
+        "description": "Paul went up and greeted the church in Jerusalem (likely), then went down to Antioch, completing the second missionary journey."
+      }
+    }
+  ],
+  "route": {
+    "type": "Feature",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [36.16, 36.20],
+        [32.14, 37.58],
+        [27.48, 39.74],
+        [24.73, 40.84],
+        [24.29, 41.01],
+        [22.94, 40.64],
+        [22.08, 41.04],
+        [23.73, 37.98],
+        [22.92, 37.93],
+        [27.34, 37.94],
+        [34.89, 31.90],
+        [36.16, 36.20]
+      ]
+    },
+    "properties": {
+      "name": "Paul's 2nd Missionary Journey",
+      "color": "#22c55e"
+    }
+  }
+}

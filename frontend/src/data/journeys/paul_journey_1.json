@@ -1,0 +1,128 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "id": "paul_journey_1",
+    "name": "Paul's 1st Missionary Journey",
+    "color": "#3b82f6",
+    "description": "Paul and Barnabas travel through Cyprus and Asia Minor (~47-48 AD)",
+    "verse_refs": "Acts 13:1-14:28",
+    "period": "~47-48 AD"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [36.16, 36.20] },
+      "properties": {
+        "name": "Antioch (Syria)",
+        "reference": "Acts 13:1-3",
+        "event_name": "Sent Out by the Holy Spirit",
+        "description": "The Holy Spirit said, 'Set apart for me Barnabas and Saul for the work to which I have called them.' They were sent off from Antioch."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [35.90, 36.35] },
+      "properties": {
+        "name": "Seleucia",
+        "reference": "Acts 13:4",
+        "event_name": "Sailed from Seleucia",
+        "description": "Paul and Barnabas sailed from Seleucia, the port city of Antioch, beginning the first missionary journey."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [33.36, 35.17] },
+      "properties": {
+        "name": "Salamis, Cyprus",
+        "reference": "Acts 13:5",
+        "event_name": "Preaching in Synagogues of Cyprus",
+        "description": "In Salamis they proclaimed the word of God in the Jewish synagogues. John Mark was with them as their helper."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.99, 34.67] },
+      "properties": {
+        "name": "Paphos, Cyprus",
+        "reference": "Acts 13:6-12",
+        "event_name": "Elymas the Sorcerer Blinded",
+        "description": "Sergius Paulus, the proconsul, summoned Paul and Barnabas. The sorcerer Elymas opposed them; Paul struck him with temporary blindness. The proconsul believed."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [30.70, 36.83] },
+      "properties": {
+        "name": "Perga, Pamphylia",
+        "reference": "Acts 13:13-14",
+        "event_name": "John Mark Departs",
+        "description": "At Perga, John Mark left them and returned to Jerusalem — a departure that later caused conflict between Paul and Barnabas."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [31.41, 38.29] },
+      "properties": {
+        "name": "Pisidian Antioch",
+        "reference": "Acts 13:14-52",
+        "event_name": "Paul's Synagogue Sermon; Turned to Gentiles",
+        "description": "Paul preached in the synagogue; many Gentiles came the next Sabbath. When the Jews rejected the message, Paul declared: 'We turn to the Gentiles.'"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [31.99, 37.87] },
+      "properties": {
+        "name": "Iconium",
+        "reference": "Acts 14:1-7",
+        "event_name": "Signs and Wonders in Iconium",
+        "description": "A great number of Jews and Gentiles believed. Paul and Barnabas spent considerable time, speaking boldly and performing signs and wonders."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.14, 37.58] },
+      "properties": {
+        "name": "Lystra",
+        "reference": "Acts 14:8-20",
+        "event_name": "Paul Heals and is Stoned",
+        "description": "Paul healed a man lame from birth; the crowd called them gods. Then Jews from Antioch and Iconium came and stoned Paul, dragging him outside the city — but he got up."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [32.48, 37.37] },
+      "properties": {
+        "name": "Derbe",
+        "reference": "Acts 14:20-21",
+        "event_name": "Many Disciples Made in Derbe",
+        "description": "Paul and Barnabas preached the gospel in Derbe and won a large number of disciples before retracing their steps to strengthen the churches."
+      }
+    }
+  ],
+  "route": {
+    "type": "Feature",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [36.16, 36.20],
+        [35.90, 36.35],
+        [33.36, 35.17],
+        [32.99, 34.67],
+        [30.70, 36.83],
+        [31.41, 38.29],
+        [31.99, 37.87],
+        [32.14, 37.58],
+        [32.48, 37.37],
+        [32.14, 37.58],
+        [31.99, 37.87],
+        [30.70, 36.83],
+        [36.16, 36.20]
+      ]
+    },
+    "properties": {
+      "name": "Paul's 1st Missionary Journey",
+      "color": "#3b82f6"
+    }
+  }
+}

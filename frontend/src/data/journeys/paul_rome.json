@@ -1,0 +1,113 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "id": "paul_rome",
+    "name": "Paul's Journey to Rome",
+    "color": "#ef4444",
+    "description": "Paul's voyage as a prisoner to Rome (~59-60 AD)",
+    "verse_refs": "Acts 27:1-28:31",
+    "period": "~59-60 AD"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [34.89, 31.90] },
+      "properties": {
+        "name": "Caesarea Maritima",
+        "reference": "Acts 27:1-2",
+        "event_name": "Paul Sails as a Prisoner",
+        "description": "Paul, in the custody of a centurion named Julius, boarded a ship with other prisoners. Aristarchus from Thessalonica was with him."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [36.17, 36.58] },
+      "properties": {
+        "name": "Sidon",
+        "reference": "Acts 27:3",
+        "event_name": "Julius Shows Kindness",
+        "description": "At Sidon, Julius treated Paul kindly and allowed him to visit his friends to be refreshed."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [30.26, 36.63] },
+      "properties": {
+        "name": "Myra, Lycia",
+        "reference": "Acts 27:5-6",
+        "event_name": "Transfer to Alexandrian Ship",
+        "description": "At Myra the centurion found an Alexandrian ship sailing for Italy and put Paul and the prisoners on it."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [24.09, 35.00] },
+      "properties": {
+        "name": "Fair Havens, Crete",
+        "reference": "Acts 27:8-12",
+        "event_name": "Paul Warns Against Sailing",
+        "description": "Paul warned them: 'I see that the voyage will be with injury and much loss, not only of the cargo and ship, but also of our lives.' The centurion trusted the pilot over Paul."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [14.51, 35.90] },
+      "properties": {
+        "name": "Malta (Melita)",
+        "reference": "Acts 27:41-28:10",
+        "event_name": "Shipwreck and Winter on Malta",
+        "description": "The ship ran aground and broke apart in the storm. All 276 people escaped safely to Malta. Paul was bitten by a viper but unharmed. He healed the father of Publius and many others. They wintered there three months."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [15.55, 38.11] },
+      "properties": {
+        "name": "Syracuse, Sicily",
+        "reference": "Acts 28:12",
+        "event_name": "Three Days in Syracuse",
+        "description": "They put in at Syracuse and stayed three days before continuing northward toward Rome."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [14.99, 40.83] },
+      "properties": {
+        "name": "Puteoli (Pozzuoli)",
+        "reference": "Acts 28:13-14",
+        "event_name": "Welcomed by Brothers",
+        "description": "At Puteoli they found brothers who invited Paul to stay with them for seven days. And so Paul came to Rome."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [12.50, 41.90] },
+      "properties": {
+        "name": "Rome",
+        "reference": "Acts 28:16-31",
+        "event_name": "Two Years Under House Arrest",
+        "description": "Paul lived in his own rented house under guard, welcoming all who came to him. He preached the Kingdom of God and taught about the Lord Jesus Christ — boldly and without hindrance."
+      }
+    }
+  ],
+  "route": {
+    "type": "Feature",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [34.89, 31.90],
+        [36.17, 36.58],
+        [30.26, 36.63],
+        [24.09, 35.00],
+        [14.51, 35.90],
+        [15.55, 38.11],
+        [14.99, 40.83],
+        [12.50, 41.90]
+      ]
+    },
+    "properties": {
+      "name": "Paul's Journey to Rome",
+      "color": "#ef4444"
+    }
+  }
+}

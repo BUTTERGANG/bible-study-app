@@ -1,4 +1,4 @@
-import { BookOpen, MessageSquare, Search, StickyNote, LayoutGrid } from 'lucide-react'
+import { BookOpen, GraduationCap, Search, StickyNote, LayoutGrid } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
 
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { id: 'search',    icon: Search,        label: 'Search',    action: 'search' },
   { id: 'commentary',icon: BookOpen,      label: 'Commentary',action: 'panel', panel: 'commentary' },
   { id: 'notes',     icon: StickyNote,    label: 'Notes',     action: 'panel', panel: 'notes' },
+  { id: 'languages', icon: GraduationCap, label: 'Lang',      action: 'panel', panel: 'languages' },
   { id: 'panels',    icon: LayoutGrid,    label: 'Tools',     action: 'panel', panel: 'home' },
 ]
 

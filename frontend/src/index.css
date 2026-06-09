@@ -102,16 +102,45 @@
   }
 
   .lemma-inline-wrapper {
-    display: inline;
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: top;
   }
 
   .lemma-forms-inline {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.125rem;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    margin-top: 0.125rem;
   }
 
   /* Inline lemma words - shown when parent verse is hovered */
   .lemma-inline-word:hover {
     @apply bg-blue-50 dark:bg-blue-900/20 rounded;
+  }
+
+  /* ── Biblical Atlas: Journey path animations ──────────────────── */
+  @keyframes journey-dash {
+    from { stroke-dashoffset: 2000; }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  .journey-path-animated {
+    stroke-dasharray: 12 6;
+    stroke-dashoffset: 2000;
+    animation: journey-dash 3s linear forwards;
+  }
+
+  /* Waypoint pulse for highlighted "current passage" markers */
+  @keyframes waypoint-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  .waypoint-highlighted {
+    animation: waypoint-pulse 1.5s ease-in-out infinite;
   }
 }
 
