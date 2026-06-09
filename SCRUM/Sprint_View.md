@@ -25,9 +25,13 @@
 
 ## Done This Sprint
 
-| Task | Points | Completed |
-|------|--------|-----------|
-| —    | —      | —         |
+| Task | Priority | Estimate | Completed |
+|------|----------|----------|-----------|
+| Group Discussion Threads | P1 | medium | 2026-06-09 |
+| Backend API Test Suite | P1 | medium | 2026-06-09 |
+| Share Study Session as Link | P2 | small | 2026-06-09 |
+| Reading Streak & Badges | P2 | medium | 2026-06-09 |
+| Community Tags | P2 | medium | 2026-06-09 |
 
 ---
 
