@@ -361,7 +361,7 @@ export default function BibleBrowser() {
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [flatBooks, focusedBookIdx, view]);
+  }, [flatBooks, focusedBookIdx, view, navigate, selectedBook]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">

@@ -214,7 +214,7 @@ export default function AIAssistant() {
           </div>
         )}
 
-        {messages.map((msg) => (
+        {messages.map((msg, i) => (
           <div
             key={msg.id ?? msg.content.slice(0, 32) + msg.role}
             className={clsx(
