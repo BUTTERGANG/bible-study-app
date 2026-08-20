@@ -216,7 +216,7 @@ Cross-cutting:
 | Audio player | Works (client-side) | `AudioPlayer` uses the browser Web Speech API (`speechSynthesis`) via `useAudioBible.js` — no backend audio serving is required. Updated 2026-08-20 (previously listed as a gap). |
 | AI features | Need API key | All `/api/ai/*` endpoints require `ANTHROPIC_API_KEY` in Replit Secrets. Factbook/cultural notes/book intros/doctrine also AI-generated |
 | Modal focus trapping | FIXED | Keyboard focus-trapping implemented in `frontend/src/hooks/useFocusTrap.js` as part of the Scriptura design pass (merged to main 2026-08-20) |
-| Frontend unit tests | None | `frontend/package.json` defines `vitest run` but no test files exist — gate is a no-op. Backend has 160 tests; frontend has 0. |
+| Frontend unit tests | FIXED | Vitest suite added (2026-08-20): 62 tests across `morphology`, `bibleSearch`, `diff`, `studyStore`, `auth` + `frontend/src/utils/morphology.js` parser fixes (full-word Hebrew stems, Greek participle case/gender). `npm run test` passes. |
 
 ## Ingest Scripts
 
