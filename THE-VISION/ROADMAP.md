@@ -1,12 +1,24 @@
 # Roadmap
 
-Last updated: 2026-06-11
+Last updated: 2026-08-20
 
 > **See also**: `FEATURE-GAPS.md` for a Logos Bible Software comparison and gap analysis.
 
 ---
 
 ## Recently Shipped
+
+### 2026-08-20 — Frontend unit tests + morphology parser fixes
+
+- Added a **vitest suite (62 tests, 5 files)** covering `morphology`, `bibleSearch`,
+  `diff`, `studyStore`, and `auth` — closing the previous gap where `npm run test`
+  was a no-op (no test files existed). Backend was 160 tests; frontend had 0.
+- Fixed **two real parsing bugs** the new tests surfaced in `frontend/src/utils/morphology.js`:
+  - Hebrew verb stems now accept both the single-letter code (`Q`, `H`) and the
+    full-word stem (`Qal`, `Hiphil`) used in some datasets.
+  - Greek participles now parse their case/number/gender (e.g. `V-AAP-NPM` →
+    nominative plural masculine); previously the slot was misread as person-number.
+- Verified `npm run test` (62 passed), `npm run lint` (ESLint clean), `vite build` (clean).
 
 ### 2026-08-20 — Product quality and accessibility pass
 
@@ -213,8 +225,9 @@ Full swarm audit (8 parallel agents) followed by systematic fixes across securit
 ### P3 — Infrastructure
 
 **Expand test coverage**
-- Auth, highlights, groups, media, notes, shares, streaks, tags, courses, sermons, sermon series, and search/morph/clause-syntax now covered (19 files / 160 tests, 2026-06-11)
-- Still uncovered: AI conversations, doctrine, lectionary, reading plans, lexicon, dashboard
+- Backend: auth, highlights, groups, media, notes, shares, streaks, tags, courses, sermons, sermon series, and search/morph/clause-syntax covered (19 files / 160 tests)
+- Frontend: vitest suite added 2026-08-20 — `morphology`, `bibleSearch`, `diff`, `studyStore`, `auth` (62 tests). Hooks/components (offline sync, AI streaming, panels) not yet unit-tested.
+- Still uncovered: backend AI conversations, doctrine, lectionary, reading plans, lexicon, dashboard.
 
 **Remaining overlay accessibility audit**
 - Focus trap, Escape handling, focus restoration, and accessible labels now cover Search, Morphological/Clause Search, Create Group, and Memorize quiz.

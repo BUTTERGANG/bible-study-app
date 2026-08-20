@@ -60,11 +60,15 @@ The server starts at `http://0.0.0.0:5000`. The SPA is served from
 ## Testing & Lint
 
 ```bash
-make test            # pytest, isolated seeded test DB — 160 passed
+make test            # pytest (backend), isolated seeded test DB — 160 passed
 make lint            # ruff — clean
 make frontend-build  # vite build — clean
 make frontend-lint   # eslint --max-warnings 0 — clean
+cd frontend && npm run test   # vitest frontend suite — 62 passed
 ```
+
+Backend: **160 pytest tests**; frontend: **62 vitest unit tests** covering
+`morphology`, `bibleSearch`, `diff`, `studyStore`, and `auth` helpers.
 
 ## Docs & Project Vision
 
