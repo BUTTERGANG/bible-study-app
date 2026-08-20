@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, BookOpen, Compass, ChevronRight, Eye, Grid3X3, List, Search as SearchIcon, X } from 'lucide-react';
@@ -231,7 +231,7 @@ function ChapterPicker({ book, onClose, onNavigate }) {
 
 // ── Main Bible Browser ───────────────────────────────────────────
 export default function BibleBrowser() {
-  const { setReference, translation } = useStudyStore();
+  const { setReference } = useStudyStore();
   const navigate = useNavigate();
   const [testament, setTestament] = useState('all');
   const [view, setView] = useState('grid'); // 'grid' | 'list'

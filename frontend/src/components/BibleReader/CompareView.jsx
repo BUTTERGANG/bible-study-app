@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, Check, ChevronDown, Columns2, Save, Settings2, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Check, Columns2, Save, Settings2, X } from 'lucide-react'
 import { useStudyStore, FONT_SIZES } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import { computeWordDiff } from '../../utils/diff'
@@ -32,14 +32,11 @@ export default function CompareView() {
   const {
     book, chapter, compareTranslations, fontSizeIdx,
     selectedVerse, selectVerse, translation: baseTranslation,
-    compareMode, comparePickerOpen, setComparePickerOpen,
-    setCompareTranslations, toggleCompareMode,
+    compareMode,
+    setCompareTranslations,
   } = useStudyStore(typeof compareMode === 'function' ? '' : undefined)
 
-  // Use a local shim since the store may not have all new fields yet
-  const state = useStudyStore()
   const translations = compareTranslations.length > 0 ? compareTranslations : [baseTranslation, baseTranslation !== 'KJV' ? 'KJV' : 'ASV']
-  const qc = useQueryClient()
   const [showPicker, setShowPicker] = useState(false)
   const [syncScroll, setSyncScroll] = useState(true)
   const [activeVerse, setActiveVerse] = useState(null)
@@ -309,7 +306,7 @@ export default function CompareView() {
   )
 }
 
-function TranslationColumn({ translation, chapterData, fontSize, isActive, onVerseClick, isBase, baseVerses, scrollRef, syncScroll, borderRight }) {
+function TranslationColumn({ translation, chapterData, fontSize, isActive, onVerseClick, isBase, baseVerses, scrollRef, _syncScroll, borderRight }) {
   const colors = colorFor(translation)
   const isLoading = !chapterData
   const isError = chapterData === null

@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Search, Sparkles, X } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import { streamAI } from '../../api/streamAI'
-import { parseReference, normalizeSearchInput, getSuggestions } from '../../utils/bibleSearch'
+import { normalizeSearchInput, getSuggestions } from '../../utils/bibleSearch'
 import clsx from 'clsx'
 
 export default function SearchModal({ onClose }) {
@@ -94,12 +94,12 @@ export default function SearchModal({ onClose }) {
     }
   }, [query, normalizedQuery, scope, semantic, translation])
 
-  const resultList = results?.results ?? []
+  const resultList = useMemo(() => results?.results ?? [], [results?.results])
 
-  function navigate(result) {
+  const navigate = useCallback((result) => {
     setReference(result.book, result.chapter, result.verse)
     onClose()
-  }
+  }, [setReference, onClose])
 
   // Navigate directly to a parsed reference
   function navigateToReference(parsed) {
@@ -152,7 +152,7 @@ export default function SearchModal({ onClose }) {
       e.preventDefault()
       navigate(resultList[activeIdx])
     }
-  }, [resultList, activeIdx, onClose])
+  }, [resultList, activeIdx, onClose, navigate])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)

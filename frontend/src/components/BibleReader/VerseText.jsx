@@ -16,7 +16,7 @@ const HIGHLIGHT_CLASSES = {
 const VerseText = memo(function VerseText({
   verse, text, book, chapter, translation,
   isActive, highlightColor, highlightId,
-  lemmaWords, lemmaLanguage,
+  lemmaWords,
   // Inline annotation data for this verse (passed from BibleReader)
   verseAnnotations,
   annotationsQueryKey,

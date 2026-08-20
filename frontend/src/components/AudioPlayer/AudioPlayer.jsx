@@ -5,7 +5,7 @@ import { useAudioBible } from './useAudioBible'
 import clsx from 'clsx'
 
 export default function AudioPlayer({ onClose }) {
-  const { book, chapter, translation, audioPlaying, currentVerses } = useStudyStore()
+  const { book, chapter, translation, currentVerses } = useStudyStore()
   const verses = currentVerses || []
   const {
     isSupported,

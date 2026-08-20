@@ -12,7 +12,7 @@
 
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, CheckCircle, XCircle, RefreshCw, ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react'
+import { BookOpen, CheckCircle, XCircle, RefreshCw, GraduationCap } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import clsx from 'clsx'
@@ -188,7 +188,7 @@ function FlashCard({ word, mastery, onCorrect, onIncorrect, onSkip, sessionScore
 
 // ── Word List (browse mode) ───────────────────────────────────────────────
 
-function WordList({ words, masteryMap, onStartDrill }) {
+function WordList({ words, masteryMap, _onStartDrill }) {
   if (!words || words.length === 0) {
     return (
       <div className="p-4 text-center text-xs text-gray-400 dark:text-gray-500">
@@ -320,8 +320,8 @@ export default function VocabDrillsPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vocab-mastery'] }),
   })
 
-  const words = data?.words ?? []
-  const masteryMap = masteryData?.mastery ?? {}
+  const words = useMemo(() => data?.words ?? [], [data?.words])
+  const masteryMap = useMemo(() => masteryData?.mastery ?? {}, [masteryData?.mastery])
 
   // Shuffle for drills and remove already-mastered words first
   function startDrill() {

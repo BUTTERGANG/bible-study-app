@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, Calendar, Check, ChevronDown, ChevronRight, ChevronUp,
-  Clock, Loader2, Plus, Sparkles, Trash2, X, RotateCcw,
+  BookOpen, Calendar, Check, ChevronDown, ChevronRight,
+  Clock, Loader2, Plus, Sparkles, Trash2, X,
 } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -213,7 +213,7 @@ export default function ReadingPlansPanel() {
               if (event.error) {
                 console.error('AI plan error:', event.error)
               }
-            } catch (e) {
+            } catch {
               // skip malformed
             }
           }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Brain, Plus, Trash2, CheckCircle, XCircle, Eye, EyeOff, Star } from 'lucide-react'
+import { Brain, Plus, Trash2, CheckCircle, XCircle, Eye, Star } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
@@ -87,7 +87,7 @@ export default function MemorizePanel() {
     queryFn: api.listMemoryVerses,
   })
 
-  const { data: verseData } = useQuery({
+  useQuery({
     queryKey: ['words', book, chapter, verse],
     queryFn: () => api.getVerseWords(book, chapter, verse),
     enabled: !!book && !!chapter && !!verse,

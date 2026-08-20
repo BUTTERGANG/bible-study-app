@@ -55,7 +55,7 @@ export default function LemmaInline({ words, text, position = 'below' }) {
     // The verse text has the format "word1 word2 word3..." and word positions
     // correspond to the nth non-whitespace token
     let wordIdx = 0
-    const enrichedTokens = tokens.map((token, i) => {
+    const enrichedTokens = tokens.map((token, _i) => {
       if (token.trim() === '') return { type: 'space', content: token }
       const word = meaningfulWords.find(w => w.position === wordIdx + 1)
       wordIdx++

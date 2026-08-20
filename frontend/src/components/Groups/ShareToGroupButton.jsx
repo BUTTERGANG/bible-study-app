@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useClickOutside } from '../../hooks/useClickOutside'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Share2, Check, Loader2 } from 'lucide-react'

@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, Calendar, ChevronLeft, ChevronRight, Download,
+  Calendar, ChevronLeft, Download,
   Layers, PlusCircle, Trash2, X,
 } from 'lucide-react'
 import clsx from 'clsx'

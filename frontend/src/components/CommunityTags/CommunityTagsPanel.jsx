@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { api } from '../../api/client'
 
 export default function CommunityTagsPanel({ book, chapter, verse, resourceId }) {
@@ -9,13 +9,13 @@ export default function CommunityTagsPanel({ book, chapter, verse, resourceId })
   const [searchResults, setSearchResults] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const params = resourceId ? { resource_id: resourceId } : { book, chapter, verse }
+  const params = useMemo(() => resourceId ? { resource_id: resourceId } : { book, chapter, verse }, [resourceId, book, chapter, verse])
 
-  const fetchTags = () => {
+  const fetchTags = useCallback(() => {
     api.listTags(params).then(r => { const d = r.data ?? r; setTags(d.tags || []); setTagCloud(d.tag_cloud || []) }).catch(() => {}).finally(() => setLoading(false))
-  }
+  }, [params])
 
-  useEffect(() => { fetchTags() }, [book, chapter, verse, resourceId])
+  useEffect(() => { fetchTags() }, [fetchTags])
 
   const handleAddTag = async () => {
     if (!newTag.trim()) return

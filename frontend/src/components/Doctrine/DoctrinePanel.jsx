@@ -167,7 +167,7 @@ export default function DoctrinePanel() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const coreDocs = listData?.core_doctrines || [];
+  const coreDocs = useMemo(() => listData?.core_doctrines || [], [listData?.core_doctrines]);
   const categories = listData?.categories || [];
   const cached = new Set((listData?.entries || []).map(e => e.name));
 

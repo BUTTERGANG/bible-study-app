@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Lock } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../api/client'
 import { getAppPassword, getAccessToken, setAppPassword, setTokens } from '../../api/auth'

@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Layers, Cross, MessageSquare, Loader2, Link2, BookMarked } from 'lucide-react'
+import { BookOpen, Layers, Cross, MessageSquare, BookMarked } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
-import clsx from 'clsx'
 
 function SectionHeader({ icon: Icon, title }) {
   return (

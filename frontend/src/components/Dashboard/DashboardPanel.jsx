@@ -146,7 +146,7 @@ export default function DashboardPanel() {
     if (data?.reflection && !reflection) {
       setReflection(data.reflection)
     }
-  }, [data?.reflection])
+  }, [data?.reflection, reflection])
 
   async function handleReflect() {
     if (reflecting) {

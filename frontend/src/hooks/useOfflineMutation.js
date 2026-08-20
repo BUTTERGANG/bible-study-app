@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useOfflineSync } from './useOfflineSync'
 
@@ -22,7 +22,6 @@ export function useOfflineMutation({
   offlineOptions,
   ...reactQueryOptions
 }) {
-  const queryClient = useQueryClient()
   const { enqueue } = useOfflineSync()
 
   const wrappedMutationFn = useCallback(async (variables) => {
