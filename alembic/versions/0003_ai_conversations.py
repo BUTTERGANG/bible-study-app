@@ -11,11 +11,12 @@ Changes:
   has at most one conversation record.
 """
 
-from typing import Sequence, Union
+from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import inspect as sa_inspect
+
+from alembic import op
 
 revision: str = "0003"
 down_revision: Union[str, None] = "0002"

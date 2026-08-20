@@ -6,7 +6,6 @@ Create Date: 2026-05-27
 """
 from alembic import op
 
-
 # revision identifiers
 revision = "0005"
 down_revision = "0004"

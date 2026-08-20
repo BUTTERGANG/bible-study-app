@@ -14,11 +14,12 @@ Existing rows get user_id=0 (the legacy/open-mode sentinel), so all existing
 data remains visible to unauthenticated and APP_PASSWORD sessions.
 """
 
-from typing import Sequence, Union
+from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import inspect
+
+from alembic import op
 
 revision: str = "0002"
 down_revision: Union[str, None] = "0001"

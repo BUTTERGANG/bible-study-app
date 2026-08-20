@@ -14,11 +14,12 @@ import json
 from pathlib import Path
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import inspect as sa_inspect
 
-revision: str = "0011"
-down_revision: str = "0010"
+from alembic import op
+
+revision: str = "0018"
+down_revision: str = "0017"
 branch_labels = None
 depends_on = None
 

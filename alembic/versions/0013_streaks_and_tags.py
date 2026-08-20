@@ -7,11 +7,12 @@ Create Date: 2026-06-08
 Tables for reading streak/gamification and community tags features.
 """
 
-from alembic import op
 import sqlalchemy as sa
 
-revision = "0013"
-down_revision = "0012"
+from alembic import op
+
+revision = "0014"
+down_revision = "0013"
 branch_labels = None
 depends_on = None
 

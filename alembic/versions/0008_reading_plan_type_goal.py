@@ -9,9 +9,10 @@ Changes:
 * `reading_plans.goal` — TEXT, nullable.
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect as sa_inspect
+
+from alembic import op
 
 revision = "0008"
 down_revision = "0007"

@@ -11,9 +11,9 @@ Changes:
 * library_pages_fts sync triggers — keeps FTS5 index in sync with writes
 """
 
-from alembic import op
 from sqlalchemy import inspect as sa_inspect
 
+from alembic import op
 
 revision = "0009"
 down_revision = "0008"

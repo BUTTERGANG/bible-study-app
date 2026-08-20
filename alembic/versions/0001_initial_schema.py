@@ -20,11 +20,12 @@ For a fresh install, the app's `init_db()` will create every table from
 metadata. This migration brings an existing DB into the same state.
 """
 
-from typing import Sequence, Union
+from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import inspect
+
+from alembic import op
 
 revision: str = "0001"
 down_revision: Union[str, None] = None

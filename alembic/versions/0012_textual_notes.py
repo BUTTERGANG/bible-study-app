@@ -8,11 +8,12 @@ Changes:
 * `textual_notes` — passage_key (unique), content (JSON), generated_at.
 """
 
-from alembic import op
 import sqlalchemy as sa
 
-revision = "0012"
-down_revision = "0011"
+from alembic import op
+
+revision = "0019"
+down_revision = "0018"
 branch_labels = None
 depends_on = None
 

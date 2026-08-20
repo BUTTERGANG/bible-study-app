@@ -11,11 +11,12 @@ Changes:
 """
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import inspect as sa_inspect
 
-revision: str = "0010"
-down_revision: str = "0009"
+from alembic import op
+
+revision: str = "0017"
+down_revision: str = "0016"
 branch_labels = None
 depends_on = None
 
