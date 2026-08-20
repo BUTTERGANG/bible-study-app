@@ -48,8 +48,9 @@ async def init_db():
         # Ensure the legacy open-mode user (id=0) exists so FK constraints on
         # tables like sermon_projects, ai_conversations, etc. don't fail when
         # the app runs without authentication (APP_PASSWORD not set).
-        from sqlalchemy import text
         import logging as _logging
+
+        from sqlalchemy import text
         try:
             await conn.execute(
                 text(

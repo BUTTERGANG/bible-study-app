@@ -1,6 +1,7 @@
 """Integration tests for /api/courses (original language courses)."""
 
 import pytest
+
 import backend.rate_limit as _rl
 
 

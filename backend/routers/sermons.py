@@ -1,7 +1,6 @@
 """Sermon Builder — CRUD for sermon projects and their sections."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -23,9 +22,9 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
-    title: Optional[str] = None
-    passage_ref: Optional[str] = None
-    audience: Optional[str] = None
+    title: str | None = None
+    passage_ref: str | None = None
+    audience: str | None = None
 
 
 class SectionUpsert(BaseModel):
@@ -124,7 +123,7 @@ async def update_project(
         project.passage_ref = body.passage_ref
     if body.audience is not None:
         project.audience = body.audience
-    project.updated_at = datetime.now(timezone.utc)
+    project.updated_at = datetime.now(UTC)
     await db.commit()
     # Re-fetch with sections eagerly loaded to avoid lazy-load in async context
     result2 = await db.execute(
@@ -179,11 +178,11 @@ async def upsert_section(
     section = existing.scalar_one_or_none()
     if section:
         section.content = body.content
-        section.updated_at = datetime.now(timezone.utc)
+        section.updated_at = datetime.now(UTC)
     else:
         section = SermonSection(project_id=project_id, section_type=section_type, content=body.content)
         db.add(section)
 
-    proj.updated_at = datetime.now(timezone.utc)
+    proj.updated_at = datetime.now(UTC)
     await db.commit()
     return {"section_type": section_type, "content": body.content}

@@ -10,7 +10,6 @@ Endpoints:
 """
 
 import json
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -343,14 +342,14 @@ def _exercise_dict(e: LessonExercise) -> dict:
     }
 
 
-def _lesson_dict(l: CourseLesson, exercises: list | None = None) -> dict:
+def _lesson_dict(lesson: CourseLesson, exercises: list | None = None) -> dict:
     d = {
-        "id": l.id,
-        "unit_id": l.unit_id,
-        "lesson_number": l.lesson_number,
-        "title": l.title,
-        "instruction": l.instruction,
-        "paradigm_table": json.loads(l.paradigm_table) if l.paradigm_table else None,
+        "id": lesson.id,
+        "unit_id": lesson.unit_id,
+        "lesson_number": lesson.lesson_number,
+        "title": lesson.title,
+        "instruction": lesson.instruction,
+        "paradigm_table": json.loads(lesson.paradigm_table) if lesson.paradigm_table else None,
     }
     if exercises is not None:
         d["exercises"] = [_exercise_dict(e) for e in exercises]
@@ -367,7 +366,7 @@ def _unit_dict(u: CourseUnit, lessons: list | None = None) -> dict:
         "description": u.description,
     }
     if lessons is not None:
-        d["lessons"] = [_lesson_dict(l) for l in lessons]
+        d["lessons"] = [_lesson_dict(lesson) for lesson in lessons]
         d["lesson_count"] = len(lessons)
     return d
 
@@ -516,10 +515,10 @@ async def get_lesson(
 
 
 class ProgressUpdate(BaseModel):
-    current_unit: Optional[int] = None
-    current_lesson: Optional[int] = None
-    completed_lesson_id: Optional[int] = None  # lesson ID to mark complete
-    total_lessons: Optional[int] = None  # for % calculation
+    current_unit: int | None = None
+    current_lesson: int | None = None
+    completed_lesson_id: int | None = None  # lesson ID to mark complete
+    total_lessons: int | None = None  # for % calculation
 
 
 @router.get("/{language}/progress")

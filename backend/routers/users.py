@@ -81,7 +81,7 @@ async def refresh_token(request: Request, body: RefreshRequest, db: AsyncSession
     await auth_rate_limit(request)
     user_id = decode_token(body.refresh_token, "refresh")
     result = await db.execute(
-        select(User).where(User.id == user_id, User.is_active == True)
+        select(User).where(User.id == user_id, User.is_active.is_(True))
     )
     user = result.scalar_one_or_none()
     if not user:

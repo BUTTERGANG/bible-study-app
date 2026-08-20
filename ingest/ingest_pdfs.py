@@ -9,10 +9,10 @@ Usage:
     python ingest/ingest_pdfs.py --chroma  # also build vector index
 """
 
-import os
-import sys
-import sqlite3
 import argparse
+import os
+import sqlite3
+import sys
 from pathlib import Path
 
 APP_DIR = Path(__file__).parent.parent
@@ -122,7 +122,7 @@ def build_chroma_index(conn: sqlite3.Connection):
         metas = [{"book": r[1], "chapter": r[2], "verse": r[3], "translation": "KJV"} for r in batch]
         try:
             verses_col.add(ids=ids, documents=docs, metadatas=metas)
-        except Exception as e:
+        except Exception:
             pass  # Skip duplicates
 
     print(f"  Indexed {len(rows)} KJV verses")

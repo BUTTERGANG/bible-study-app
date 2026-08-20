@@ -1,6 +1,7 @@
 """Integration tests for /api/streaks (reading streak tracking)."""
 
 import pytest
+
 import backend.rate_limit as _rl
 
 

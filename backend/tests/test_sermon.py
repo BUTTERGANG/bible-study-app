@@ -4,7 +4,6 @@ Verifies request validation, SSE streaming format, and error handling.
 Uses the isolated test DB from conftest and mocks the Anthropic client.
 """
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -24,7 +23,7 @@ def _make_mock_client(text_chunks):
             try:
                 return next(self._iter)
             except StopIteration:
-                raise StopAsyncIteration
+                raise StopAsyncIteration from None
 
     class FakeStreamManager:
         def __init__(self, chunks):

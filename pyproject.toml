@@ -7,10 +7,17 @@ select = ["E", "F", "I", "B", "UP", "W"]
 ignore = [
     "E501", # long lines — handled by formatter when applied
     "B008", # FastAPI's Depends() idiom uses a callable in defaults
+    "E701", # compact `if cond: stmt` one-liners are an intentional style here
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*.py" = ["UP006", "UP007"]
+# load_dotenv() must run before routers/auth are imported, so those imports
+# are deliberately below module top.
+"backend/main.py" = ["E402"]
+# Ingest scripts insert the workspace root on sys.path before importing
+# first-party modules.
+"ingest/*.py" = ["E402"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

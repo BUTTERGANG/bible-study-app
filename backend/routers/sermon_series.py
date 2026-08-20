@@ -12,8 +12,7 @@ Endpoints:
   DELETE /api/sermon-series/{id}/entries/{entry_id}   — remove entry
 """
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -32,30 +31,30 @@ router = APIRouter(prefix="/api/sermon-series", tags=["sermon-series"])
 
 class SeriesCreate(BaseModel):
     title: str
-    theme: Optional[str] = None
+    theme: str | None = None
     start_date: str   # ISO date e.g. "2026-09-07"
     end_date: str
 
 
 class SeriesUpdate(BaseModel):
-    title: Optional[str] = None
-    theme: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    title: str | None = None
+    theme: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 class EntryCreate(BaseModel):
     scheduled_date: str   # ISO date
-    sermon_id: Optional[int] = None
+    sermon_id: int | None = None
     status: str = "planned"
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class EntryUpdate(BaseModel):
-    sermon_id: Optional[int] = None
-    status: Optional[str] = None
-    notes: Optional[str] = None
-    scheduled_date: Optional[str] = None
+    sermon_id: int | None = None
+    status: str | None = None
+    notes: str | None = None
+    scheduled_date: str | None = None
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────
@@ -211,7 +210,7 @@ async def update_series(
         series.start_date = body.start_date
     if body.end_date is not None:
         series.end_date = body.end_date
-    series.updated_at = datetime.now(timezone.utc)
+    series.updated_at = datetime.now(UTC)
     await db.commit()
     return _series_dict(series)
 
@@ -308,7 +307,7 @@ async def update_entry(
         entry.notes = body.notes
     if body.scheduled_date is not None:
         entry.scheduled_date = body.scheduled_date
-    entry.updated_at = datetime.now(timezone.utc)
+    entry.updated_at = datetime.now(UTC)
     await db.commit()
     return _entry_dict(entry)
 

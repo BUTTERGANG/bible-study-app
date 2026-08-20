@@ -8,10 +8,9 @@ GET /api/maps/by-verse     — places/routes related to current passage
 """
 
 import json
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -327,7 +326,7 @@ _ROUTES_SEED = [
 
 async def seed_timeline_data(db: AsyncSession) -> int:
     """Insert timeline and map seed data if the tables are empty. Returns count inserted."""
-    from sqlalchemy import func, text
+    from sqlalchemy import func
 
     result = await db.execute(select(func.count()).select_from(TimelineEvent))
     count = result.scalar_one()
@@ -379,7 +378,7 @@ async def seed_timeline_data(db: AsyncSession) -> int:
 
 @router.get("/timeline")
 async def get_timeline(
-    category: Optional[str] = Query(default=None),
+    category: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Return all timeline events, optionally filtered by category."""
@@ -408,8 +407,8 @@ async def get_timeline(
 @router.get("/timeline/by-verse")
 async def get_timeline_by_verse(
     book: str = Query(...),
-    chapter: Optional[int] = Query(default=None),
-    verse: Optional[int] = Query(default=None),
+    chapter: int | None = Query(default=None),
+    verse: int | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Return timeline events whose verse_refs mention the given book (and optionally chapter)."""
@@ -440,7 +439,7 @@ async def get_timeline_by_verse(
 
 @router.get("/maps/places")
 async def get_places(
-    place_type: Optional[str] = Query(default=None),
+    place_type: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Return all biblical places, optionally filtered by type."""
@@ -490,7 +489,7 @@ async def get_routes(db: AsyncSession = Depends(get_db)):
 @router.get("/maps/by-verse")
 async def get_maps_by_verse(
     book: str = Query(...),
-    chapter: Optional[int] = Query(default=None),
+    chapter: int | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Return places and routes related to a given book."""

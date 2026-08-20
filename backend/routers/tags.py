@@ -9,7 +9,6 @@ Endpoints:
 """
 
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -79,10 +78,10 @@ async def create_tag(
 
 @router.get("")
 async def list_tags(
-    book: Optional[str] = None,
-    chapter: Optional[int] = None,
-    verse: Optional[int] = None,
-    resource_id: Optional[int] = None,
+    book: str | None = None,
+    chapter: int | None = None,
+    verse: int | None = None,
+    resource_id: int | None = None,
     limit: int = 50,
     user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

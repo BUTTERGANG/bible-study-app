@@ -10,8 +10,7 @@ Priority order in get_current_user:
 import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError, jwt
@@ -41,7 +40,7 @@ _pwd = PasswordHash((BcryptHasher(),))
 @dataclass
 class CurrentUser:
     id: int              # 0 = legacy/open mode sentinel
-    email: Optional[str]
+    email: str | None
     is_legacy: bool
 
 
@@ -54,7 +53,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
         {"sub": str(user_id), "type": "access", "exp": expire, "jti": str(uuid.uuid4())},
         _require_secret(),
@@ -63,7 +62,7 @@ def create_access_token(user_id: int) -> str:
 
 
 def create_refresh_token(user_id: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     return jwt.encode(
         {"sub": str(user_id), "type": "refresh", "exp": expire, "jti": str(uuid.uuid4())},
         _require_secret(),
@@ -78,7 +77,7 @@ def decode_token(token: str, expected_type: str) -> int:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-        )
+        ) from None
     if payload.get("type") != expected_type:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -93,7 +92,7 @@ def decode_token(token: str, expected_type: str) -> int:
     return int(sub)
 
 
-def _expected_secret() -> Optional[str]:
+def _expected_secret() -> str | None:
     secret = os.getenv("APP_PASSWORD", "").strip()
     return secret or None
 
@@ -103,15 +102,15 @@ def auth_is_enabled() -> bool:
 
 
 async def require_app_password(
-    authorization: Optional[str] = Header(default=None),
-    x_app_password: Optional[str] = Header(default=None),
+    authorization: str | None = Header(default=None),
+    x_app_password: str | None = Header(default=None),
 ) -> None:
     """Lightweight gate: passes if no APP_PASSWORD is set or if a valid credential is provided."""
     import hmac
     app_password = _expected_secret()
     if not app_password:
         return
-    token: Optional[str] = x_app_password
+    token: str | None = x_app_password
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
     if token and hmac.compare_digest(token, app_password):
@@ -124,14 +123,15 @@ async def require_app_password(
 
 
 async def get_current_user(
-    authorization: Optional[str] = Header(default=None),
-    x_app_password: Optional[str] = Header(default=None),
+    authorization: str | None = Header(default=None),
+    x_app_password: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> CurrentUser:
     from sqlalchemy import select
+
     from .models import User
 
-    token: Optional[str] = x_app_password
+    token: str | None = x_app_password
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
 
@@ -147,7 +147,7 @@ async def get_current_user(
         try:
             user_id = decode_token(token, "access")
             result = await db.execute(
-                select(User).where(User.id == user_id, User.is_active == True)
+                select(User).where(User.id == user_id, User.is_active.is_(True))
             )
             user = result.scalar_one_or_none()
             if user:

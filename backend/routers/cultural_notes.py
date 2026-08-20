@@ -10,16 +10,17 @@ Notes are AI-generated on first request and cached in the DB.
 import json
 import logging
 
-logger = logging.getLogger("bible-study.cultural-notes")
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..ai_client import get_client as _client
 from ..database import get_db
 from ..models import BibleVerse, CulturalNote
 from ..rate_limit import ai_rate_limit
-from ..ai_client import get_client as _client
+
+logger = logging.getLogger("bible-study.cultural-notes")
 
 router = APIRouter(
     prefix="/api/cultural",

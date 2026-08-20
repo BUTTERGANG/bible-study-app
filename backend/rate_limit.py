@@ -9,7 +9,6 @@ Redis or a managed limiter.
 import os
 import time
 from collections import defaultdict, deque
-from typing import Deque, Dict
 
 from fastapi import HTTPException, Request, status
 
@@ -32,15 +31,15 @@ AUTH_RATE_LIMIT_PER_HOUR = _int_env("AUTH_RATE_LIMIT_PER_HOUR", 30)
 
 class _IPBucket:
     def __init__(self) -> None:
-        self.minute: Deque[float] = deque()
-        self.hour: Deque[float] = deque()
+        self.minute: deque[float] = deque()
+        self.hour: deque[float] = deque()
 
 
-_ai_buckets: Dict[str, _IPBucket] = defaultdict(_IPBucket)
-_auth_buckets: Dict[str, _IPBucket] = defaultdict(_IPBucket)
+_ai_buckets: dict[str, _IPBucket] = defaultdict(_IPBucket)
+_auth_buckets: dict[str, _IPBucket] = defaultdict(_IPBucket)
 
 
-def _trim(d: Deque[float], cutoff: float) -> None:
+def _trim(d: deque[float], cutoff: float) -> None:
     while d and d[0] < cutoff:
         d.popleft()
 

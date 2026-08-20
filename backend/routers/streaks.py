@@ -6,10 +6,9 @@ Endpoints:
   GET  /api/streaks/share    — generate a shareable streak card
 """
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

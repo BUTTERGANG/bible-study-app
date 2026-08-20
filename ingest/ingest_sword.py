@@ -12,17 +12,15 @@ Writes to:  ./data/bible.db
 """
 
 import os
-import sys
-import zipfile
-import shutil
 import sqlite3
-import tempfile
+import sys
 import traceback
+import zipfile
 from pathlib import Path
 
 # Add backend to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
-from bible_data import BOOKS, BOOK_NAME_MAP
+from bible_data import BOOK_NAME_MAP
 
 APP_DIR = Path(__file__).parent.parent
 LIBRARY_DIR = Path(os.getenv("LIBRARY_PATH", APP_DIR.parent / "library"))
@@ -236,8 +234,8 @@ def _get_actual_module_name(available: dict, module_name: str):
 def ingest_bible_with_pysword(module_name: str, extract_dir: Path, conn: sqlite3.Connection):
     """Ingest a Bible module using pysword."""
     try:
-        from pysword.modules import SwordModules
         from bible_data import resolve_book_name
+        from pysword.modules import SwordModules
         modules = SwordModules(str(extract_dir))
         available = modules.parse_modules()
 
@@ -535,13 +533,8 @@ def _patch_pysword_for_commentaries():
 
 def ingest_commentary_with_pysword(module_name: str, extract_dir: Path, conn: sqlite3.Connection) -> int:
     try:
-        # Patch pysword to support commentary module types
-        from pysword import bible as pb
-        allowed = [pb.SwordModuleType.RAWTEXT, pb.SwordModuleType.RAWTEXT4,
-                   pb.SwordModuleType.ZTEXT, pb.SwordModuleType.ZTEXT4]
-
-        from pysword.modules import SwordModules
         from bible_data import resolve_book_name
+        from pysword.modules import SwordModules
         modules = SwordModules(str(extract_dir))
         available = modules.parse_modules()
 

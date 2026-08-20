@@ -13,8 +13,8 @@ Usage:
 
 import argparse
 import os
-import sys
 import sqlite3
+import sys
 from pathlib import Path
 
 try:

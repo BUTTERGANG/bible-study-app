@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-MAX_COMMENTARY_ENTRIES = 500
-
+from ..bible_data import resolve_book_name
 from ..database import get_db
 from ..models import CommentaryEntry
-from ..bible_data import resolve_book_name
+
+MAX_COMMENTARY_ENTRIES = 500
 
 router = APIRouter(prefix="/api/commentary", tags=["commentary"])
 

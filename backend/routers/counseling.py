@@ -7,8 +7,7 @@ POST /api/counseling/generate   — force-regenerate a guide
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -171,7 +170,7 @@ def _guide_dict(g: CounselingGuide, parse_content: bool = True) -> dict:
 
 @router.get("")
 async def list_guides(
-    category: Optional[str] = Query(None),
+    category: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(CounselingGuide)
@@ -203,10 +202,10 @@ async def get_guide(name: str, db: AsyncSession = Depends(get_db)):
     guide = result.scalar_one_or_none()
 
     if guide:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=CACHE_TTL_DAYS)
+        cutoff = datetime.now(UTC) - timedelta(days=CACHE_TTL_DAYS)
         updated = guide.updated_at
         if updated and updated.tzinfo is None:
-            updated = updated.replace(tzinfo=timezone.utc)
+            updated = updated.replace(tzinfo=UTC)
         if updated and updated < cutoff:
             await db.execute(delete(CounselingGuide).where(CounselingGuide.name == name))
             await db.commit()

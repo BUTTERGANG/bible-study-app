@@ -6,8 +6,7 @@ blob and deserialized it per request, which scaled poorly for chronological
 plans (~365 entries) and made the `/today` endpoint do N+1 queries.
 """
 
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -284,7 +283,7 @@ async def list_plans(
 
 class PlanStart(BaseModel):
     plan_type: str
-    start_date: Optional[str] = None
+    start_date: str | None = None
 
 
 @router.post("/start")
@@ -340,7 +339,7 @@ class StartAiPlanRequest(BaseModel):
     plan_name: str
     goal: str = ""
     days: list
-    start_date: Optional[str] = None
+    start_date: str | None = None
 
 
 @router.post("/start-ai")
@@ -545,10 +544,10 @@ async def complete_reading(
         stmt = (
             sqlite_insert(ReadingPlanProgress)
             .values(plan_id=plan_id, date=today, reference=reference,
-                    completed_at=datetime.now(timezone.utc))
+                    completed_at=datetime.now(UTC))
             .on_conflict_do_update(
                 index_elements=["plan_id", "date", "reference"],
-                set_={"completed_at": datetime.now(timezone.utc)},
+                set_={"completed_at": datetime.now(UTC)},
             )
         )
         await db.execute(stmt)
@@ -559,7 +558,7 @@ async def complete_reading(
         completed = False
     else:
         # Recorded but not completed → mark complete.
-        row.completed_at = datetime.now(timezone.utc)
+        row.completed_at = datetime.now(UTC)
         completed = True
 
     await db.commit()

@@ -11,6 +11,7 @@ password hashing, and JWT token generation.
 import pytest
 from fastapi import HTTPException
 
+import backend.rate_limit as _rl
 from backend.auth import auth_is_enabled, get_current_user
 
 
@@ -57,8 +58,6 @@ async def test_wrong_password_rejected(monkeypatch):
 
 
 # ── Integration: HTTP-level /api/users/login ─────────────────────────────
-
-import backend.rate_limit as _rl
 
 
 def _clear_auth_buckets():

@@ -1,6 +1,7 @@
 """Integration tests for /api/shares (shareable study session links)."""
 
 import pytest
+
 import backend.rate_limit as _rl
 
 

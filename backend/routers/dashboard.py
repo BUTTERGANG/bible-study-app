@@ -1,18 +1,17 @@
 """Dashboard — verse of the day, active plan progress, AI reflection."""
 
 import logging
-from datetime import date, datetime
-from typing import Optional
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..ai_client import get_client as _client
 from ..auth import CurrentUser, get_current_user
 from ..database import get_db
 from ..models import BibleVerse, DailyDevotion, ReadingPlan, ReadingPlanDay, ReadingPlanProgress
-from ..ai_client import get_client as _client
 
 logger = logging.getLogger("bible-study.dashboard")
 
@@ -52,7 +51,7 @@ def _parse_ref(ref: str):
     return book, int(cv[0]), int(cv[1])
 
 
-async def _get_votd(db: AsyncSession) -> Optional[dict]:
+async def _get_votd(db: AsyncSession) -> dict | None:
     today = date.today()
     day_index = today.toordinal() % len(_VOTD_POOL)
     ref = _VOTD_POOL[day_index]
@@ -79,7 +78,7 @@ async def _get_votd(db: AsyncSession) -> Optional[dict]:
     }
 
 
-async def _get_active_plan(db: AsyncSession, user_id: int) -> Optional[dict]:
+async def _get_active_plan(db: AsyncSession, user_id: int) -> dict | None:
     today = str(date.today())
 
     plan_result = await db.execute(
@@ -133,7 +132,7 @@ async def _get_active_plan(db: AsyncSession, user_id: int) -> Optional[dict]:
     }
 
 
-async def _get_cached_reflection(db: AsyncSession, verse_ref: str) -> Optional[str]:
+async def _get_cached_reflection(db: AsyncSession, verse_ref: str) -> str | None:
     today = str(date.today())
     result = await db.execute(
         select(DailyDevotion).where(

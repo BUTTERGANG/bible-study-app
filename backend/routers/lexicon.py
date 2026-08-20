@@ -145,7 +145,6 @@ async def get_semantic_range(
     top_glosses = [r.english_gloss for r in rows[:10]]
     examples: dict[str, list] = {g: [] for g in top_glosses}
     if top_glosses:
-        from sqlalchemy import Integer, case, literal_column, over
         from sqlalchemy.dialects.sqlite import insert  # noqa: F401 (ensure dialect available)
         rn_col = func.row_number().over(
             partition_by=model.english_gloss,

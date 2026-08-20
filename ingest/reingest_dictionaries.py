@@ -16,7 +16,6 @@ Usage:
 import re
 import sqlite3
 import struct
-import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -196,7 +195,7 @@ def main():
         # Find data path from conf
         conf_files = list(extract_dir.glob("mods.d/*.conf"))
         if not conf_files:
-            print(f"  No conf file — skipping")
+            print("  No conf file — skipping")
             continue
 
         data_path_rel = None
@@ -205,7 +204,7 @@ def main():
                 if line.strip().lower().startswith("datapath="):
                     data_path_rel = line.split("=", 1)[1].strip().lstrip("./")
         if not data_path_rel:
-            print(f"  No DataPath in conf — skipping")
+            print("  No DataPath in conf — skipping")
             continue
 
         data_path = extract_dir / data_path_rel
@@ -218,7 +217,7 @@ def main():
 
         print(f"  Raw entries parsed: {len(raw_entries)}")
         if not raw_entries:
-            print(f"  WARNING: 0 entries — check module format")
+            print("  WARNING: 0 entries — check module format")
             continue
 
         rows = []
@@ -239,7 +238,7 @@ def main():
             print(f"  Inserted {len(rows)} entries")
             grand_total += len(rows)
         else:
-            print(f"  WARNING: all entries filtered out")
+            print("  WARNING: all entries filtered out")
 
     print(f"\n{'='*50}")
     print(f"Total dictionary entries inserted: {grand_total:,}")

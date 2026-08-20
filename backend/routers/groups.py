@@ -6,8 +6,7 @@ sharing personal items into groups, and a unified activity feed.
 
 import secrets
 import string
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -94,12 +93,12 @@ def _group_summary(g: Group, member_count: int) -> dict:
 
 class GroupCreate(BaseModel):
     name: str
-    description: Optional[str] = ""
+    description: str | None = ""
 
 
 class GroupUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
 class InviteCreate(BaseModel):
@@ -107,23 +106,23 @@ class InviteCreate(BaseModel):
 
 
 class GroupNoteCreate(BaseModel):
-    book: Optional[str] = None
-    chapter: Optional[int] = None
-    verse: Optional[int] = None
+    book: str | None = None
+    chapter: int | None = None
+    verse: int | None = None
     content: str
-    tags: Optional[str] = None
-    parent_id: Optional[int] = None  # set to create a threaded reply
+    tags: str | None = None
+    parent_id: int | None = None  # set to create a threaded reply
 
 
 class GroupNoteUpdate(BaseModel):
-    content: Optional[str] = None
-    tags: Optional[str] = None
+    content: str | None = None
+    tags: str | None = None
 
 
 class ShareCreate(BaseModel):
     item_type: str  # "note" | "highlight"
     item_id: int
-    annotation: Optional[str] = None
+    annotation: str | None = None
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -306,7 +305,7 @@ async def update_group(
         group.name = body.name.strip()
     if body.description is not None:
         group.description = body.description.strip()
-    group.updated_at = datetime.now(timezone.utc)
+    group.updated_at = datetime.now(UTC)
     await db.commit()
     count_result = await db.execute(
         select(func.count()).select_from(GroupMember).where(GroupMember.group_id == group.id)
@@ -364,7 +363,7 @@ async def invite_by_email(
         # Re-activate a previously declined or cancelled invite
         existing.status = "pending"
         existing.responded_at = None
-        existing.invited_at = datetime.now(timezone.utc)
+        existing.invited_at = datetime.now(UTC)
         await db.commit()
         return {"ok": True, "reactivated": True}
 
@@ -420,7 +419,7 @@ async def accept_invite(
         db.add(GroupMember(group_id=group_id, user_id=user.id, role="member"))
 
     inv.status = "accepted"
-    inv.responded_at = datetime.now(timezone.utc)
+    inv.responded_at = datetime.now(UTC)
     await db.commit()
     return {"ok": True}
 
@@ -444,7 +443,7 @@ async def decline_invite(
     if not inv:
         raise HTTPException(status_code=404, detail="No pending invite found")
     inv.status = "declined"
-    inv.responded_at = datetime.now(timezone.utc)
+    inv.responded_at = datetime.now(UTC)
     await db.commit()
     return {"ok": True}
 
@@ -601,10 +600,10 @@ async def create_group_note(
 @router.get("/{group_id}/notes")
 async def list_group_notes(
     group_id: int,
-    book: Optional[str] = None,
-    chapter: Optional[int] = None,
-    verse: Optional[int] = None,
-    tag: Optional[str] = None,
+    book: str | None = None,
+    chapter: int | None = None,
+    verse: int | None = None,
+    tag: str | None = None,
     threaded: bool = False,
     offset: int = 0,
     limit: int = 100,
@@ -618,7 +617,7 @@ async def list_group_notes(
         root_q = (
             select(GroupNote, User.email)
             .join(User, GroupNote.author_id == User.id)
-            .where(GroupNote.group_id == group_id, GroupNote.parent_id == None)
+            .where(GroupNote.group_id == group_id, GroupNote.parent_id.is_(None))
         )
         if book is not None:
             root_q = root_q.where(GroupNote.book == book)
@@ -725,7 +724,7 @@ async def update_group_note(
         note.content = body.content
     if body.tags is not None:
         note.tags = body.tags
-    note.updated_at = datetime.now(timezone.utc)
+    note.updated_at = datetime.now(UTC)
     await db.commit()
     return _note_dict(note, author_email=user.email or "")
 

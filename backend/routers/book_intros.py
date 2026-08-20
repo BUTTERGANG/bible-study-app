@@ -2,15 +2,15 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..ai_client import get_client as _client
 from ..database import get_db
 from ..models import BookIntroduction
-from ..ai_client import get_client as _client
 
 logger = logging.getLogger("bible-study.book-intros")
 
@@ -82,7 +82,7 @@ async def get_book_introduction(
     existing = result.scalar_one_or_none()
     if existing:
         existing.content_json = content_json
-        existing.generated_at = datetime.now(timezone.utc)
+        existing.generated_at = datetime.now(UTC)
     else:
         intro = BookIntroduction(book_name=book_name, content_json=content_json)
         db.add(intro)
