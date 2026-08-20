@@ -8,6 +8,14 @@ Last updated: 2026-06-11
 
 ## Recently Shipped
 
+### 2026-08-20 — Product quality and accessibility pass
+
+- Added shared panel primitives for consistent headers, states, sections, and actions.
+- Simplified study-panel navigation into Scripture, Study, Resources, Personal, and Ministry categories.
+- Added reader-first loading/error states and calmer editorial surfaces.
+- Added focus trapping, Escape handling, focus restoration, reduced-motion support, and mobile keyboard focus states across the highest-use overlays and navigation.
+- Verified 160 backend tests, ruff, ESLint, Vite build, and Alembic head `0022`.
+
 ### 2026-06-11 — Reconciliation: fix branch merged, gates green, migrations linearized
 
 Ported the genuine fixes from the long-dormant `fix/audit-bugs-lint-docs`
@@ -208,9 +216,9 @@ Full swarm audit (8 parallel agents) followed by systematic fixes across securit
 - Auth, highlights, groups, media, notes, shares, streaks, tags, courses, sermons, sermon series, and search/morph/clause-syntax now covered (19 files / 160 tests, 2026-06-11)
 - Still uncovered: AI conversations, doctrine, lectionary, reading plans, lexicon, dashboard
 
-**Focus trap in modals**
-- ARIA roles added (2026-06-04); keyboard focus still not trapped inside open modals
-- Fix: `focus-trap-react` or a small custom implementation cycling Tab/Shift+Tab
+**Remaining overlay accessibility audit**
+- Focus trap, Escape handling, focus restoration, and accessible labels now cover Search, Morphological/Clause Search, Create Group, and Memorize quiz.
+- Remaining: audit custom overlays, drawers, and bottom sheets for the same behavior.
 
 **`python-jose` → `PyJWT` migration**
 - `python-jose` patched to 3.5.0; long-term prefer `PyJWT>=2.4.0` (better maintained)

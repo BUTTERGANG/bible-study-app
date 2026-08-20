@@ -81,7 +81,12 @@
 - **Our state**: pytest covers auth (JWT + rate limiting), Bible, notes (+ book validation), highlights, media, groups ACL, shares, streaks, tags, search, morph search, clause syntax, courses, sermons, and sermon series — 19 test files / 160 tests as of 2026-06-11. Still uncovered: AI conversations/conversation-mock paths, doctrine, lectionary, reading plans, lexicon, dashboard.
 - **Effort**: Low-Medium (incremental)
 
-#### 3B. Postgres for User Tables
+#### 3B. Interaction Accessibility
+- **Our state**: Search, morphological/clause search, group creation, and memorization dialogs now trap focus, support Escape, restore focus, and have accessible labels. Reduced-motion support and mobile keyboard focus states are also in place.
+- **Remaining**: audit the remaining custom overlays, drawers, and bottom sheets for the same behavior.
+- **Effort**: Low-Medium (incremental)
+
+#### 3C. Postgres for User Tables
 - **Our state**: Everything in SQLite
 - **Effort**: Medium-High; only needed at real multi-instance scale
 
