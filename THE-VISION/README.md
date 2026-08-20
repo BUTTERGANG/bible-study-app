@@ -51,11 +51,11 @@ make frontend-build
 ## Common Commands
 
 ```bash
-make test            # pytest (backend/tests, 26 tests)
+make test            # pytest (backend/tests, 160 tests)
 make lint            # ruff check backend/ ingest/
-make migrate         # alembic upgrade head
+make migrate         # alembic upgrade head (single head 0022)
 make frontend-build  # vite build
-make frontend-lint   # eslint src
+make frontend-lint   # eslint src (--max-warnings 0)
 ```
 
 ## Architecture Notes
@@ -76,9 +76,13 @@ make frontend-lint   # eslint src
 ## Tests
 
 `make test` runs pytest against an isolated, seeded test DB (the 2.24 GB
-content DB is never touched). Coverage includes:
-- Bible read paths + book-name alias resolution
-- Search FTS + snippet centering + special-char sanitation
-- Notes CRUD + Highlight UPSERT atomicity
-- Auth gate (bearer + header forms, missing/wrong password)
+content DB is never touched) — **160 tests pass**. Coverage includes:
+- Bible read paths + book-name alias resolution + inline lemma/interlinear
+- Search FTS + morph search + clause-syntax search + snippet centering
+- Notes CRUD + book validation + Highlight UPSERT atomicity
+- Auth gate + JWT + rate limiting (bearer + header forms, refresh rotation)
+- Groups, shares, streaks, tags, courses, sermons, sermon series, media
 - Regression: unknown `/api/*` path returns JSON 404, not HTML
+
+Both lint gates are enforced in CI style: `make lint` (ruff) and
+`make frontend-lint` (ESLint `--max-warnings 0`) both pass clean.

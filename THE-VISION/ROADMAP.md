@@ -1,12 +1,30 @@
 # Roadmap
 
-Last updated: 2026-06-04
+Last updated: 2026-06-11
 
 > **See also**: `FEATURE-GAPS.md` for a Logos Bible Software comparison and gap analysis.
 
 ---
 
 ## Recently Shipped
+
+### 2026-06-11 — Reconciliation: fix branch merged, gates green, migrations linearized
+
+Ported the genuine fixes from the long-dormant `fix/audit-bugs-lint-docs`
+branch onto current main and drove all verification gates to clean:
+
+- **Backend fixes**: lemma-endpoint NameError (was crashing every `/lemmas`
+  call), SPA path-traversal guard in `serve_spa`, `create_note` now validates
+  the Bible book (400 on unknown book, matching `list_notes`).
+- **Frontend fixes**: AIAssistant streaming ReferenceError, BibleBrowser
+  stale-closure in keyboard-nav, undefined `ROUTE_COLORS_LEGEND` in MapPanel.
+- **Lint**: ruff `backend`+`ingest` 283 → 0; ESLint `--max-warnings 0` clean
+  (dead-code/hook-deps sweep); Vite build clean.
+- **Alembic**: linearized the migration chain 0001–0022 (was multi-head —
+  `alembic upgrade head` failed outright on duplicate revision ids).
+- **Tests**: 160 passed (backend/tests, 19 files).
+
+
 
 ### 2026-06-04 — Comprehensive Audit & Hardening
 
@@ -187,8 +205,8 @@ Full swarm audit (8 parallel agents) followed by systematic fixes across securit
 ### P3 — Infrastructure
 
 **Expand test coverage**
-- Auth, highlights, groups, and media now covered (added 2026-06-04)
-- Still uncovered: AI conversations, doctrine, lectionary, sermon builder, reading plans, annotations
+- Auth, highlights, groups, media, notes, shares, streaks, tags, courses, sermons, sermon series, and search/morph/clause-syntax now covered (19 files / 160 tests, 2026-06-11)
+- Still uncovered: AI conversations, doctrine, lectionary, reading plans, lexicon, dashboard
 
 **Focus trap in modals**
 - ARIA roles added (2026-06-04); keyboard focus still not trapped inside open modals

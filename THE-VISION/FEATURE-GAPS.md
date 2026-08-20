@@ -78,8 +78,8 @@
 ### Gap 3 — Infrastructure
 
 #### 3A. Automated Test Coverage
-- **Our state**: pytest covers auth flow, Bible, notes, sermon, search, groups ACL, highlights isolation, media upload validation (13 test files as of 2026-06-04). Still uncovered: AI conversations, doctrine, lectionary, reading plans, annotations.
-- **Effort**: Medium (incremental)
+- **Our state**: pytest covers auth (JWT + rate limiting), Bible, notes (+ book validation), highlights, media, groups ACL, shares, streaks, tags, search, morph search, clause syntax, courses, sermons, and sermon series — 19 test files / 160 tests as of 2026-06-11. Still uncovered: AI conversations/conversation-mock paths, doctrine, lectionary, reading plans, lexicon, dashboard.
+- **Effort**: Low-Medium (incremental)
 
 #### 3B. Postgres for User Tables
 - **Our state**: Everything in SQLite
