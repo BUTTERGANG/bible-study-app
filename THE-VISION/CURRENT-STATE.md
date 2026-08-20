@@ -213,9 +213,10 @@ Cross-cutting:
 |---------|--------|-------|
 | Lexicon full coverage | Reduced | 726 clean Dodson entries. Re-run `ingest/ingest_sword.py` with `StrongsGreek`/`StrongsHebrew` modules to restore full Strong's |
 | Library PDF pages | Not extracted | Run `python -m ingest.extract_pdf_pages` to populate `library_pages`; FTS5 sync triggers are now in place (migration 0009) so newly ingested pages will be searchable |
-| Audio player | UI exists | `AudioPlayer` component present; backend audio serving not confirmed |
+| Audio player | Works (client-side) | `AudioPlayer` uses the browser Web Speech API (`speechSynthesis`) via `useAudioBible.js` — no backend audio serving is required. Updated 2026-08-20 (previously listed as a gap). |
 | AI features | Need API key | All `/api/ai/*` endpoints require `ANTHROPIC_API_KEY` in Replit Secrets. Factbook/cultural notes/book intros/doctrine also AI-generated |
-| Modal focus trapping | Partial | ARIA roles added; keyboard Tab does not yet cycle inside open modals (needs `focus-trap-react` or manual implementation) |
+| Modal focus trapping | FIXED | Keyboard focus-trapping implemented in `frontend/src/hooks/useFocusTrap.js` as part of the Scriptura design pass (merged to main 2026-08-20) |
+| Frontend unit tests | None | `frontend/package.json` defines `vitest run` but no test files exist — gate is a no-op. Backend has 160 tests; frontend has 0. |
 
 ## Ingest Scripts
 
