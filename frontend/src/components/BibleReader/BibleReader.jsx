@@ -140,11 +140,11 @@ export default function BibleReader() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-950">
+    <div className="flex-1 overflow-y-auto bg-slate-50/80 dark:bg-slate-950">
       {/* Visual Filters toolbar — always visible when interlinear is on */}
       <VisualFiltersPanel />
 
-      <div className="max-w-2xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-8 md:my-6 md:rounded-2xl md:border md:border-slate-200/80 md:bg-white md:px-10 md:shadow-sm dark:md:border-white/10 dark:md:bg-slate-900/40">
         {/* Chapter header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-serif font-semibold text-gray-800 dark:text-slate-100">

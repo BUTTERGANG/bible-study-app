@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { BookOpen, BookOpenCheck, Bookmark, Brain, Calendar, Cross, GraduationCap, Globe, Heart, Layers, Library, Link2, Lightbulb, Map, MessageSquare, StickyNote, Church, BookMarked, Clock, Compass, TrendingUp, Rows3, CalendarDays, Bell, Users } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
@@ -37,75 +37,146 @@ const CounselingPanel = lazy(() => import('../Counseling/CounselingPanel'))
 const PreachingSeriesPanel = lazy(() => import('../PreachingSeries/PreachingSeriesPanel'))
 const OriginalLanguageCoursesPanel = lazy(() => import('../OriginalLanguages/OriginalLanguageCoursesPanel'))
 
-const TABS = [
-  { id: 'home', label: 'Home', icon: BookOpen },
-  { id: 'insights', label: 'Insights', icon: Lightbulb },
-  { id: 'guide', label: 'Guide', icon: Compass },
-  { id: 'commentary', label: 'Commentary', icon: BookOpen },
-  { id: 'compare', label: 'Compare', icon: Layers },
-  { id: 'cross-ref', label: 'Cross-Ref', icon: Cross },
-  { id: 'nt-ot', label: 'NT-OT', icon: Link2 },
-  { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
-  { id: 'ai', label: 'AI Study', icon: MessageSquare },
-  { id: 'sermon', label: 'Sermon', icon: Church },
-  { id: 'factbook', label: 'Factbook', icon: BookMarked },
-  { id: 'notes', label: 'Notes', icon: StickyNote },
-  { id: 'word-study', label: 'Words', icon: Layers },
-  { id: 'languages', label: 'Languages', icon: GraduationCap },
-  { id: 'library', label: 'Library', icon: Library },
-  { id: 'bookmarks', label: 'Saved', icon: Bookmark },
-  { id: 'reading', label: 'Plans', icon: Calendar },
-  { id: 'timeline', label: 'Timeline', icon: Clock },
-  { id: 'maps', label: 'Maps', icon: Map },
-  { id: 'topical', label: 'Topical', icon: TrendingUp },
-  { id: 'memorize', label: 'Memorize', icon: Brain },
-  { id: 'prayer', label: 'Prayer', icon: Heart },
-  { id: 'study', label: 'Study', icon: GraduationCap },
-  { id: 'cultural', label: 'Culture', icon: Globe },
-  { id: 'harmony', label: 'Harmony', icon: Rows3 },
-  { id: 'lectionary', label: 'Lectionary', icon: CalendarDays },
-  { id: 'notifications', label: 'Alerts', icon: Bell },
-  { id: 'groups', label: 'Groups', icon: Users },
-  { id: 'doctrine', label: 'Doctrine', icon: BookOpenCheck },
-  { id: 'counseling', label: 'Counseling', icon: Heart },
-  { id: 'series', label: 'Series', icon: Calendar },
+const PANEL_GROUPS = [
+  {
+    id: 'scripture',
+    label: 'Scripture',
+    icon: BookOpen,
+    panels: [
+      { id: 'home', label: 'Overview', icon: BookOpen },
+      { id: 'guide', label: 'Passage guide', icon: Compass },
+      { id: 'commentary', label: 'Commentary', icon: BookOpen },
+      { id: 'insights', label: 'Insights', icon: Lightbulb },
+      { id: 'compare', label: 'Compare', icon: Layers },
+      { id: 'cross-ref', label: 'Cross-references', icon: Cross },
+      { id: 'nt-ot', label: 'NT / OT links', icon: Link2 },
+      { id: 'harmony', label: 'Gospel harmony', icon: Rows3 },
+    ],
+  },
+  {
+    id: 'study',
+    label: 'Study',
+    icon: GraduationCap,
+    panels: [
+      { id: 'ai', label: 'AI study', icon: MessageSquare },
+      { id: 'word-study', label: 'Word study', icon: Layers },
+      { id: 'dictionary', label: 'Dictionary', icon: BookOpen },
+      { id: 'languages', label: 'Original languages', icon: GraduationCap },
+      { id: 'doctrine', label: 'Doctrine', icon: BookOpenCheck },
+      { id: 'cultural', label: 'Cultural context', icon: Globe },
+      { id: 'topical', label: 'Topical search', icon: TrendingUp },
+      { id: 'factbook', label: 'Factbook', icon: BookMarked },
+    ],
+  },
+  {
+    id: 'library',
+    label: 'Resources',
+    icon: Library,
+    panels: [
+      { id: 'library', label: 'Library', icon: Library },
+      { id: 'reading', label: 'Reading plans', icon: Calendar },
+      { id: 'lectionary', label: 'Lectionary', icon: CalendarDays },
+      { id: 'timeline', label: 'Timeline', icon: Clock },
+      { id: 'maps', label: 'Maps', icon: Map },
+    ],
+  },
+  {
+    id: 'personal',
+    label: 'Personal',
+    icon: Heart,
+    panels: [
+      { id: 'notes', label: 'Notes', icon: StickyNote },
+      { id: 'bookmarks', label: 'Saved', icon: Bookmark },
+      { id: 'memorize', label: 'Memorize', icon: Brain },
+      { id: 'prayer', label: 'Prayer', icon: Heart },
+      { id: 'study', label: 'Study builder', icon: GraduationCap },
+    ],
+  },
+  {
+    id: 'ministry',
+    label: 'Ministry',
+    icon: Users,
+    panels: [
+      { id: 'sermon', label: 'Sermon builder', icon: Church },
+      { id: 'series', label: 'Series planner', icon: Calendar },
+      { id: 'groups', label: 'Groups', icon: Users },
+      { id: 'counseling', label: 'Counseling', icon: Heart },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
+    ],
+  },
 ]
+
+function getGroupForPanel(panelId) {
+  return PANEL_GROUPS.find((group) => group.panels.some((panel) => panel.id === panelId))
+}
 
 function PanelSkeleton() {
   return (
     <div className="p-4 text-xs text-gray-400 dark:text-slate-500 text-center">Loading…</div>
   )
 }
-
 export default function RightPanel() {
   const { rightPanel, setRightPanel } = useStudyStore()
+  const activeGroup = getGroupForPanel(rightPanel) || PANEL_GROUPS[0]
+  const [groupId, setGroupId] = useState(activeGroup.id)
+
+  useEffect(() => {
+    setGroupId(activeGroup.id)
+  }, [activeGroup.id])
+
+  const selectedGroup = PANEL_GROUPS.find((group) => group.id === groupId) || activeGroup
+  const selectGroup = (group) => {
+    setGroupId(group.id)
+    if (!group.panels.some((panel) => panel.id === rightPanel)) {
+      setRightPanel(group.panels[0].id)
+    }
+  }
+  const selectPanel = (panelId) => setRightPanel(panelId)
 
   return (
     <div className="flex flex-col h-full">
-      <div
-        role="tablist"
-        aria-label="Study panels"
-        className="flex overflow-x-auto border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-slate-900 flex-shrink-0 scrollbar-hide"
-      >
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={rightPanel === id}
-            aria-controls={`${id}-panel`}
-            id={`tab-${id}`}
-            onClick={() => setRightPanel(id)}
-            className={clsx(
-              'flex flex-col items-center gap-0.5 py-2 px-3 text-xs font-medium transition-colors min-w-[72px]',
-              rightPanel === id
-                ? 'text-blue-600 border-b-2 border-blue-600 bg-white dark:bg-slate-950'
-                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800'
-            )}
-          >
-            <Icon size={14} />
-            <span>{label}</span>
-          </button>
-        ))}
+      <div className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-slate-900 flex-shrink-0">
+        <div role="tablist" aria-label="Study categories" className="flex items-center gap-1 px-2 pt-2">
+          {PANEL_GROUPS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={groupId === id}
+              onClick={() => selectGroup(PANEL_GROUPS.find((group) => group.id === id))}
+              className={clsx(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-t-md text-[11px] font-medium transition-colors',
+                groupId === id
+                  ? 'text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-950'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+              )}
+            >
+              <Icon size={13} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div role="tablist" aria-label={`${selectedGroup.label} panels`} className="flex overflow-x-auto px-2 py-2 gap-1 scrollbar-hide">
+          {selectedGroup.panels.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={rightPanel === id}
+              aria-controls={`${id}-panel`}
+              id={`tab-${id}`}
+              onClick={() => selectPanel(id)}
+              className={clsx(
+                'flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                rightPanel === id
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
+              )}
+            >
+              <Icon size={13} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div

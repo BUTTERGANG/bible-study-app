@@ -96,7 +96,7 @@ export default function Sidebar() {
     <div className="text-sm">
       {/* Quick Actions */}
       <div>
-        <div className="px-3 py-2 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-900">
+        <div className="px-3 py-3 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[0.14em] bg-slate-50/80 dark:bg-slate-900/60">
           Quick Actions
         </div>
         <QuickAction icon={StickyNote} label="Notes" panel="notes" active={rightPanelOpen && rightPanel === 'notes'} />
@@ -110,7 +110,7 @@ export default function Sidebar() {
           active={location.pathname.startsWith('/browse')}
         />
       </div>
-      <div className="h-px bg-gray-200 dark:bg-white/10 mx-2" />
+      <div className="h-px bg-gray-200/80 dark:bg-white/10 mx-3" />
 
       <BookSection
         label="Old Testament"
@@ -152,7 +152,7 @@ export default function Sidebar() {
       <div>
         <button
           onClick={() => toggleSection('conversations')}
-          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800"
+          className="w-full flex items-center justify-between px-3 py-3 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[0.14em] bg-slate-50/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <span className="flex items-center gap-1.5">
             <MessageSquare size={12} />
@@ -209,7 +209,7 @@ function BookSection({
     <div>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider bg-gray-50 dark:bg-slate-900 hover:bg-gray-100 dark:hover:bg-slate-800"
+        className="w-full flex items-center justify-between px-3 py-3 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[0.14em] bg-slate-50/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800"
       >
         {label}
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
