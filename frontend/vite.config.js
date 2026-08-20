@@ -79,10 +79,10 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'LOGOS Bible Study',
-        short_name: 'LOGOS',
+        name: 'Scriptura Bible Study',
+        short_name: 'Scriptura',
         description: 'Deep Bible study: 13 translations, Greek/Hebrew interlinear, 15 commentaries, AI assistant, maps, and 31 study tools.',
-        theme_color: '#7c3aed',
+        theme_color: '#2563eb',
         background_color: '#030712',
         display: 'standalone',
         orientation: 'any',

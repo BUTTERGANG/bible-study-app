@@ -124,7 +124,7 @@ function scheduleNotification(id, timeStr, title, body) {
   return setTimeout(() => {
     // Show notification
     try {
-      new Notification(`Bible Study — ${title}`, {
+      new Notification(`Scriptura — ${title}`, {
         body,
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',

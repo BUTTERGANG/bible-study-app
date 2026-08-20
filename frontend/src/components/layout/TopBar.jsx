@@ -159,7 +159,7 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
 
       <div className="flex items-center gap-1.5 text-white font-semibold text-sm">
         <BookOpen size={16} className="text-blue-400" />
-        <span className="hidden sm:block">Bible Study</span>
+        <span className="hidden sm:block bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Scriptura</span>
       </div>
 
       <div className="w-px h-6 bg-slate-600" />

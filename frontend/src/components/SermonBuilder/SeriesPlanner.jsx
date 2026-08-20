@@ -432,7 +432,7 @@ function SeriesDetail({ series: initialSeries, onBack }) {
     })
 
     lines.push('---')
-    lines.push(`*Exported from LOGOS on ${new Date().toLocaleDateString()}*`)
+    lines.push(`*Exported from Scriptura on ${new Date().toLocaleDateString()}*`)
 
     const blob = new Blob([lines.filter(Boolean).join('\n')], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
