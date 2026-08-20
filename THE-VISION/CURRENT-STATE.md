@@ -1,6 +1,6 @@
 # Current State of Development
 
-Last updated: 2026-06-11 (reconcile branch — migrations linearized to 0022)
+Last updated: 2026-08-20 (design/product pass merged to main — Scriptura rebrand unify, study-nav simplification, calmer/clearer/more-accessible UI, focus-trap support). Migrations linearized to head `0022` on the reconcile branch, merged earlier.
 
 ## What Works
 

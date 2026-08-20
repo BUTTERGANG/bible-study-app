@@ -128,7 +128,7 @@ async def share_streak(
     badges_str = " ".join(badge_emoji.get(m, "🏅") for m in badge_milestones)
     share_text = (
         f"I'm on a {streak.current_streak}-day Bible reading streak! "
-        f"{badges_str} Join me on LOGOS Bible Study."
+        f"{badges_str} Join me on Scriptura."
     )
 
     return StreakShareOut(
