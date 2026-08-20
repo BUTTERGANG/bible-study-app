@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Brain, Plus, Trash2, CheckCircle, XCircle, Eye, Star } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import clsx from 'clsx'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 const MASTERY_LABELS = ['Not started', 'Learning', 'Familiar', 'Mastered']
 const MASTERY_COLORS = [
@@ -24,10 +25,12 @@ function MasteryBadge({ level }) {
 
 function QuizCard({ verse, onResult, onClose }) {
   const [revealed, setRevealed] = useState(false)
+  const dialogRef = useRef(null)
+  useFocusTrap(dialogRef, onClose)
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Verse memory quiz" className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             {verse.book} {verse.chapter}:{verse.verse} ({verse.translation})

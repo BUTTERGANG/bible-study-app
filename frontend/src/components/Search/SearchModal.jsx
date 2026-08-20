@@ -4,6 +4,7 @@ import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
 import { streamAI } from '../../api/streamAI'
 import { normalizeSearchInput, getSuggestions } from '../../utils/bibleSearch'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 import clsx from 'clsx'
 
 export default function SearchModal({ onClose }) {
@@ -16,9 +17,12 @@ export default function SearchModal({ onClose }) {
   const [synopsis, setSynopsis] = useState('')
   const [synopsisLoading, setSynopsisLoading] = useState(false)
   const inputRef = useRef(null)
+  const dialogRef = useRef(null)
   const listRef = useRef(null)
   const synopsisStopRef = useRef(null)
   const { translation, setReference } = useStudyStore()
+
+  useFocusTrap(dialogRef, onClose)
 
   // Fuzzy reference resolution state
   const [resolvedRef, setResolvedRef] = useState(null)
@@ -162,6 +166,7 @@ export default function SearchModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20 px-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Scripture search"

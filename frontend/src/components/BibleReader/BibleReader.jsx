@@ -7,6 +7,7 @@ import CompareView from './CompareView'
 import InterlinearVerse from './InterlinearVerse'
 import VisualFiltersPanel from './VisualFilters/VisualFiltersPanel'
 import BookIntroCard from './BookIntroCard'
+import { PanelState } from '../common/PanelPrimitives'
 
 export default function BibleReader() {
   const book = useStudyStore((s) => s.book)
@@ -83,11 +84,8 @@ export default function BibleReader() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-slate-500">
-        <div className="text-center">
-          <div className="animate-pulse text-4xl mb-2">✝</div>
-          <div>Loading {book} {chapter}…</div>
-        </div>
+      <div className="flex-1 flex items-center justify-center bg-slate-50/80 dark:bg-slate-950">
+        <PanelState title={`Opening ${book} ${chapter}`} description="Preparing the passage for reading…" />
       </div>
     )
   }
@@ -95,30 +93,19 @@ export default function BibleReader() {
   if (isError || !data) {
     const isNotFound = error?.message?.startsWith('404')
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-slate-500 p-8">
-        <div className="text-center">
-          {isNotFound ? (
-            <>
-              <p className="font-medium text-gray-600 dark:text-slate-400">
-                {book} is not available in {translation}
-              </p>
-              <p className="text-sm mt-1">
-                Try switching to KJV, ASV, or BSB for full Bible coverage.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-medium">Could not load {book} {chapter}</p>
-              <p className="text-sm mt-1">The server may still be starting up.</p>
-              <button
-                onClick={() => refetch()}
-                className="mt-3 px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-              >
-                Try again
-              </button>
-            </>
-          )}
-        </div>
+      <div className="flex-1 flex items-center justify-center bg-slate-50/80 dark:bg-slate-950 p-8">
+        {isNotFound ? (
+          <PanelState
+            title={`${book} is not available in ${translation}`}
+            description="Try KJV, ASV, or BSB for full Bible coverage."
+          />
+        ) : (
+          <PanelState
+            title={`Could not load ${book} ${chapter}`}
+            description="The server may still be starting up."
+            action={{ label: 'Try again', onClick: refetch }}
+          />
+        )}
       </div>
     )
   }

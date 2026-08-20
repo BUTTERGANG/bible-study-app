@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Users, X } from 'lucide-react'
 import { api } from '../../api/client'
 import useGroupsStore from '../../stores/groupsStore'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 /**
  * Modal overlay for creating a new group.
@@ -14,6 +15,8 @@ export default function CreateGroupModal({ onClose }) {
   const qc = useQueryClient()
   const addGroup = useGroupsStore((s) => s.addGroup)
   const firstInputRef = useRef(null)
+  const dialogRef = useRef(null)
+  useFocusTrap(dialogRef, onClose)
 
   const mutation = useMutation({
     mutationFn: () => api.createGroup({ name: name.trim(), description: description.trim() || undefined }),
@@ -51,6 +54,7 @@ export default function CreateGroupModal({ onClose }) {
       onMouseDown={handleBackdropMouseDown}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-group-title"

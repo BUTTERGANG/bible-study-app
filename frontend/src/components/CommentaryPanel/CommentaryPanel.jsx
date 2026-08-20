@@ -5,6 +5,7 @@ import { useActiveVerse } from '../../hooks/useActiveVerse'
 import { api } from '../../api/client'
 import { BookOpen, Check, ChevronDown, ChevronRight, Filter } from 'lucide-react'
 import clsx from 'clsx'
+import { PanelHeader, PanelState } from '../common/PanelPrimitives'
 
 export default function CommentaryPanel() {
   const { book, chapter, commentarySources, setCommentarySources } = useStudyStore()
@@ -48,29 +49,26 @@ export default function CommentaryPanel() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="panel-header">
-        <span className="flex items-center gap-1.5">
-          <BookOpen size={13} />
-          Commentary
-        </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">{reference}</span>
-          {sources.length > 0 && (
-            <button
-              onClick={() => setShowSourcePicker(!showSourcePicker)}
-              className={clsx(
-                'text-xs px-1.5 py-0.5 rounded-full border transition-colors flex items-center gap-0.5',
-                activeFilterCount > 0
-                  ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
-                  : 'text-gray-500 border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400'
-              )}
-            >
-              <Filter size={10} />
-              {activeFilterCount > 0 ? `${activeFilterCount} selected` : 'Filter'}
-            </button>
-          )}
-        </div>
-      </div>
+      <PanelHeader
+        icon={BookOpen}
+        title="Commentary"
+        subtitle={reference}
+        actions={sources.length > 0 && (
+          <button
+            aria-label="Filter commentary sources"
+            onClick={() => setShowSourcePicker(!showSourcePicker)}
+            className={clsx(
+              'inline-flex min-h-10 items-center gap-1 rounded-lg border px-2.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+              activeFilterCount > 0
+                ? 'border-blue-300 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                : 'border-gray-300 text-gray-500 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400'
+            )}
+          >
+            <Filter size={11} />
+            {activeFilterCount > 0 ? activeFilterCount : 'Filter'}
+          </button>
+        )}
+      />
 
       {/* Source picker dropdown */}
       {showSourcePicker && (
@@ -116,17 +114,19 @@ export default function CommentaryPanel() {
         )}
 
         {!isLoading && !verse && (
-          <div className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-            Click any verse in the Bible reader to see its commentary.
-          </div>
+          <PanelState
+            icon={BookOpen}
+            title="Choose a verse to begin"
+            description="Select a verse in the reader and commentary will appear here."
+          />
         )}
 
         {!isLoading && verse && (!data?.entries || data.entries.length === 0) && (
-          <div className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-            No commentary available for this verse.
-            <br />
-            <span className="text-xs">Try selecting a different verse or browse adjacent passages.</span>
-          </div>
+          <PanelState
+            icon={BookOpen}
+            title="No commentary for this verse"
+            description="Try another verse or broaden the selected sources."
+          />
         )}
 
         {data?.entries &&

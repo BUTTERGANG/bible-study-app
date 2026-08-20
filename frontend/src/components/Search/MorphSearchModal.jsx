@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Search, X, RotateCcw, Save, FolderOpen, HelpCircle } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 import clsx from 'clsx'
 
 const GREEK_POS_OPTIONS = [
@@ -168,7 +169,9 @@ function MorphHelpPanel({ language }) {
 
 export default function MorphSearchModal({ onClose }) {
   const { book, setReference } = useStudyStore()
+  const dialogRef = useRef(null)
   const [mode, setMode] = useState('morph')
+  useFocusTrap(dialogRef, onClose)
 
   // Query state
   const [language, setLanguage] = useState('greek')
@@ -368,6 +371,7 @@ export default function MorphSearchModal({ onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-12 px-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="morph-search-title"
