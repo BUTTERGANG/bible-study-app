@@ -71,7 +71,7 @@ function MediaPickerModal({ onInsert, onClose }) {
   const [uploadPreview, setUploadPreview] = useState(null)
   const [error, setError] = useState('')
   const fileRef = useRef(null)
-  const [noteId, setNoteId] = useState(0) // 0 = unlinked
+  const [noteId] = useState(0) // 0 = unlinked
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
@@ -263,7 +263,7 @@ function ImageLightbox({ src, alt, onClose }) {
 }
 
 // ── Rendered markdown note content with clickable images ──────────────────
-function MarkdownContent({ content }) {
+function MarkdownContent() {
   const [lightbox, setLightbox] = useState(null)
 
   return (
@@ -272,7 +272,7 @@ function MarkdownContent({ content }) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehypeSanitize, markdownSchema]]}
         components={{
-          img: ({ src, alt, ...props }) => (
+          img: ({ src, alt }) => (
             <span className="inline-block my-1">
               <img
                 src={src}
@@ -366,7 +366,7 @@ export default function NotesPanel() {
     enabled: viewAll || !!book,
   })
 
-  const allNotes = data?.notes ?? []
+  const allNotes = useMemo(() => data?.notes ?? [], [data?.notes])
 
   // Extract unique tags from all notes for the tag filter
   const allTags = useMemo(() => {
@@ -652,12 +652,11 @@ export default function NotesPanel() {
 // ── Note Card ──────────────────────────────────────────────────────────────
 function NoteCard({
   note, editing, editTags, onEditTagsChange, onEdit, onDelete,
-  onSave, onCancelEdit, onInsertImage, editAreaRef, editContentSetterRef,
+  onSave, onCancelEdit, onInsertImage, editAreaRef, _editContentSetterRef,
   registerEditContentSetter
 }) {
   const [content, setContent] = useState(note.content)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [showImagePopover, setShowImagePopover] = useState(null) // { src, x, y }
   const tags = note.tags ? note.tags.split(',').map((s) => s.trim()).filter(Boolean) : []
 
   // Auto-cancel confirm after 3s

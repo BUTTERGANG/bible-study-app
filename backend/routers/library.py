@@ -127,7 +127,7 @@ async def get_book_page(
         if not os.path.exists(resolved_path):
             raise HTTPException(
                 status_code=404,
-                detail=f"PDF not found. Upload your library PDFs and set LIBRARY_PATH in Replit Secrets.",
+                detail="PDF not found. Upload your library PDFs and set LIBRARY_PATH in Replit Secrets.",
             )
         try:
             reader = _PdfReader(resolved_path)
@@ -145,7 +145,7 @@ async def get_book_page(
         except HTTPException:
             raise
         except Exception:
-            raise HTTPException(status_code=500, detail="Failed to read PDF page")
+            raise HTTPException(status_code=500, detail="Failed to read PDF page") from None
 
     raise HTTPException(status_code=400, detail=f"Cannot read format: {book.source_format}")
 
@@ -175,7 +175,7 @@ async def get_table_of_contents(book_id: int, db: AsyncSession = Depends(get_db)
             _flatten(outline)
             return {"title": book.title, "toc": toc}
         except Exception:
-            raise HTTPException(status_code=500, detail="Failed to read PDF table of contents")
+            raise HTTPException(status_code=500, detail="Failed to read PDF table of contents") from None
 
     return {"title": book.title, "toc": []}
 

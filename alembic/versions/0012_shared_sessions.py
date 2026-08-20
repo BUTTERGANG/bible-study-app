@@ -9,11 +9,12 @@ passage reference + note IDs + optional AI conversation ID,
 with UUID share_token, expiry, and view count.
 """
 
-from alembic import op
 import sqlalchemy as sa
 
-revision = "0012"
-down_revision = "0011"
+from alembic import op
+
+revision = "0013"
+down_revision = "0012"
 branch_labels = None
 depends_on = None
 

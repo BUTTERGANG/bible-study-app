@@ -17,9 +17,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv(Path(__file__).parent.parent / ".env", override=False)
 
-from backend.database import init_db, SessionLocal
+from backend.database import SessionLocal, init_db
 from backend.models import LibraryBook, LibraryPage
 
 # ---------------------------------------------------------------------------
@@ -155,7 +156,7 @@ async def ingest_book(session, meta: dict) -> int:
     body = strip_gutenberg_header_footer(raw)
     pages = split_into_pages(body)
     if not pages:
-        print(f"  SKIP — no content after stripping")
+        print("  SKIP — no content after stripping")
         return 0
 
     # Check if already ingested (by title)

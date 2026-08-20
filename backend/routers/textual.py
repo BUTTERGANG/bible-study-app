@@ -9,7 +9,7 @@ on first startup (idempotent via INSERT OR IGNORE).
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import require_app_password

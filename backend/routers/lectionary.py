@@ -8,7 +8,7 @@ import logging
 from datetime import date, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger("bible-study.lectionary")
 router = APIRouter(prefix="/api/lectionary", tags=["lectionary"])
@@ -102,7 +102,7 @@ async def get_readings_by_date(date: str):
     try:
         datetime.strptime(date, "%Y-%m-%d")
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.") from None
 
     reading = _find_reading(date)
     if not reading:

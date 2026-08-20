@@ -20,9 +20,9 @@ Usage:
 """
 
 import os
-import sys
-import sqlite3
 import re
+import sqlite3
+import sys
 from pathlib import Path
 
 APP_DIR = Path(__file__).parent.parent
@@ -32,7 +32,6 @@ STEPBIBLE_DIR = LIBRARY_DIR / "stepbible"
 DB_PATH = DATA_DIR / "bible.db"
 
 sys.path.insert(0, str(APP_DIR / "backend"))
-from bible_data import BOOK_ABBREV_MAP, resolve_book_name
 
 # STEPBible book abbreviation to canonical name mapping
 STEPBIBLE_BOOK_MAP = {
@@ -150,7 +149,7 @@ def ingest_tagnt(conn: sqlite3.Connection):
     for tsv_file in tsv_files:
         print(f"  Processing {tsv_file.name}...")
         try:
-            with open(tsv_file, "r", encoding="utf-8-sig") as f:
+            with open(tsv_file, encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
                     # Skip blank lines, comment/header lines, and the BOM title line
@@ -225,7 +224,7 @@ def ingest_tahot(conn: sqlite3.Connection):
         tsv_files = sorted(tagnt_dir.glob("*TAHOT*"))
 
     if not tsv_files:
-        print(f"  No TAHOT files found")
+        print("  No TAHOT files found")
         return 0
 
     print(f"  Found {len(tsv_files)} TAHOT files")
@@ -241,7 +240,7 @@ def ingest_tahot(conn: sqlite3.Connection):
     for tsv_file in tsv_files:
         print(f"  Processing {tsv_file.name}...")
         try:
-            with open(tsv_file, "r", encoding="utf-8-sig") as f:
+            with open(tsv_file, encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
                     if not line or line.startswith("#") or line.startswith("Ref") \

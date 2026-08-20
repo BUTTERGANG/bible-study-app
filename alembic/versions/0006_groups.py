@@ -12,11 +12,12 @@ Changes:
 * `group_shared_items` — group_id, user_id, item_type/item_id polymorphic link, annotation.
 """
 
-from typing import Sequence, Union
+from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy import inspect as sa_inspect
+
+from alembic import op
 
 revision: str = "0006"
 down_revision: Union[str, None] = "0005"

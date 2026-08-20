@@ -14,8 +14,9 @@ Alembic batch mode with recreate="always" drops and recreates the table using
 the current metadata (which includes the correct FK actions).
 """
 
-from alembic import op
 from sqlalchemy import inspect as sa_inspect
+
+from alembic import op
 
 revision = "0010"
 down_revision = "0009"

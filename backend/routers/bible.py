@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
-_BIBLE_CACHE = "public, max-age=86400, stale-while-revalidate=604800"
-
+from ..bible_data import BOOKS, resolve_book_name
 from ..database import get_db
 from ..models import BibleVerse, GreekWord, HebrewWord, LexiconEntry
-from ..bible_data import BOOKS, resolve_book_name
+
+_BIBLE_CACHE = "public, max-age=86400, stale-while-revalidate=604800"
 
 router = APIRouter(prefix="/api/bible", tags=["bible"])
 
@@ -240,6 +240,8 @@ async def get_chapter_lemmas(
     canonical = resolve_book_name(book)
     if not canonical:
         raise HTTPException(status_code=404, detail=f"Book not found: {book}")
+
+    canonical_t = await resolve_translation(translation, db)
 
     # Determine testament from book name
     book_data = None

@@ -6,19 +6,18 @@ GET /api/factbook           — list/search entries
 """
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..ai_client import get_client as _client
 from ..auth import require_app_password
 from ..database import get_db
 from ..models import FactbookEntry
 from ..rate_limit import ai_rate_limit
-from ..ai_client import get_client as _client
 
 router = APIRouter(
     prefix="/api/factbook",
@@ -162,7 +161,7 @@ class GenerateRequest(BaseModel):
 @router.get("/{entity_name}/questions")
 async def get_factbook_questions(
     entity_name: str,
-    entity_type: Optional[str] = Query(default=None),
+    entity_type: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Return 5 AI-generated study questions about a factbook entity."""
@@ -206,7 +205,7 @@ Example: ["Question one?", "Question two?", ...]""",
 @router.get("/{entity_name}")
 async def get_factbook_entry(
     entity_name: str,
-    entity_type: Optional[str] = Query(default=None, description="person, place, theme, or event"),
+    entity_type: str | None = Query(default=None, description="person, place, theme, or event"),
     refresh: bool = Query(default=False, description="Force regeneration even if cached"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -228,8 +227,8 @@ async def get_factbook_entry(
         # SQLite returns naive datetimes; make comparison timezone-safe
         gen_at = entry.generated_at
         if gen_at.tzinfo is None:
-            gen_at = gen_at.replace(tzinfo=timezone.utc)
-        age = datetime.now(timezone.utc) - gen_at
+            gen_at = gen_at.replace(tzinfo=UTC)
+        age = datetime.now(UTC) - gen_at
         if age < timedelta(days=CACHE_TTL_DAYS):
             return {
                 "entity_name": entry.entity_name,
@@ -253,7 +252,7 @@ async def get_factbook_entry(
     # Upsert into DB
     if entry:
         entry.content = content
-        entry.generated_at = datetime.now(timezone.utc)
+        entry.generated_at = datetime.now(UTC)
         entry.entity_type = resolved_type
     else:
         entry = FactbookEntry(
@@ -289,7 +288,7 @@ async def force_generate(request: GenerateRequest, db: AsyncSession = Depends(ge
 
     if entry:
         entry.content = content
-        entry.generated_at = datetime.now(timezone.utc)
+        entry.generated_at = datetime.now(UTC)
     else:
         entry = FactbookEntry(
             entity_name=request.entity_name,
@@ -311,8 +310,8 @@ async def force_generate(request: GenerateRequest, db: AsyncSession = Depends(ge
 
 @router.get("")
 async def list_entries(
-    entity_type: Optional[str] = Query(default=None),
-    search: Optional[str] = Query(default=None),
+    entity_type: str | None = Query(default=None),
+    search: str | None = Query(default=None),
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0),
     db: AsyncSession = Depends(get_db),

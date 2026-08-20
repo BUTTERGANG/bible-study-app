@@ -1,7 +1,6 @@
 """Vocabulary Drills — serve word lists for flashcard drilling and track per-user mastery."""
 
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -46,8 +45,8 @@ async def get_drill_words(
         default="top50",
         description="top50, top200, top500, all — filters by occurrence count",
     ),
-    book: Optional[str] = Query(default=None, description="Filter to words in this book"),
-    chapter: Optional[int] = Query(default=None, description="Filter to words in this chapter"),
+    book: str | None = Query(default=None, description="Filter to words in this book"),
+    chapter: int | None = Query(default=None, description="Filter to words in this chapter"),
     db: AsyncSession = Depends(get_db),
 ):
     """Return a list of vocab words for drilling, ordered by corpus frequency.
@@ -65,12 +64,8 @@ async def get_drill_words(
 
     if language == "greek":
         model = GreekWord
-        word_col = GreekWord.greek
-        trans_col = GreekWord.transliteration
     else:
         model = HebrewWord
-        word_col = HebrewWord.hebrew
-        trans_col = HebrewWord.transliteration
 
     # Build frequency subquery: count occurrences per strongs_num
     freq_stmt = (

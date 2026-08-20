@@ -24,6 +24,13 @@ L.Icon.Default.mergeOptions({
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
+// Route legend entries, derived from the journey overlay definitions so the
+// legend and the rendered routes always stay in sync (single source of truth).
+const ROUTE_COLORS_LEGEND = OVERLAY_DEFINITIONS.filter(o => o.type === 'route').map(o => ({
+  label: o.label,
+  color: o.color,
+}))
+
 const PLACE_TYPE_COLORS = {
   city:       '#3b82f6',
   mountain:   '#8b5cf6',

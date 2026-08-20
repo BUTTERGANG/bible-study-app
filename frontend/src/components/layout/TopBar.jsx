@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useClickOutside } from '../../hooks/useClickOutside'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  BookOpen, ChevronDown, ChevronLeft, ChevronRight, Columns2, GraduationCap, Home, Layers, LogOut, Menu, Moon,
+  BookOpen, ChevronLeft, ChevronRight, Columns2, GraduationCap, Home, Layers, LogOut, Menu, Moon,
   PanelRightClose, PanelRightOpen, Search, Sun, User, X, Filter, Languages, Volume2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -62,13 +62,12 @@ export default function TopBar({ onSearch, onMorphSearch, onToggleAudio }) {
   })
 
   // Fetch pending group invites for badge
-  const { data: invitesData } = useQuery({
+  useQuery({
     queryKey: ['my-invites-badge'],
     queryFn: api.getMyInvites,
     staleTime: 30_000,
     enabled: !!getAccessToken(),
   })
-  const pendingInviteCount = invitesData?.invites?.length || 0
 
   function handleLogout() {
     clearTokens()

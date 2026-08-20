@@ -7,13 +7,12 @@ the client is rebuilt only when the key actually changes.
 """
 
 import os
-from typing import Optional
 
 import anthropic
 from fastapi import HTTPException
 
-_async_client: Optional[anthropic.AsyncAnthropic] = None
-_cached_key: Optional[str] = None
+_async_client: anthropic.AsyncAnthropic | None = None
+_cached_key: str | None = None
 
 
 def get_client() -> anthropic.AsyncAnthropic:

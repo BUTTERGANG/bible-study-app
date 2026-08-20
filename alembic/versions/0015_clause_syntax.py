@@ -5,11 +5,12 @@ Revises: 0014_language_courses
 Create Date: 2026-06-08
 """
 
-from alembic import op
 import sqlalchemy as sa
 
-revision = "0015_clause_syntax"
-down_revision = "0014_language_courses"
+from alembic import op
+
+revision = "0022"
+down_revision = "0021"
 branch_labels = None
 depends_on = None
 

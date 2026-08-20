@@ -69,9 +69,12 @@ async def create_note(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    # Resolve canonical Bible book name; fall back to raw value for general notes
-    # (e.g. library summaries tagged with "Library" or a custom category).
-    canonical = resolve_book_name(body.book) or body.book
+    # Resolve canonical Bible book name and reject anything that isn't a real
+    # book, matching list_notes validation (canonical consistency is required
+    # so note references like "John 3:16" stay resolvable).
+    canonical = resolve_book_name(body.book)
+    if not canonical:
+        raise HTTPException(status_code=400, detail=f"Unknown book: {body.book}")
     note = Note(
         user_id=user.id,
         book=canonical,

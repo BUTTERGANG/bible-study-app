@@ -4,10 +4,9 @@ GET /api/nt-ot              — query connections (filter by nt_ or ot_ params)
 GET /api/nt-ot/stats        — coverage statistics
 """
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -191,13 +190,13 @@ async def seed_nt_ot_connections(db: AsyncSession) -> int:
 
 @router.get("")
 async def get_connections(
-    nt_book:    Optional[str] = Query(default=None),
-    nt_chapter: Optional[int] = Query(default=None),
-    nt_verse:   Optional[int] = Query(default=None),
-    ot_book:    Optional[str] = Query(default=None),
-    ot_chapter: Optional[int] = Query(default=None),
-    ot_verse:   Optional[int] = Query(default=None),
-    connection_type: Optional[str] = Query(default=None),
+    nt_book:    str | None = Query(default=None),
+    nt_chapter: int | None = Query(default=None),
+    nt_verse:   int | None = Query(default=None),
+    ot_book:    str | None = Query(default=None),
+    ot_chapter: int | None = Query(default=None),
+    ot_verse:   int | None = Query(default=None),
+    connection_type: str | None = Query(default=None),
     limit: int = Query(default=100, le=500),
     db: AsyncSession = Depends(get_db),
 ):

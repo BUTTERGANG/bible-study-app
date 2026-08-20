@@ -9,7 +9,6 @@ with the returned JSON.
 
 import json
 import re
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -19,8 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..auth import CurrentUser, get_current_user
 from ..bible_data import BOOKS
 from ..database import get_db
-from ..models import ReadingPlan
-from .ai import MODEL, _client as _ai_client, _CACHE, ai_rate_limit
+from .ai import _CACHE, MODEL, ai_rate_limit
+from .ai import _client as _ai_client
 
 router = APIRouter(
     prefix="/api/ai/reading-plan",
@@ -69,8 +68,8 @@ Generate ONLY a valid JSON object - no markdown fences. No explanation before or
 
 class ReadingPlanRequest(BaseModel):
     goal: str
-    plan_name: Optional[str] = None
-    duration_days: Optional[int] = None
+    plan_name: str | None = None
+    duration_days: int | None = None
 
 
 def _user_prompt(body: ReadingPlanRequest) -> str:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5]
@@ -17,7 +17,6 @@ export function useAudioBible(verses) {
 
   const verseIndexRef = useRef(0)
   const utteranceRef = useRef(null)
-  const onEndCallbackRef = useRef(null)
 
   // Check support
   useEffect(() => {
@@ -63,7 +62,7 @@ export function useAudioBible(verses) {
     }
   }, [audioPlaying, isSpeaking])
 
-  function speakVerse(verseText, verseNum) {
+  function speakVerse(verseText, _verseNum) {
     return new Promise((resolve) => {
       if (!isSupported) { resolve(); return }
 

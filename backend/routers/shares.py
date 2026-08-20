@@ -8,8 +8,7 @@ GET  /api/shares/{token}  (public, NO auth) — resolve a share token and return
 import json
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -87,7 +86,7 @@ async def create_share(
 
     expiry_days = int(os.getenv("SHARE_EXPIRY_DAYS", str(_DEFAULT_EXPIRY_DAYS)))
     token = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires_at = now + timedelta(days=expiry_days)
 
     shared = SharedSession(
@@ -110,7 +109,7 @@ async def resolve_share(token: str, db: AsyncSession = Depends(get_db)):
     if not shared:
         raise HTTPException(status_code=404, detail="Shared session not found")
 
-    if shared.expires_at and datetime.now(timezone.utc) > shared.expires_at.replace(tzinfo=timezone.utc):
+    if shared.expires_at and datetime.now(UTC) > shared.expires_at.replace(tzinfo=UTC):
         raise HTTPException(status_code=410, detail="This shared link has expired")
 
     await db.execute(update(SharedSession).where(SharedSession.id == shared.id).values(view_count=SharedSession.view_count + 1))

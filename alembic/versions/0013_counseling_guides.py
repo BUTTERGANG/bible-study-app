@@ -8,11 +8,12 @@ Changes:
 * `counseling_guides` — name (unique), category, content (JSON), generated_at, updated_at.
 """
 
-from alembic import op
 import sqlalchemy as sa
 
-revision = "0013"
-down_revision = "0012"
+from alembic import op
+
+revision = "0020"
+down_revision = "0019"
 branch_labels = None
 depends_on = None
 

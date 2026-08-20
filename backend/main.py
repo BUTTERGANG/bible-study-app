@@ -23,15 +23,50 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from .auth import auth_is_enabled, get_current_user, require_app_password
+from .auth import auth_is_enabled, get_current_user
 from .database import db_status, init_db
 from .routers import (
-    ai, ai_conversations, ai_reading_plans, annotations, bible, book_intros,
-    bookmarks, clause_syntax, commentary, counseling, courses, cultural_notes, dashboard, dictionary,
-    doctrine, factbook, gospel_harmony, groups, health, highlights, lectionary,
-    lexicon, library, media, memorize, notes, nt_ot, prayer, reading_plans,
-    search, sermon_series, sermons, shares, streaks, study_projects, tags,
-    textual, textual_notes, timeline_maps, users, word_study,
+    ai,
+    ai_conversations,
+    ai_reading_plans,
+    annotations,
+    bible,
+    book_intros,
+    bookmarks,
+    clause_syntax,
+    commentary,
+    counseling,
+    courses,
+    cultural_notes,
+    dashboard,
+    dictionary,
+    doctrine,
+    factbook,
+    gospel_harmony,
+    groups,
+    health,
+    highlights,
+    lectionary,
+    lexicon,
+    library,
+    media,
+    memorize,
+    notes,
+    nt_ot,
+    prayer,
+    reading_plans,
+    search,
+    sermon_series,
+    sermons,
+    shares,
+    streaks,
+    study_projects,
+    tags,
+    textual,
+    textual_notes,
+    timeline_maps,
+    users,
+    word_study,
 )
 
 logger = logging.getLogger("bible-study")
@@ -78,6 +113,7 @@ if _cors_origins:
         allow_headers=["Authorization", "Content-Type", "X-App-Password"])
 
 from starlette.middleware.base import BaseHTTPMiddleware
+
 _IS_PRODUCTION = os.getenv("DEPLOYMENT_ENV", "").lower() == "production"
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -107,6 +143,7 @@ app.include_router(gospel_harmony.router)
 app.include_router(lectionary.router)
 
 from fastapi import Depends
+
 _protected = [Depends(get_current_user)]
 app.include_router(notes.router, dependencies=_protected)
 app.include_router(highlights.router, dependencies=_protected)
@@ -142,11 +179,13 @@ if FRONTEND_BUILD.exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_BUILD / "assets")), name="assets")
     _icons_dir = FRONTEND_BUILD / "icons"
     if _icons_dir.exists(): app.mount("/icons", StaticFiles(directory=str(_icons_dir)), name="icons")
+    _BUILD_ROOT = FRONTEND_BUILD.resolve()
     @app.api_route("/{full_path:path}", methods=["GET", "HEAD"])
     async def serve_spa(full_path: str):
         if full_path.startswith("api/"): raise HTTPException(status_code=404, detail="Not found")
-        candidate = FRONTEND_BUILD / full_path
         if "." in Path(full_path).name:
-            if candidate.exists(): return FileResponse(str(candidate))
+            candidate = (FRONTEND_BUILD / full_path).resolve()
+            if candidate.is_relative_to(_BUILD_ROOT) and candidate.is_file():
+                return FileResponse(str(candidate))
             raise HTTPException(status_code=404, detail="Not found")
         return FileResponse(str(FRONTEND_BUILD / "index.html"), headers={"Cache-Control": "no-store"})

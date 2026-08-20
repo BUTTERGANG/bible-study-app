@@ -152,7 +152,7 @@ export default function CulturalContextPanel({ embedded = false }) {
   )
 }
 
-function VerseNotesList({ book, chapter, notesByVerse, allVerses, activeVerse }) {
+function VerseNotesList({ _book, chapter, notesByVerse, allVerses, activeVerse }) {
   const [expandedVerses, setExpandedVerses] = useState(new Set(activeVerse ? [activeVerse] : allVerses))
 
   function toggleVerse(v) {

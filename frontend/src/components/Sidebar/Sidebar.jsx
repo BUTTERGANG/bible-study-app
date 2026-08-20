@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Compass, GraduationCap, Library, MessageSquare, Search as SearchIcon, StickyNote, Trash2, Users, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Compass, GraduationCap, Library, MessageSquare, StickyNote, Trash2, Users } from 'lucide-react'
 import { OT_BOOKS, NT_BOOKS } from '../../api/bibleData'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'

@@ -11,7 +11,7 @@ Usage:
 """
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "data" / "bible.db"
@@ -179,7 +179,7 @@ def main():
         conn.execute("DELETE FROM factbook_entries")
         conn.commit()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     inserted = 0
     skipped = 0
     seen_names = set()

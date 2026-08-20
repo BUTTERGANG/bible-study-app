@@ -7,11 +7,11 @@ but migrations don't need the async stack).
 
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from backend.database import Base
+from alembic import context
 from backend import models  # noqa: F401  — import so all models register
+from backend.database import Base
 
 config = context.config
 if config.config_file_name is not None:

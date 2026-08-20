@@ -8,7 +8,6 @@ so multi-turn conversations don't re-bill the same tokens.
 
 import json
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -16,11 +15,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..ai_client import get_client as _client
 from ..auth import require_app_password
 from ..database import get_db
 from ..models import BibleVerse, LibraryBook, LibraryPage, LibrarySummary
 from ..rate_limit import ai_rate_limit
-from ..ai_client import get_client as _client
 
 logger = logging.getLogger("bible-study.ai")
 
@@ -53,26 +52,26 @@ When answering questions:
 
 class AskRequest(BaseModel):
     question: str = Field(..., max_length=2000)
-    reference: Optional[str] = Field(None, max_length=100)
-    translation: Optional[str] = Field("KJV", max_length=20)
-    verse_text: Optional[str] = Field(None, max_length=5000)
-    chapter_text: Optional[str] = Field(None, max_length=50000)
-    conversation_history: Optional[List[dict]] = Field(None, max_length=50)
+    reference: str | None = Field(None, max_length=100)
+    translation: str | None = Field("KJV", max_length=20)
+    verse_text: str | None = Field(None, max_length=5000)
+    chapter_text: str | None = Field(None, max_length=50000)
+    conversation_history: list[dict] | None = Field(None, max_length=50)
     include_library_context: bool = True
 
 
 class ExplainRequest(BaseModel):
     reference: str
     translation: str = "KJV"
-    verses: List[dict]
-    focus: Optional[str] = None
+    verses: list[dict]
+    focus: str | None = None
 
 
 class WordStudyRequest(BaseModel):
     word: str
     reference: str
-    original: Optional[str] = None
-    strongs: Optional[str] = None
+    original: str | None = None
+    strongs: str | None = None
 
 
 class TopicStudyRequest(BaseModel):
@@ -92,11 +91,11 @@ class CrossRefRequest(BaseModel):
 
 class SermonRequest(BaseModel):
     passage: str
-    audience: Optional[str] = "general"
-    key_themes: Optional[List[str]] = None
-    translation: Optional[str] = "KJV"
-    verse_text: Optional[str] = None
-    chapter_text: Optional[str] = None
+    audience: str | None = "general"
+    key_themes: list[str] | None = None
+    translation: str | None = "KJV"
+    verse_text: str | None = None
+    chapter_text: str | None = None
 
 
 async def _fetch_library_context(db: AsyncSession, question: str, limit: int = 3) -> list:
@@ -139,7 +138,7 @@ async def _fetch_library_context(db: AsyncSession, question: str, limit: int = 3
         return []
 
 
-def _system_blocks(reference: Optional[str], translation: Optional[str], has_library: bool = False) -> list:
+def _system_blocks(reference: str | None, translation: str | None, has_library: bool = False) -> list:
     """Build a cacheable system prompt. The expertise block (large, stable) is
     marked with ephemeral cache_control; the per-request line about the
     current passage is appended uncached."""
@@ -156,11 +155,11 @@ def _system_blocks(reference: Optional[str], translation: Optional[str], has_lib
 
 def _user_message_with_context(
     question: str,
-    reference: Optional[str],
-    translation: Optional[str],
-    verse_text: Optional[str],
-    chapter_text: Optional[str],
-    library_context: Optional[list] = None,
+    reference: str | None,
+    translation: str | None,
+    verse_text: str | None,
+    chapter_text: str | None,
+    library_context: list | None = None,
 ) -> dict:
     """User-turn message with optional passage and library context. The chapter_text — if
     present and long — gets its own cache point so subsequent turns about the
@@ -375,8 +374,8 @@ Format as a clean list."""
 class SermonSectionRequest(BaseModel):
     passage: str
     translation: str = "KJV"
-    audience: Optional[str] = "general"
-    outline: Optional[str] = None  # existing outline for context
+    audience: str | None = "general"
+    outline: str | None = None  # existing outline for context
 
 
 @router.post("/illustrations")
@@ -691,7 +690,7 @@ Rules:
 
 class SearchSynopsisRequest(BaseModel):
     query: str
-    results: List[dict]  # [{reference, text/snippet, ...}]
+    results: list[dict]  # [{reference, text/snippet, ...}]
 
 
 @router.post("/search-synopsis")
@@ -725,7 +724,7 @@ Write 1-2 sentences synthesizing what these passages have in common and what the
 class StudyObservationsRequest(BaseModel):
     reference: str
     translation: str = "KJV"
-    verse_text: Optional[str] = None
+    verse_text: str | None = None
 
 
 @router.post("/study-observations")

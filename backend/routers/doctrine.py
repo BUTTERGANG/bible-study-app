@@ -6,19 +6,18 @@ POST /api/doctrine/generate     — force-regenerate a doctrine entry
 """
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..ai_client import get_client as _client
 from ..auth import require_app_password
 from ..database import get_db
 from ..models import DoctrineEntry
 from ..rate_limit import ai_rate_limit
-from ..ai_client import get_client as _client
 
 router = APIRouter(
     prefix="/api/doctrine",
@@ -154,7 +153,7 @@ async def _generate_doctrine(name: str, category: str) -> str:
         if start != -1:
             raw = raw[start:end]
         else:
-            raise HTTPException(status_code=500, detail="AI returned invalid JSON.")
+            raise HTTPException(status_code=500, detail="AI returned invalid JSON.") from None
     return raw
 
 
@@ -167,8 +166,8 @@ class GenerateRequest(BaseModel):
 
 @router.get("")
 async def list_doctrines(
-    category: Optional[str] = Query(default=None),
-    q: Optional[str] = Query(default=None, description="Search by name"),
+    category: str | None = Query(default=None),
+    q: str | None = Query(default=None, description="Search by name"),
     db: AsyncSession = Depends(get_db),
 ):
     """Return all doctrine entries, optionally filtered by category or search query."""
@@ -199,7 +198,7 @@ async def list_doctrines(
 async def force_generate(req: GenerateRequest, db: AsyncSession = Depends(get_db)):
     """Force-regenerate a doctrine entry (ignores cache)."""
     content = await _generate_doctrine(req.name, req.category)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     result = await db.execute(
         select(DoctrineEntry).where(DoctrineEntry.name == req.name)
@@ -253,7 +252,7 @@ async def get_doctrine(
         category = entry.category
 
     content = await _generate_doctrine(name, category)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if entry:
         entry.content = content

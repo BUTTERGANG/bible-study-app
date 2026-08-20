@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useStudyStore } from '../../stores/studyStore'
 
 const CATEGORY_COLORS = {

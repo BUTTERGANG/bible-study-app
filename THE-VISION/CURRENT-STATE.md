@@ -1,6 +1,6 @@
 # Current State of Development
 
-Last updated: 2026-06-04
+Last updated: 2026-06-11 (reconcile branch — migrations linearized to 0022)
 
 ## What Works
 
@@ -20,9 +20,9 @@ Last updated: 2026-06-04
 - **Media files**: Image upload + serving (`media_files` table via migration 0004)
 - **Groups**: Collaborative study groups (`groups`, `group_members`, `group_invites`, `group_notes`, `group_shared_items` via migration 0006)
 - **Doctrine entries**: Doctrine/systematic theology table (migration 0007)
-- **Reading plans**: Extended with type, goal, day labels, and descriptions (migrations 0008–0009)
+- **Reading plans**: Extended with type, goal, day labels, and descriptions (migrations 0008, 0011)
 
-### Backend — 35+ API routers, proper Python package
+### Backend — 43 API routers, proper Python package
 Located in `backend/`, importable as `backend.main:app`. Launch with
 `python -m uvicorn backend.main:app`.
 
@@ -47,8 +47,7 @@ Routers:
 - `cultural_notes.py` — AI-generated cultural context notes
 - `factbook.py` — factbook (people, places, themes)
 - `doctrine.py` — doctrine/systematic theology entries
-- `lectionary.py` — Revised Common Lectionary readings by date with prev/next navigation
-- `lectionary.py` — RCL entries with `prev_date`/`next_date` navigation + nearest-date fallback
+- `lectionary.py` — Revised Common Lectionary readings by date with `prev_date`/`next_date` navigation + nearest-date fallback
 - `gospel_harmony.py` — parallel Gospel passages
 - `nt_ot.py` — NT quotations of OT passages
 - `timeline_maps.py` — biblical timeline events + geographic places (Leaflet)
@@ -62,6 +61,12 @@ Routers:
 - `annotations.py` — passage annotations
 - `textual.py` / `textual_notes.py` — textual criticism notes
 - `counseling.py` — pastoral counseling resources
+- `courses.py` — original-language courses, units, lessons, progress
+- `clause_syntax.py` — clause/syntax tag search
+- `vocab.py` — vocabulary mastery drills/endpoints
+- `shares.py` — shareable study-session links
+- `streaks.py` — reading streaks & badges
+- `tags.py` — community tags
 - `dashboard.py` — aggregated dashboard data
 
 Cross-cutting:
@@ -164,24 +169,42 @@ Cross-cutting:
 - `pwdlib[bcrypt]` for password hashing (actively maintained; works with bcrypt 4.x+)
 
 ### Migrations (alembic/)
+> **Single linear chain, head `0022`** (renumbered on the reconcile branch so
+> `alembic upgrade head` resolves instead of failing on duplicate ids).
+> Migrations assume a pre-existing schema — the base tables are created by the
+> app's `init_db()` / `Base.metadata.create_all`; these migrations evolve it.
+
 | # | File | Contents |
 |---|------|----------|
-| 0001 | `initial_schema.py` | Core tables: verses, commentary, notes, highlights, bookmarks, reading plans, lexicon, library |
-| 0002 | `user_accounts.py` | `users` table + JWT auth |
+| 0001 | `initial_schema.py` | Initial schema + post-refactor changes (transform, idempotent) |
+| 0002 | `user_accounts.py` | `users` table + JWT auth + `user_id` on user-mutable tables |
 | 0003 | `ai_conversations.py` | Persisted AI chat history |
 | 0004 | `media_files.py` | Image upload storage |
-| 0005 | `library_pages_fts_and_fk_cascades.py` | FTS5 on `library_pages` |
+| 0005 | `library_pages_fts_and_fk_cascades.py` | FTS5 on `library_pages` + FK cascades |
 | 0006 | `groups.py` | Groups, members, invites, group notes, shared items |
 | 0007 | `doctrine_entries.py` | Doctrine/systematic theology table |
 | 0008 | `reading_plan_type_goal.py` | Reading plan type + goal columns; index guard fixed |
 | 0009 | `composite_indexes_and_fts_triggers.py` | Composite indexes on notes/highlights/plan_days + FTS5 sync triggers for library_pages |
 | 0010 | `fk_cascade_ddl.py` | Batch-rebuilds 18 tables with correct `ON DELETE CASCADE` DDL |
+| 0011 | `reading_plan_day_label_desc.py` | `reading_plan_days` day label + description columns |
+| 0012 | `group_note_parent_id.py` | Parent-id support for threaded group notes |
+| 0013 | `shared_sessions.py` | Shareable study-session links |
+| 0014 | `streaks_and_tags.py` | Reading streaks & badges + community tags |
+| 0015 | `vocab_mastery.py` | Vocabulary mastery tracking |
+| 0016 | `inline_annotations.py` | Inline passage annotations |
+| 0017 | `sermon_series.py` | Multi-sermon series management |
+| 0018 | `textual_variants.py` | Textual criticism variant readings |
+| 0019 | `textual_notes.py` | Textual notes |
+| 0020 | `counseling_guides.py` | Pastoral counseling resources |
+| 0021 | `language_courses.py` | Original-language courses + units/lessons |
+| 0022 | `clause_syntax.py` | Clause/syntax tag search |
 
 ### Tests, lint, startup
-- `make test` — pytest (backend/tests); covers auth, Bible, notes, sermon, search, groups, highlights, media, users
-- `make lint` — ruff
-- `make frontend-lint` — ESLint flat config
-- `make migrate` — alembic upgrade head
+- `make test` — pytest (backend/tests): **160 passed** (19 test files) covering auth, Bible, notes, highlights, media, groups, search, morph search, clause syntax, courses, sermons, sermon series, shares, streaks, tags, and more
+- `make lint` — ruff (backend + ingest): clean
+- `make frontend-lint` — ESLint flat config, `--max-warnings 0`: clean
+- `make frontend-build` — Vite build (incl. PWA/service worker): clean
+- `make migrate` — alembic upgrade head (single head `0022`)
 - `start.sh` — Python deps check, frontend build (skipped if up-to-date), port cleanup, uvicorn launch. `LD_LIBRARY_PATH` selects gcc-13+ lib (GLIBCXX ≥ 3.4.32 for Node.js 20)
 
 ## Known Gaps / Still Broken

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Search, X, RotateCcw, Save, FolderOpen, HelpCircle } from 'lucide-react'
 import { useStudyStore } from '../../stores/studyStore'
 import { api } from '../../api/client'
@@ -318,12 +318,12 @@ export default function MorphSearchModal({ onClose }) {
     setActiveIdx(-1)
   }
 
-  function navigate(result) {
+  const navigate = useCallback((result) => {
     setReference(result.book, result.chapter, result.verse || result.verse_start)
     onClose()
-  }
+  }, [setReference, onClose])
 
-  const resultList = results?.results ?? []
+  const resultList = useMemo(() => results?.results ?? [], [results?.results])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -353,7 +353,7 @@ export default function MorphSearchModal({ onClose }) {
       e.preventDefault()
       navigate(resultList[activeIdx])
     }
-  }, [resultList, activeIdx, onClose, showSaveDialog, showLoadDialog])
+  }, [resultList, activeIdx, onClose, showSaveDialog, showLoadDialog, navigate])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)

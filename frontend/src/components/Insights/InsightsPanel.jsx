@@ -59,7 +59,6 @@ export default function InsightsPanel() {
     data: insights,
     isLoading: insightsLoading,
     isFetching: insightsFetching,
-    refetch: refetchInsights,
   } = useQuery({
     queryKey: ['insights', book, chapter, verse, translation, insightKey],
     queryFn: () => api.getPassageInsights(book, chapter, verse, translation),
@@ -88,7 +87,7 @@ export default function InsightsPanel() {
     setReference(b, c, v)
   }
 
-  function openFactbook(name) {
+  function openFactbook(_name) {
     useStudyStore.getState().setRightPanel('factbook')
   }
 

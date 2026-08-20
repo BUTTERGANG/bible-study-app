@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen, ChevronLeft, Download, HelpCircle, Import, Layers, Lightbulb, List,
-  PlusCircle, Send, Square, Trash2, Upload, Wand2,
+  PlusCircle, Send, Square, Trash2, Wand2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -327,7 +327,7 @@ function SectionEditor({ project, sectionKey, onBack }) {
         }
       }
     )
-  }, [project, sectionKey, section, save])
+  }, [project, section, save])
 
   const handleStop = () => { stopRef.current?.(); setStreaming(false); setPreview(true) }
 

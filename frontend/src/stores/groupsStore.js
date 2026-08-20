@@ -7,7 +7,7 @@ import { create } from 'zustand'
  * Components pull fresh data via React Query, then push results here
  * so sibling components (feed, member list, invites) share the same cache.
  */
-const useGroupsStore = create((set, get) => ({
+const useGroupsStore = create((set, _get) => ({
   // Group summaries (from getMyGroups)
   groups: [],
   setGroups: (groups) => set({ groups }),

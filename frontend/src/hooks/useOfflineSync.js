@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useOnlineStatus } from './useOnlineStatus'
 
@@ -193,7 +193,7 @@ export function useOfflineSync() {
     } finally {
       _flushing = false
     }
-  }, [refreshQueue])
+  }, [refreshQueue, qc])
 
   useEffect(() => {
     refreshQueue()

@@ -16,7 +16,6 @@ import {
   Scroll,
   ChevronDown,
   ChevronRight,
-  Loader2,
   BookOpen,
   AlertTriangle,
 } from 'lucide-react'

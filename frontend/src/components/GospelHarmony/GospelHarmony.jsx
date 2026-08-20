@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, ChevronDown, ChevronRight, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search } from 'lucide-react'
 import { api } from '../../api/client'
 import { useStudyStore } from '../../stores/studyStore'
 import clsx from 'clsx'
@@ -84,7 +84,7 @@ function GospelColumn({ column, color, onNavigate }) {
   )
 }
 
-function PericopeRow({ pericope, sectionLabel, translation, onNavigate }) {
+function PericopeRow({ pericope, _sectionLabel, translation, onNavigate }) {
   const [expanded, setExpanded] = useState(false)
 
   const { data, isLoading } = useQuery({

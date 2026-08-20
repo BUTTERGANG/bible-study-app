@@ -5,11 +5,12 @@ Revises: 0013
 Create Date: 2026-06-08
 """
 
-from alembic import op
 import sqlalchemy as sa
 
-revision = "0014_language_courses"
-down_revision = "0013"
+from alembic import op
+
+revision = "0021"
+down_revision = "0020"
 branch_labels = None
 depends_on = None
 

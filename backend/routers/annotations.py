@@ -1,7 +1,6 @@
 """Inline word/phrase annotations anchored to verse token positions."""
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -26,8 +25,8 @@ class AnnotationCreate(BaseModel):
 
 
 class AnnotationUpdate(BaseModel):
-    content: Optional[str] = None
-    color: Optional[str] = None
+    content: str | None = None
+    color: str | None = None
 
 
 def _annotation_dict(a: InlineAnnotation) -> dict:
@@ -50,7 +49,7 @@ def _annotation_dict(a: InlineAnnotation) -> dict:
 async def list_annotations(
     book: str,
     chapter: int,
-    verse: Optional[int] = None,
+    verse: int | None = None,
     user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -110,7 +109,7 @@ async def update_annotation(
         annotation.content = body.content
     if body.color is not None:
         annotation.color = body.color
-    annotation.updated_at = datetime.now(timezone.utc)
+    annotation.updated_at = datetime.now(UTC)
     await db.commit()
     return _annotation_dict(annotation)
 

@@ -9,12 +9,13 @@ Changes:
 * `reading_plan_days.description` — TEXT, nullable.
 """
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect as sa_inspect
 
-revision = "0009"
-down_revision = "0008"
+from alembic import op
+
+revision = "0011"
+down_revision = "0010"
 branch_labels = None
 depends_on = None
 

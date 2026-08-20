@@ -181,7 +181,7 @@ export default function VerseContextMenu({
           const data = await getPassageExportData(translation, book, chapter, { includeNotes: true, includeHighlights: true })
           printPassage(data)
           onClose()
-        } catch (err) {
+        } catch {
           setError('Failed to prepare print view')
         } finally {
           setIsExporting(false)

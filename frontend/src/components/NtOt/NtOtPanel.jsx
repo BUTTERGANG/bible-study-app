@@ -34,7 +34,6 @@ function TypeBadge({ type }) {
 
 function ConnectionCard({ conn, onNavigate }) {
   const [expanded, setExpanded] = useState(false)
-  const isNtView = !!conn.nt.text || !!conn.ot.text
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
