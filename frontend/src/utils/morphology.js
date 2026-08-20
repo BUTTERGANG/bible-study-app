@@ -92,7 +92,9 @@ const HEBREW_POS = {
   X: 'particle',
 }
 
-// Hebrew verb stems (binyanim)
+// Hebrew verb stems (binyanim). Keys are the single-letter codes; values the
+// canonical stem names. A reverse full-word lookup is built below so callers
+// can pass either "Q" or "Qal".
 const HEBREW_STEM = {
   Q: 'qal',
   N: 'niphal',
@@ -106,6 +108,11 @@ const HEBREW_STEM = {
   M: 'hithpolel',
   S: 'hishtaphel',
 }
+
+// Map any case-folded stem word ("Qal", "hiphil", "Niphal") → canonical name.
+const HEBREW_STEM_BY_NAME = new Map(
+  Object.entries(HEBREW_STEM).map(([, name]) => [name.toLowerCase(), name]),
+)
 
 // ── Category mapping for visual filters ───────────────────────────────────
 // Each category maps to a CSS class and display label.
@@ -188,19 +195,38 @@ export function parseGreekMorphology(code) {
         if (mood === 'infinitive') categories.push('infinitive')
       }
     }
-    // Person + number (e.g. "3S" → 3rd singular)
+    // Person + number (e.g. "3S" → 3rd singular) OR, for participles, a
+    // case-number-gender triple (e.g. "NPM" → nominative plural masculine).
+    // Disambiguate by leading char: a digit means person-number ("3S"), a
+    // case letter (N/G/D/A/V) means participial case-number-gender ("NPM").
     if (parts.length >= 3) {
       const pn = parts[2]
-      if (pn.length >= 1) {
-        const person = GREEK_PERSON[pn[0]]
-        if (person) categories.push(person)
-      }
-      if (pn.length >= 2) {
-        const number = GREEK_NUMBER[pn[1]]
-        if (number) categories.push(number)
+      if (/^[NGDAVngdav]/.test(pn?.[0] ?? '')) {
+        const caseGender = pn
+        if (caseGender.length >= 1) {
+          const case_ = GREEK_CASE[caseGender[0]]
+          if (case_) categories.push(case_)
+        }
+        if (caseGender.length >= 2) {
+          const number = GREEK_NUMBER[caseGender[1]]
+          if (number) categories.push(number)
+        }
+        if (caseGender.length >= 3) {
+          const gender = GREEK_GENDER[caseGender[2]]
+          if (gender) categories.push(gender)
+        }
+      } else {
+        if (pn.length >= 1) {
+          const person = GREEK_PERSON[pn[0]]
+          if (person) categories.push(person)
+        }
+        if (pn.length >= 2) {
+          const number = GREEK_NUMBER[pn[1]]
+          if (number) categories.push(number)
+        }
       }
     }
-    // Gender for participles (e.g. "V-AAP-NPM" → NPM = nominative plural masculine)
+    // Gender for participles in the 4-part form (e.g. "V-AAP-N-P-M")
     if (parts.length >= 4) {
       const caseGender = parts[3]
       if (caseGender.length >= 1) {
@@ -250,7 +276,11 @@ export function parseHebrewMorphology(code) {
   }
 
   if (pos === 'V' && parts.length >= 2) {
-    const stem = HEBREW_STEM[parts[1]]
+    // Accept both the short stem code ("Q", "H") and the full word stem
+    // ("Qal", "Hiphil") used in some datasets. HEBREW_STEM keys are single
+    // uppercase letters; the BY_NAME map holds the case-folded full stems.
+    const raw = parts[1]
+    const stem = HEBREW_STEM[raw] || HEBREW_STEM[raw.toUpperCase()] || HEBREW_STEM_BY_NAME.get(raw.toLowerCase())
     if (stem) categories.push(stem)
   }
 
