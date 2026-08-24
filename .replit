@@ -47,3 +47,6 @@ outputType = "webview"
 
 # Set ANTHROPIC_API_KEY in Replit Secrets (Tools → Secrets), not here.
 # DATA_PATH is intentionally unset — defaults to ./data relative to this file.
+
+[env]
+CLAUDE_CONFIG_DIR = "/home/runner/workspace/.local/state/claude"
