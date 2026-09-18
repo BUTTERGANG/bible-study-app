@@ -8,7 +8,7 @@ venv/
 .env
 
 # Node
-frontend/node_modules/
+node_modules/
 
 # Vite build output — rebuilt on deploy by start.sh
 frontend/dist/
