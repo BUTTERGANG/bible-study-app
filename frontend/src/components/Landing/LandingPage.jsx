@@ -191,7 +191,7 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-4 sm:px-6 text-center relative overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/15 rounded-full blur-3xl" />
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-[600px] h-[400px] bg-blue-600/15 rounded-full blur-3xl" />
         </div>
 
         <div className="relative max-w-4xl mx-auto">

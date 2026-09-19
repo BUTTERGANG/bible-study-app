@@ -189,7 +189,7 @@ export function useOfflineSync() {
       setSyncStatus(hadConflict ? 'conflict' : 'online')
     } catch (err) {
       console.error('[offline-sync] Flush error:', err)
-      setSyncStatus('offline')
+      setSyncStatus('error')
     } finally {
       _flushing = false
     }

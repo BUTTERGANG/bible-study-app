@@ -276,12 +276,12 @@ function MarkdownContent() {
             <span className="inline-block my-1">
               <img
                 src={src}
-                alt={alt || ''}
+                alt={alt || 'Embedded image'}
                 className="max-w-full max-h-64 rounded-md cursor-pointer hover:opacity-90 transition-opacity"
                 loading="lazy"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setLightbox({ src, alt: alt || '' })
+                  setLightbox({ src, alt: alt || 'Embedded image' })
                 }}
                 title={alt || 'Click to enlarge'}
               />

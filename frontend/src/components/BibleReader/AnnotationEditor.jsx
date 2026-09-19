@@ -132,7 +132,7 @@ export default function AnnotationEditor({
       ref={containerRef}
       style={style}
       className={clsx(
-        'fixed z-50 w-[280px] rounded-xl shadow-xl border',
+        'fixed z-50 w-[280px] max-w-[calc(100vw-16px)] rounded-xl shadow-xl border',
         'bg-white dark:bg-gray-800',
         'border-gray-200 dark:border-gray-700',
         'p-3 flex flex-col gap-2'

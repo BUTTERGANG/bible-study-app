@@ -6,6 +6,7 @@ import { api } from '../api/client'
 export async function getVerseExportData(book, chapter, verse, text, translation) {
   let notes = []
   let highlight = null
+  let partialFailure = false
 
   try {
     const notesRes = await api.getNotes(book, chapter, verse)
@@ -14,6 +15,7 @@ export async function getVerseExportData(book, chapter, verse, text, translation
     }
   } catch (err) {
     console.error('Failed to fetch notes for export', err)
+    partialFailure = true
   }
 
   try {
@@ -23,6 +25,7 @@ export async function getVerseExportData(book, chapter, verse, text, translation
     }
   } catch (err) {
     console.error('Failed to fetch highlights for export', err)
+    partialFailure = true
   }
 
   const lines = [
@@ -50,7 +53,7 @@ export async function getVerseExportData(book, chapter, verse, text, translation
   lines.push('---')
   lines.push(`*Exported from Scriptura Bible Study on ${new Date().toLocaleDateString()}*`)
 
-  return lines.join('\n')
+  return { content: lines.join('\n'), partialFailure }
 }
 
 /**

@@ -97,18 +97,24 @@ export default function VerseContextMenu({
   async function exportPassage() {
     setIsExporting(true)
     try {
-      const content = await getVerseExportData(book, chapter, verse, text, translation)
-      
+      const { content, partialFailure } = await getVerseExportData(book, chapter, verse, text, translation)
+
       const blob = new Blob([content], { type: 'text/markdown' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = `${book}-${chapter}-${verse}.md`
       a.click()
-      
+
       // Revoke after a tick so the download has time to start
       setTimeout(() => URL.revokeObjectURL(url), 100)
-      onClose()
+      setIsExporting(false)
+      if (partialFailure) {
+        // Keep the menu open so the user sees why some content may be missing.
+        setError('Exported, but some notes or highlights could not be included')
+      } else {
+        onClose()
+      }
     } catch (err) {
       console.error(err)
       setError('Failed to export passage')

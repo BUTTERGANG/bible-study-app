@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Cloud, CloudOff, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Cloud, CloudOff, Loader2, RefreshCw } from 'lucide-react'
 import clsx from 'clsx'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import { useClickOutside } from '../../hooks/useClickOutside'
@@ -20,6 +20,8 @@ export default function SyncStatus() {
         return <CloudOff size={14} className="text-slate-400" />
       case 'conflict':
         return <RefreshCw size={14} className="text-amber-400" />
+      case 'error':
+        return <AlertTriangle size={14} className="text-red-400" />
       default:
         return <Cloud size={14} className="text-green-400" />
     }
@@ -33,6 +35,8 @@ export default function SyncStatus() {
         return 'Offline'
       case 'conflict':
         return 'Sync conflict'
+      case 'error':
+        return 'Sync failed'
       default:
         return 'Synced'
     }
@@ -52,6 +56,8 @@ export default function SyncStatus() {
             ? 'bg-slate-700 text-blue-400'
             : syncStatus === 'conflict'
             ? 'bg-slate-700 text-amber-400'
+            : syncStatus === 'error'
+            ? 'bg-slate-700 text-red-400'
             : 'text-slate-400 hover:text-slate-300'
         )}
         title={`${statusLabel()}${hasPending ? ` (${queueLength} pending)` : ''}`}
@@ -82,6 +88,8 @@ export default function SyncStatus() {
               <span className="text-slate-300">
                 {syncStatus === 'offline'
                   ? 'You are offline. Changes will sync when connected.'
+                  : syncStatus === 'error'
+                  ? 'Sync failed. Your changes are saved locally and will retry.'
                   : hasPending
                   ? `${queueLength} item${queueLength !== 1 ? 's' : ''} pending sync`
                   : 'All changes synced'}
