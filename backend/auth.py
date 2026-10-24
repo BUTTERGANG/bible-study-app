@@ -13,7 +13,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, Header, HTTPException, status
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy.ext.asyncio import AsyncSession

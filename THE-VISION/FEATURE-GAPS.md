@@ -103,5 +103,5 @@
 | P2 | Audio backend for AudioPlayer | Medium | Medium |
 | P2 | Modal focus trapping (keyboard accessibility) | Low | Medium — ARIA roles done; Tab cycling missing |
 | P3 | Expand test coverage (AI conversations, doctrine, lectionary) | Medium | Medium |
-| P4 | `python-jose` → `PyJWT` migration | Low | Low (patched to 3.5.0) |
+| ~~P4~~ | ~~`python-jose` → `PyJWT` migration~~ | Done 2026-10-23 | python-jose replaced with PyJWT 2.15.1 (python-jose has an unpatched algorithm-confusion advisory) |
 | P4 | Postgres for user-mutable tables | Medium-High | Low (only at scale) |

@@ -233,9 +233,11 @@ Full swarm audit (8 parallel agents) followed by systematic fixes across securit
 - Focus trap, Escape handling, focus restoration, and accessible labels now cover Search, Morphological/Clause Search, Create Group, and Memorize quiz.
 - Remaining: audit custom overlays, drawers, and bottom sheets for the same behavior.
 
-**`python-jose` → `PyJWT` migration**
-- `python-jose` patched to 3.5.0; long-term prefer `PyJWT>=2.4.0` (better maintained)
-- Only 3 call sites in `auth.py`
+**`python-jose` → `PyJWT` migration** — ✅ Done 2026-10-23
+- Replaced `python-jose` 3.5.0 with `PyJWT` 2.15.1. python-jose has an unpatched
+  critical advisory (algorithm confusion via DER-encoded public keys); not exploitable
+  with our HS256-only config, but there is no fixed release
+- Drop-in for the 3 call sites in `auth.py` (`jwt.encode` / `jwt.decode`, `PyJWTError` as `JWTError`); 160/160 backend tests pass
 
 **Postgres for user-mutable tables** (not urgent)
 - Bible/commentary/lexicon stay in SQLite; user-mutable tables move to Postgres for multi-instance scale
